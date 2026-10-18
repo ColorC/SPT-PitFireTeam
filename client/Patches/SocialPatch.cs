@@ -7,12 +7,13 @@ using EFT.InventoryLogic;
 using EFT.Quests;
 using EFT.UI;
 using pitTeam.Components;
+using pitTeam.Compat;
 using Newtonsoft.Json.Linq;
 
 using HarmonyLib;
-using SPT.Common.Http;
-using SPT.Common.Utils;
-using SPT.Reflection.Patching;
+using SPTushonka.Common.Http;
+using SPTushonka.Common.Utils;
+using SPTushonka.Reflection.Patching;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -32,11 +33,11 @@ namespace pitTeam.Patches
         private static readonly MethodInfo RefreshOutputRequestsCallbackMethod = AccessTools.Method(typeof(EFT.SocialNetwork), "CG_method_15");
         protected override MethodBase GetTargetMethod()
         {
-            return AccessTools.Method(typeof(EFT.SocialNetwork), "method_1");
+            return AccessTools.Method(typeof(EFT.SocialNetwork), nameof(EFT.SocialNetwork.Init), new[] { typeof(EFT.ISocial), typeof(string) });
         }
 
         [PatchPostfix]
-        private static void PatchPostfix(EFT.SocialNetwork __instance, EFT.ISocial session, InventoryController inventoryController, string matchingVersion)
+        private static void PatchPostfix(EFT.SocialNetwork __instance, EFT.ISocial session, string matchingVersion)
         {
             socialNetworkClass = __instance;
             iChatInteractions = session;
@@ -49,20 +50,7 @@ namespace pitTeam.Patches
             if (socialNetworkClass != null && iChatInteractions != null && (force || delay < Time.time))
             {
                 delay = Time.time + (force ? 0.25f : 2f);
-                iChatInteractions.GetFriendsList(new Callback<ChatShared.ChatContacts>(result =>
-                {
-                    RefreshFriendsCallbackMethod?.Invoke(socialNetworkClass, new object[] { result });
-                }));
-
-                iChatInteractions.GetInputFriendsRequests(new Callback<ChatShared.FriendsInvitation[]>(result =>
-                {
-                    RefreshInputRequestsCallbackMethod?.Invoke(socialNetworkClass, new object[] { result });
-                }));
-
-                iChatInteractions.GetOutputFriendsRequests(new Callback<ChatShared.FriendsInvitation[]>(result =>
-                {
-                    RefreshOutputRequestsCallbackMethod?.Invoke(socialNetworkClass, new object[] { result });
-                }));
+                _ = iChatInteractions.GetFriendsList();
             }
         }
 
@@ -119,8 +107,8 @@ namespace pitTeam.Patches
     {
         protected override MethodBase GetTargetMethod()
         {
-            Type acceptCallbackType = typeof(EFT.SocialNetwork).GetNestedType("CG_AcceptFriendRequest", BindingFlags.Public | BindingFlags.NonPublic);
-            return AccessTools.Method(acceptCallbackType, "method_1");
+            Type acceptCallbackType = typeof(EFT.SocialNetwork).GetNestedType("__c__DisplayClass132_0", BindingFlags.Public | BindingFlags.NonPublic);
+            return AccessTools.Method(acceptCallbackType, "_AcceptFriendRequest_b__1", new[] { typeof(Comfort.Common.IResult) });
         }
 
         [PatchPostfix]
@@ -138,13 +126,13 @@ namespace pitTeam.Patches
         }
 
         [PatchPostfix]
-        private static async void PatchPostfix(Task __result)
+        private static async void PatchPostfix(Il2CppSystem.Threading.Tasks.Task __result)
         {
             try
             {
                 if (__result != null)
                 {
-                    await __result;
+                    await Il2CppTaskBridge.FromNative(__result);
                 }
 
                 SocialNetworkClassPatch.RefreshFriendsListAndSquadRoster();
@@ -284,15 +272,17 @@ namespace pitTeam.Patches
                 OtherPlayerProfileScreenPatch.PreparePendingRecruitProfileView(profileAccountId);
             }
 
-            Task<OtherPlayerProfileScreen.OtherPlayerProfileScreenController> profileTask =
+            Il2CppSystem.Threading.Tasks.Task<OtherPlayerProfileScreen.OtherPlayerProfileScreenController> profileTask =
                 ItemUiContext.Instance.ShowPlayerProfileScreen(profileAccountId, EItemViewType.OtherPlayerProfile);
-            profileTask.ContinueWith(task =>
+            System.Action<Il2CppSystem.Threading.Tasks.Task<OtherPlayerProfileScreen.OtherPlayerProfileScreenController>> managedCallback = task =>
             {
                 if (task.IsCanceled || task.IsFaulted || task.Result == null)
                 {
                     OtherPlayerProfileScreenPatch.ClearPendingRecruitProfileView(profileAccountId);
                 }
-            }).HandleExceptions();
+            };
+            var nativeCallback = (Il2CppSystem.Action<Il2CppSystem.Threading.Tasks.Task<OtherPlayerProfileScreen.OtherPlayerProfileScreenController>>)managedCallback;
+            profileTask.ContinueWith(nativeCallback);
             return false;
         }
     }
@@ -358,7 +348,7 @@ namespace pitTeam.Patches
                     continue;
                 }
 
-                UpdatableChatMember teammateMember = UpdatableChatMember.FindOrCreate(teammate.Id, static memberId => new UpdatableChatMember(memberId));
+                UpdatableChatMember teammateMember = new UpdatableChatMember(teammate.Id);
                 teammateMember.AccountId = teammate.AccountId;
                 teammateMember.Info.Nickname = teammate.Nickname;
                 teammateMember.Info.Level = teammate.Level;
@@ -367,7 +357,7 @@ namespace pitTeam.Patches
                 filtered.Add(teammateMember);
             }
 
-            return new Diz.Binding.BindableList<UpdatableChatMember>(filtered);
+            return new Diz.Binding.BindableList<UpdatableChatMember>(filtered.ToNativeList());
         }
 
         private static Dictionary<string, TeammateInviteEntry> LoadTeammateInviteEntries()

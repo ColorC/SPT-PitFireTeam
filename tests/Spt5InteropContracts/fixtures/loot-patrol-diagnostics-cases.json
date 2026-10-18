@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "producer": "Minimal synthetic regression based only on the observed NullReferenceException at LootPatrol.GetDecision; it is not the historical runtime incident receipt.",
+  "sourceMetadata": ["client/Compat/Spt5LootPatrolDiagnostics.cs", "client/Patches/LootPatrolSafetyPatch.cs"],
+  "cases": [
+    { "name": "raw-nre-stack-inner-and-owner-identity", "exceptionType": "System.NullReferenceException", "expected": "bounded Exception.ToString, stack, inner cause, layer/owner managed proxy types with native type unavailable, owner ProfileId and Profile.AccountId; target identity unavailable" },
+    { "name": "no-owner-unknown", "expected": "null owner identity and follower confirmation; unavailable statuses" },
+    { "name": "throwing-getters-captured", "expected": "captureError and error statuses; diagnostics do not throw" },
+    { "name": "bounded-truncation", "maxExceptionDetails": 8192, "maxStackTrace": 4096 }
+  ]
+}

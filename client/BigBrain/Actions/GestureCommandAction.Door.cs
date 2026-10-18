@@ -22,6 +22,8 @@ namespace pitTeam.BigBrain.Actions
 {
     internal partial class GestureCommandAction
     {
+        private Il2CppSystem.Action? _doorInteractEndedToken;
+        private BotDoorOpener? _doorEventOwner;
         private void HandleOpenDoor()
         {
             activeDoor ??= InteractableObjects.GetDoorToOpen(BotOwner);
@@ -83,8 +85,10 @@ namespace pitTeam.BigBrain.Actions
             }
 
             BotOwner.StopMove();
-            BotOwner.DoorOpener.OnEndInteract -= OnDoorInteractEnded;
-            BotOwner.DoorOpener.OnEndInteract += OnDoorInteractEnded;
+            _doorInteractEndedToken ??= (Il2CppSystem.Action)(System.Action)OnDoorInteractEnded;
+            if (_doorEventOwner != null) _doorEventOwner.OnEndInteract -= _doorInteractEndedToken;
+            _doorEventOwner = BotOwner.DoorOpener;
+            _doorEventOwner.OnEndInteract += _doorInteractEndedToken;
             BotOwner.DoorOpener.Interact(activeDoor, EInteractionType.Open);
             doorInteractIssued = true;
         }
@@ -96,10 +100,11 @@ namespace pitTeam.BigBrain.Actions
 
         private void CleanupDoorInteraction()
         {
-            if (BotOwner?.DoorOpener != null)
+            if (_doorEventOwner != null && _doorInteractEndedToken != null)
             {
-                BotOwner.DoorOpener.OnEndInteract -= OnDoorInteractEnded;
+                _doorEventOwner.OnEndInteract -= _doorInteractEndedToken;
             }
+            _doorEventOwner = null;
 
             activeDoor = null;
             doorMoveIssued = false;

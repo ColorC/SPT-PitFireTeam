@@ -4,6 +4,7 @@ using pitTeam.Components;
 using pitTeam.Modules;
 using pitTeam.Utils;
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
@@ -205,7 +206,7 @@ namespace pitTeam.BigBrain.Actions
             }
 
             if (!BotFollowerPlayer.TryApplyCommandLookOverride(BotOwner) &&
-                BotOwner.BotFollower.BossToFollow is pitAIBossPlayer boss &&
+                pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(BotOwner) is pitAIBossPlayer boss &&
                 boss.realPlayer != null)
             {
                 BotOwner.Steering.LookToPoint(boss.realPlayer.Position + Vector3.up * 1.2f);
@@ -214,7 +215,7 @@ namespace pitTeam.BigBrain.Actions
 
         private bool TryGetBossAndPlayer()
         {
-            if (BotOwner.BotFollower.BossToFollow is not pitAIBossPlayer boss || boss.realPlayer == null)
+            if (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(BotOwner) is not pitAIBossPlayer boss || boss.realPlayer == null)
             {
                 return false;
             }
@@ -488,7 +489,7 @@ namespace pitTeam.BigBrain.Actions
 
             if (bossPlayer == null) return null;
 
-            List<CustomNavigationPoint> coverPoints = BotOwner.Covers.GetClosePoints(bossPlayer.Transform.position, settleDistance + 5f);
+            List<CustomNavigationPoint> coverPoints = BotOwner.Covers.GetClosePoints(bossPlayer.Transform.position, settleDistance + 5f).AsManaged().ToList();
             float maxDistance = settleDistance;
             NavMeshPath navMeshPath = new NavMeshPath();
             List<CustomNavigationPoint> availableCover = new List<CustomNavigationPoint>();
@@ -520,7 +521,7 @@ namespace pitTeam.BigBrain.Actions
             float searchRadius = FollowerCoverCommitment.GetCoverSearchRadius();
             float maxBossDist = FollowerCoverCommitment.GetCoverMaxBossDistance();
 
-            List<CustomNavigationPoint> coverPoints = BotOwner.Covers.GetClosePoints(bossPosition, searchRadius);
+            List<CustomNavigationPoint> coverPoints = BotOwner.Covers.GetClosePoints(bossPosition, searchRadius).AsManaged().ToList();
             List<CustomNavigationPoint> validCandidates = new List<CustomNavigationPoint>();
 
             foreach (var point in coverPoints)
@@ -741,7 +742,7 @@ namespace pitTeam.BigBrain.Actions
         private CombatEvents? GetCombatEvents()
         {
             return bossData?.CombatEvents ??
-                   (BotOwner?.BotFollower?.BossToFollow as pitAIBossPlayer)?.CombatEvents;
+                   (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(BotOwner) as pitAIBossPlayer)?.CombatEvents;
         }
 
         private void Patrol()

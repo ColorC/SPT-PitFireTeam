@@ -155,7 +155,7 @@ namespace pitTeam.BigBrain.Actions
 
         private static IEnumerable<EFT.InventoryLogic.IContainer> GetSearchableContainersRecursive(EFT.InventoryLogic.SearchableItem item)
         {
-            foreach (EFT.InventoryLogic.IContainer container in item.Containers ?? Enumerable.Empty<EFT.InventoryLogic.IContainer>())
+            foreach (EFT.InventoryLogic.IContainer container in item.Containers?.AsManaged() ?? Enumerable.Empty<EFT.InventoryLogic.IContainer>())
             {
                 yield return container;
             }

@@ -143,7 +143,7 @@ namespace pitTeam.BigBrain.Actions
 
             memorySearchRealReportTime = reportTime;
             memorySearchPoint = hit.position;
-            BotOwner.SearchData.SearchPoint = new BotSearchPoint(memorySearchPoint, EBotSearchPoint.playerPosition);
+            BotOwner.SearchData.SearchPoint = new BotSearchPoint(memorySearchPoint, EBotSearchPoint.playerPosition, true);
             BotOwner.SearchData._lastSearchPoint = null;
             BotOwner.SearchData._nextPosibleCheckTime = Time.time + 10f;
             BotOwner.SearchData._nextPosibleGoRefresh = 0f;

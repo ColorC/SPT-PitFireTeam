@@ -5,7 +5,7 @@ using EFT.InventoryLogic;
 using Comfort.Common;
 using HarmonyLib;
 using Newtonsoft.Json;
-using SPT.Common.Http;
+using SPTushonka.Common.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -87,7 +87,11 @@ namespace pitTeam.Modules
 
         private pitAIBossPlayer AddBossPlayer(Player player, BotsController botsController)
         {
-            if (_bosses.ContainsKey(player.ProfileId)) return _bosses[player.ProfileId];
+            if (_bosses.TryGetValue(player.ProfileId, out pitAIBossPlayer existingBoss))
+            {
+                pitTeam.Patches.RegisteredBossAIDataBinder.BindMappedBoss(player, existingBoss);
+                return existingBoss;
+            }
 
 
             WildSpawnType roleType = player.Profile.Info.Settings.Role;
@@ -131,6 +135,7 @@ namespace pitTeam.Modules
             }
 
             _bosses[name] = playerBoss;
+            pitTeam.Patches.RegisteredBossAIDataBinder.BindMappedBoss(player, playerBoss);
 
             return playerBoss;
 
@@ -145,7 +150,7 @@ namespace pitTeam.Modules
                 List<BotOwner> ownersToRemove = new List<BotOwner>();
                 List<BotFollowerPlayer> followersToRemove = new List<BotFollowerPlayer>();
 
-                boss.Followers.ForEach(fl =>
+                boss.Followers.ForEach((System.Action<BotOwner>)(fl =>
                 {
                     ownersToRemove.Add(fl);
                     _followers.ForEach(follower =>
@@ -155,7 +160,7 @@ namespace pitTeam.Modules
                             followersToRemove.Add(follower);
                         }
                     });
-                });
+                }));
                 if (followersToRemove.Count > 0 || (died && FollowerDeathEscapeResolver.HasFallenSquadmateSnapshots()))
                 {
                     if (died)
@@ -239,7 +244,8 @@ namespace pitTeam.Modules
             WildSpawnType role = WildSpawnType.assault,
             string tactic = "Default",
             float aggression = 50f,
-            FollowerProficiencyModifierValues proficiency = null)
+            FollowerProficiencyModifierValues proficiency = null,
+            bool throwOnInitFailure = false)
         {
 
             BotFollowerPlayer? _follower = null;
@@ -300,10 +306,11 @@ namespace pitTeam.Modules
             {
                 Modules.Logger.LogError("Failed to init follower");
                 Modules.Logger.LogError(e);
+                if (throwOnInitFailure) throw;
                 return null;
             }
 
-            _followers.Add(_follower);
+            _followers.Add(_follower);;
             if (bot?.ProfileId != null)
             {
                 _followersByProfileId[bot.ProfileId] = _follower;
@@ -353,11 +360,6 @@ namespace pitTeam.Modules
 
             List<RecruitPickupCandidateRequest> recruitCandidates = new List<RecruitPickupCandidateRequest>();
 
-            var converterClass = typeof(AbstractGame).Assembly.GetTypes()
-                   .First(t => t.GetField("Converters", BindingFlags.Static | BindingFlags.Public) != null);
-
-            var _defaultJsonConverters = Traverse.Create(converterClass).Field<JsonConverter[]>("Converters").Value;
-
             try
             {
                 List<BotFollowerPlayer> _followers = followers ?? Instance._followers;
@@ -394,7 +396,7 @@ namespace pitTeam.Modules
                                     Side = pr.Info?.Side.ToString() ?? string.Empty,
                                     Voice = voiceId,
                                     Head = headId,
-                                    ProfileJson = CreateRecruitProfileJson(pr, _defaultJsonConverters),
+                                    ProfileJson = CreateRecruitProfileJson(pr),
                                 });
                             }
                             else
@@ -420,7 +422,7 @@ namespace pitTeam.Modules
                     FollowerMovementSkillProgress movementProgress = CalculateFollowerMovementSkillProgress(item.GetBot());
                     List<object> skills = new List<object>();
 
-                    pr.Skills.DisplayList.ExecuteForEach(skill =>
+                    foreach (var skill in pr.Skills.DisplayList)
                     {
                         float baseCurrent = UnityEngine.Mathf.Max(0f, skill.Current - skill.PointsEarned);
                         float progress = skill.ProgressValue;
@@ -451,7 +453,7 @@ namespace pitTeam.Modules
                             Progress = progress,
                             PointsEarnedDuringSession = pointsEarned,
                         });
-                    });
+                    }
 
                     if (skills.Find(skill => (ESkillId)skill.GetType().GetProperty("Id").GetValue(skill) == ESkillId.BotReload) == null)
                     {
@@ -471,8 +473,8 @@ namespace pitTeam.Modules
                     data.Add(new
                     {
                         Aid = pr.AccountId,
-                        BotExperienceSession = Math.Round(pr.EftStats.SessionCounters.GetAllInt(new object[] { CounterTag.ExpKill }) + (boss.realPlayer.Profile.EftStats.SessionCounters.GetAllInt(new object[] { CounterTag.Exp }) * GetLevelFactor(bossLevel, botLevel))),
-                        KillCount = pr.EftStats.SessionCounters.GetAllInt(new object[] { CounterTag.Kills }),
+                        BotExperienceSession = Math.Round(pr.EftStats.SessionCounters.GetAllInt(new Il2CppSystem.Object[] { Il2CppSystem.Enum.ToObject(Il2CppInterop.Runtime.Il2CppType.Of<CounterTag>(), (int)CounterTag.ExpKill) }) + (boss.realPlayer.Profile.EftStats.SessionCounters.GetAllInt(new Il2CppSystem.Object[] { Il2CppSystem.Enum.ToObject(Il2CppInterop.Runtime.Il2CppType.Of<CounterTag>(), (int)CounterTag.Exp) }) * GetLevelFactor(bossLevel, botLevel))),
+                        KillCount = pr.EftStats.SessionCounters.GetAllInt(new Il2CppSystem.Object[] { Il2CppSystem.Enum.ToObject(Il2CppInterop.Runtime.Il2CppType.Of<CounterTag>(), (int)CounterTag.Kills) }),
                         RaidSeconds = GetFollowerRaidSeconds(item.GetBot()),
                         Skills = skills
                     });
@@ -483,10 +485,7 @@ namespace pitTeam.Modules
                     }
                 }
 
-                string progressJson = new
-                {
-                    Entries = data
-                }.ToJson(_defaultJsonConverters);
+                string progressJson = pitTeam.Compat.SptJsonBoundary.Serialize(new { Entries = data });
                 if (data.Count > 0)
                 {
                     PostRaidRequestAsync("/client/game/bot/followerprogress", progressJson, "followers progress");
@@ -502,10 +501,7 @@ namespace pitTeam.Modules
             {
                 if (recruitCandidates.Count > 0)
                 {
-                    string recruitJson = new RecruitPickupRequest
-                    {
-                        Candidates = recruitCandidates
-                    }.ToJson(_defaultJsonConverters);
+                    string recruitJson = pitTeam.Compat.SptJsonBoundary.Serialize(new RecruitPickupRequest { Candidates = recruitCandidates });
                     PostRaidRequestAsync("/singleplayer/pitfireteam/recruitpickup", recruitJson, "recruit pickup candidates");
                 }
             }
@@ -791,7 +787,7 @@ namespace pitTeam.Modules
         {
             try
             {
-                return equipment?.GetAllItems()?.Count() ?? 0;
+                return equipment?.GetAllItems()?.AsManaged().Count() ?? 0;
             }
             catch
             {
@@ -803,7 +799,7 @@ namespace pitTeam.Modules
         {
             try
             {
-                return item?.GetAllItems()?.Count() ?? 0;
+                return item?.GetAllItems()?.AsManaged().Count() ?? 0;
             }
             catch
             {
@@ -847,7 +843,7 @@ namespace pitTeam.Modules
             return UnityEngine.Mathf.Max(0f, distances[index]);
         }
 
-        private static string CreateRecruitProfileJson(Profile profile, JsonConverter[] converters)
+        private static string CreateRecruitProfileJson(Profile profile)
         {
             if (profile == null)
             {
@@ -857,7 +853,7 @@ namespace pitTeam.Modules
             try
             {
                 EFT.ProfileDescriptor descriptor = new EFT.ProfileDescriptor(profile, EFT.FullySearchedSearchController.Instance);
-                return descriptor.ToJson(converters);
+                return global::JsonExtensions.ToJson(descriptor, EFT.EftJsonConverters.Converters);
             }
             catch (Exception ex)
             {
@@ -968,7 +964,21 @@ namespace pitTeam.Modules
             }
         }
 
-        public BotFollowerPlayer GetFollower(BotOwner bot)
+        public static pitAIBossPlayer GetResolvedBossForFollower(BotOwner bot)
+ {
+ if (bot == null || bot.BotFollower == null || !bot.BotFollower.HaveBoss || bot.BotFollower.BossToFollow == null)
+ return null;
+ var nativeBoss = bot.BotFollower.BossToFollow;
+ var bossPlayer = nativeBoss.Player();
+ if (bossPlayer == null)
+ return null;
+ string profileId = bossPlayer.ProfileId;
+ if (string.IsNullOrEmpty(profileId) || Instance == null || Instance._bosses == null)
+ return null;
+ return Instance._bosses.TryGetValue(profileId, out pitAIBossPlayer boss) ? boss : null;
+ }
+
+ public BotFollowerPlayer GetFollower(BotOwner bot)
         {
             if (bot == null) return null;
 
@@ -1110,7 +1120,7 @@ namespace pitTeam.Modules
             player.bossGroup = group;
             player.bossGroup.Lock();
             // prevent group from ever making the player an enemy
-            player.bossGroup.OnEnemyAdd += (IPlayer pl, EBotEnemyCause cause) =>
+            player.bossGroup.OnEnemyAdd += (System.Action<IPlayer, EBotEnemyCause>)((pl, cause) =>
             {
                 if (pl != null)
                 {
@@ -1126,7 +1136,7 @@ namespace pitTeam.Modules
                     }
                 }
                 Enemy.ForceIgnoreUntilAggressionOff(player.bossGroup);
-            };
+            });
             if (!Instance._botsGroup.Contains(group.Id)) Instance._botsGroup.Add(group.Id);
 
             player.bossGroup.AddAlly(player.realPlayer);
@@ -1186,9 +1196,10 @@ namespace pitTeam.Modules
             WildSpawnType role = WildSpawnType.assault,
             string tactic = "Default",
             float aggression = 50f,
-            FollowerProficiencyModifierValues proficiency = null)
+            FollowerProficiencyModifierValues proficiency = null,
+            bool throwOnInitFailure = false)
         {
-            return Instance.AddBotFollower(bot, player, squadMate, role, tactic, aggression, proficiency);
+            return Instance.AddBotFollower(bot, player, squadMate, role, tactic, aggression, proficiency, throwOnInitFailure);
         }
 
         public static void ShallBeFollower(string profileId)

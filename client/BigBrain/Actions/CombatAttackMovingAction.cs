@@ -174,7 +174,6 @@ namespace pitTeam.BigBrain.Actions
                 // Vanilla AttackMoving is not valid in that state: while in cover it dereferences
                 // Memory.GoalEnemy.EnemyLastPosition without a null check. Preserve the planner-owned
                 // movement and our recent-threat fire overlay, but skip that enemy-dependent update.
-                DoorOpen(true);
                 _owner.SetTargetMoveSpeed(1f);
                 _owner.Sprint(false, true);
                 _owner.SetPose(1f);

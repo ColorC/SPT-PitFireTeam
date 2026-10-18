@@ -26,7 +26,7 @@ namespace pitTeam.BigBrain.Actions
         public override void Update(CustomLayer.ActionData data)
         {
             FollowerRecovery.StopShooting(BotOwner);
-            baseLogic.UpdateNodeByBrain(data);
+            baseLogic.UpdateNodeByBrain(data?.NativeData);
             FollowerRecovery.StopShooting(BotOwner);
         }
     }

@@ -1,0 +1,37 @@
+[
+  {
+    "file": "pitFireTeam.dll",
+    "version": "0.10.3",
+    "sha256": "910d05526eb76149440060d795bcc8c2c583d94697f20b01c61ea61015415cee"
+  },
+  {
+    "file": "pitFireTeam.Server.dll",
+    "version": "0.10.3+ce43c006a842f36b1a2eeb01e1b6bb489c1ca80e",
+    "sha256": "14ccc747b332f691b13dc1f440fa4232892238858e2953d6cc9a207e2dfdda37"
+  },
+  {
+    "file": "TarkovEsp.dll",
+    "version": "0.2.0+6532db7fb1577281bc33ec5bbecea32091a886cc",
+    "sha256": "dc77b2ee1ed56cb501d63c1a6a34bd645a073a83c61bacffcc28135f81f78430"
+  },
+  {
+    "file": "DrakiaXYZ-BigBrain.dll",
+    "version": "1.5.0+eab4c4a354a0757b891cbe1f51073800809f0b66",
+    "sha256": "bc08c4e7c9134d5b745ccac5654230bf51171aa5e949fbfa834dae6389ccb683"
+  },
+  {
+    "file": "BepInEx.Unity.IL2CPP.dll",
+    "version": "6.0.0+67726c1c05bcdf88d16d4103ed53d09d6d4e789e",
+    "sha256": "493b880a6464e2338da715730cbbd6f080e90933716b511795e402d6e408073c"
+  },
+  {
+    "file": "Il2CppInterop.Runtime.dll",
+    "version": "1.6.0+4efa0905c3b6ba19e21b0d97ce4f1e866ee3a028",
+    "sha256": "082799b08208703637a38bc17b0dd551e5ce3c79e6e9d33e3d9db199402f7462"
+  },
+  {
+    "file": "funchook.dll",
+    "version": null,
+    "sha256": "9a0fdb9959ba782fdeed0f7fef10d729e305304f4aa49098c7ef05a7113add7d"
+  }
+]

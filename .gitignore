@@ -62,3 +62,10 @@ types
 /video/
 /server/refs/
 *.dll
+
+# Local publication/build artifacts
+artifacts/
+**/bin/
+**/obj/
+*.user
+*.dmp

@@ -50,7 +50,7 @@ namespace pitTeam.Modules
             try
             {
                 int inspectedRounds = 0;
-                foreach (EFT.InventoryLogic.Ammo ammo in magazine.Cartridges.Items
+                foreach (EFT.InventoryLogic.Ammo ammo in magazine.Cartridges.Items.AsManaged()
                              .OfType<EFT.InventoryLogic.Ammo>()
                              .Where(ammo => ammo != null && ammo.StackObjectsCount > 0)
                              .ToArray())

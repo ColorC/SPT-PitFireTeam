@@ -395,7 +395,7 @@ namespace pitTeam.Modules
         [System.Diagnostics.Conditional("DEBUG")]
         public static void RecordDecisionSelected(
             BotOwner bot,
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? previousDecision,
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> previousDecision,
             AICoreActionResult<BotLogicDecision, CoreActionResultParams> nextDecision,
             string? objectiveName)
         {
@@ -415,9 +415,9 @@ namespace pitTeam.Modules
 
             int previousDecisionInstanceId = state.CurrentDecisionInstanceId;
             float previousDecisionSelectedTime = state.CurrentDecisionSelectedTime;
-            bool sameAsPrevious = previousDecision.HasValue &&
-                                  previousDecision.Value.Action == nextDecision.Action &&
-                                  string.Equals(previousDecision.Value.Reason, nextDecision.Reason, StringComparison.Ordinal);
+            bool sameAsPrevious = previousDecision != null &&
+                                  previousDecision.Action == nextDecision.Action &&
+                                  string.Equals(previousDecision.Reason, nextDecision.Reason, StringComparison.Ordinal);
 
             state.LastCombatSeenTime = Time.time;
             state.CurrentDecisionInstanceId = ++state.DecisionInstanceSequence;
@@ -435,7 +435,7 @@ namespace pitTeam.Modules
                 combatEpisodeId = state.CombatEpisodeId,
                 decisionInstanceId = state.CurrentDecisionInstanceId,
                 selectedAt = SanitizeFloat(state.CurrentDecisionSelectedTime),
-                previous = previousDecision.HasValue ? CreateDecisionPayload(previousDecision.Value) : null,
+                previous = previousDecision != null ? CreateDecisionPayload(previousDecision) : null,
                 next = CreateDecisionPayload(nextDecision),
                 transition = new
                 {
@@ -748,7 +748,7 @@ namespace pitTeam.Modules
             string commitment,
             string action,
             string? reason,
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? decision = null,
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> decision = null,
             Vector3? target = null,
             int? coverId = null,
             bool? preferCover = null,
@@ -770,7 +770,7 @@ namespace pitTeam.Modules
                 commitment,
                 action,
                 reason,
-                decision = decision.HasValue ? CreateDecisionPayload(decision.Value) : null,
+                decision = decision != null ? CreateDecisionPayload(decision) : null,
                 target = target.HasValue && IsFinite(target.Value) ? CreateVector(target.Value) : null,
                 coverId,
                 preferCover,
@@ -1771,7 +1771,7 @@ namespace pitTeam.Modules
 
         private static object? CreateTransitionBossContext(BotOwner bot)
         {
-            if (bot.BotFollower?.BossToFollow is not pitAIBossPlayer boss)
+            if (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(bot) is not pitAIBossPlayer boss)
             {
                 return null;
             }
@@ -2066,7 +2066,6 @@ namespace pitTeam.Modules
                     return "initialOrSetup";
                 case EBotEnemyCause.addCauseGroup:
                 case EBotEnemyCause.initCauseEnemy:
-                case EBotEnemyCause.checkAddTODO:
                 case EBotEnemyCause.AddEnemyToAllGroupsInBotZone:
                 case EBotEnemyCause.AddEnemyToAllGroups:
                 case EBotEnemyCause.warn:
@@ -2109,7 +2108,7 @@ namespace pitTeam.Modules
 
         private static object? CreateBossSnapshot(BotOwner bot, Vector3 botPosition, Vector3 lookDirection)
         {
-            if (bot.BotFollower?.BossToFollow is not pitAIBossPlayer boss)
+            if (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(bot) is not pitAIBossPlayer boss)
             {
                 return null;
             }
@@ -2156,7 +2155,14 @@ namespace pitTeam.Modules
         private static bool TryGetMoverTarget(BotOwner bot, out Vector3 target)
         {
             target = Vector3.zero;
-            if (bot?.Mover?.TargetPoint is not Vector3 moverTarget || !IsFinite(moverTarget))
+            var nativeTarget = bot?.Mover?.TargetPoint;
+            if (!nativeTarget.HasValue)
+            {
+                return false;
+            }
+
+            Vector3 moverTarget = nativeTarget.Value;
+            if (!IsFinite(moverTarget))
             {
                 return false;
             }
@@ -2221,7 +2227,7 @@ namespace pitTeam.Modules
             Vector3 position = part.Position;
             return new
             {
-                canShoot = part.CanShoot,
+                canShoot = vision?.Visible == true,
                 visible = vision?.Visible == true,
                 visibleType = vision?.VisibleType.ToString(),
                 position = IsFinite(position) ? CreateVector(position) : null,
@@ -2422,7 +2428,7 @@ namespace pitTeam.Modules
                         payload
                     };
 
-                    writer.WriteLine(JsonConvert.SerializeObject(envelope, JsonSettings));
+                    writer.WriteLine(System.Text.Json.JsonSerializer.Serialize(envelope));
                     eventsSinceFlush++;
                     if (eventsSinceFlush >= FlushEventBatchSize || utcNow.Ticks >= nextFlushUtcTicks)
                     {

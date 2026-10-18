@@ -1,0 +1,139 @@
+{
+  "preview": true,
+  "target": {
+    "eft": "1.1.5.47242 IL2CPP",
+    "spt": "5.0.0 BEM ec15a4"
+  },
+  "files": [
+    {
+      "path": "BepInEx/plugins/pitFireTeam/pitFireTeam.dll",
+      "bytes": 3251200,
+      "sha256": "910d05526eb76149440060d795bcc8c2c583d94697f20b01c61ea61015415cee"
+    },
+    {
+      "path": "BepInEx/plugins/pitFireTeam/resources/auto-join.png",
+      "bytes": 1188,
+      "sha256": "ce4a382fc32b2f09cc2e27af0c222b47de61ae7ac80398746ff991c3689739af"
+    },
+    {
+      "path": "BepInEx/plugins/pitFireTeam/resources/brain.png",
+      "bytes": 5599,
+      "sha256": "332b7c84e13773d8cec407aae528afd4241fddc497770bb1570c3f0b2041db1b"
+    },
+    {
+      "path": "BepInEx/plugins/pitFireTeam/resources/diagonal_lines.png",
+      "bytes": 3541,
+      "sha256": "c560761a5e44b9d0145d91a5591e3d71207a9bbb256c2ba4f978a9db8670dc8b"
+    },
+    {
+      "path": "BepInEx/plugins/pitFireTeam/resources/enemy-down.png",
+      "bytes": 17148,
+      "sha256": "0dc47668a88965c4b85e09d53b13174c0c14b2b1dbe31e5adad54c4e6baf3048"
+    },
+    {
+      "path": "BepInEx/plugins/pitFireTeam/resources/enemy-seen.png",
+      "bytes": 3648,
+      "sha256": "1b3ec1b5c4c62e071870c05e0e142078d64edf2a49980f462e457be3c2b4dc26"
+    },
+    {
+      "path": "BepInEx/plugins/pitFireTeam/resources/enemy-visible.png",
+      "bytes": 8070,
+      "sha256": "db44b7b214b180a002061d7c58eff39086561362c7e0042fb9dc0951c1f27101"
+    },
+    {
+      "path": "BepInEx/plugins/pitFireTeam/resources/gear.png",
+      "bytes": 4997,
+      "sha256": "32486c9d24c0b451e7d66c3885b4b42248b774e4834154abc7aae0cda9eb1a31"
+    },
+    {
+      "path": "BepInEx/plugins/pitFireTeam/resources/gesture_over_there.png",
+      "bytes": 8341,
+      "sha256": "7f72e9746c6dea513b19b53b8bb397d5fb4e223febbb35991a69b531ed5bf27c"
+    },
+    {
+      "path": "BepInEx/plugins/pitFireTeam/resources/icon_group.png",
+      "bytes": 1476,
+      "sha256": "99b427c88198346dc1e7b11ac38d3ef44ef61969e131b42bc53d078ef9ac82c8"
+    },
+    {
+      "path": "BepInEx/plugins/pitFireTeam/resources/icon_info_money_roubles_big.png",
+      "bytes": 1517,
+      "sha256": "0ac96191cac1b903c733898eca7cf78c6f92308116846e7d4867d3b79eadd195"
+    },
+    {
+      "path": "BepInEx/plugins/pitFireTeam/resources/locationping.ogg",
+      "bytes": 54115,
+      "sha256": "0c8ea2dd7f8184fcdd10b815c27bed1e2105bb1cb211e20acc10ff8537583575"
+    },
+    {
+      "path": "BepInEx/plugins/pitFireTeam/resources/radiobeep.ogg",
+      "bytes": 12637,
+      "sha256": "e107dc43c6cd64930e06218ebb39f6080c53367d11091dced908f52128ab11fa"
+    },
+    {
+      "path": "BepInEx/plugins/pitFireTeam/resources/radiochat.ogg",
+      "bytes": 99490,
+      "sha256": "630f08bef34de0e72f0776d17fc56181f1b8a294c315d029b55af16f22946683"
+    },
+    {
+      "path": "BepInEx/plugins/pitFireTeam/resources/squad-inverse.png",
+      "bytes": 8459,
+      "sha256": "852e1947e6a31a9cd068852d94782b4fe5e403982ff73ed4fa5f54dfb97d292a"
+    },
+    {
+      "path": "BepInEx/plugins/pitFireTeam/resources/squad.png",
+      "bytes": 6716,
+      "sha256": "15f29320345d418858e955e204a406a234585d41c3db90edb20356276d8ca4f3"
+    },
+    {
+      "path": "SPT_Runtime/user/mods/pitFireTeam-ServerMod/pitFireTeam.Server.dll",
+      "bytes": 357376,
+      "sha256": "14ccc747b332f691b13dc1f440fa4232892238858e2953d6cc9a207e2dfdda37"
+    },
+    {
+      "path": "SPT_Runtime/user/mods/pitFireTeam-ServerMod/pitFireTeam.Server.deps.json",
+      "bytes": 450,
+      "sha256": "074a8e04fd00ae9b39fe93d9561e442ab10ef9df74aaf4f71241c490a2bf0ade"
+    },
+    {
+      "path": "SPT_Runtime/user/mods/pitFireTeam-ServerMod/Resources/avatars/courier.png",
+      "bytes": 344413,
+      "sha256": "74359610bf9778490a0662ef06e7134c3d33d78e2227ac70671335df0cc5551b"
+    },
+    {
+      "path": "SPT_Runtime/user/mods/pitFireTeam-ServerMod/Resources/lang/chs.json",
+      "bytes": 18220,
+      "sha256": "aff0a05b37252572fe6adcb4f1a84faf1c290df66bc7ac1796cbba3df3c953ad"
+    },
+    {
+      "path": "SPT_Runtime/user/mods/pitFireTeam-ServerMod/Resources/lang/en.json",
+      "bytes": 21645,
+      "sha256": "b345452347f8d4d2f1d6e17c64937d60580dccb91046638ca30b273d1a71055d"
+    },
+    {
+      "path": "SPT_Runtime/user/mods/pitFireTeam-ServerMod/Resources/lang/ru.json",
+      "bytes": 26835,
+      "sha256": "73a74e456cb7a1870393a9d44a398bc1cbe2c0609ab907cd27bcde18a2cba118"
+    },
+    {
+      "path": "pitFireTeam-docs/LICENSE",
+      "bytes": 1165,
+      "sha256": "71ae46be863a75b838ef756ff0f8239ad745576ada720217e5e0fa58f986b282"
+    },
+    {
+      "path": "pitFireTeam-docs/NOTICE.md",
+      "bytes": 906,
+      "sha256": "910c8b9c6f3cf9b684766c372fd96f1d4b96c359f828b22137d5ed9c72872b36"
+    },
+    {
+      "path": "pitFireTeam-docs/SPT5-PREVIEW.md",
+      "bytes": 2702,
+      "sha256": "e3ecb4263099f0d33fd7864041fabcb08ef336050e00f3fd6b2cbe4f484a7152"
+    },
+    {
+      "path": "pitFireTeam-docs/VALIDATION.md",
+      "bytes": 2232,
+      "sha256": "10a60907f822e3ef8dfd54ea66ebb739b42b227de1ab86b984816eb1360c5b80"
+    }
+  ]
+}

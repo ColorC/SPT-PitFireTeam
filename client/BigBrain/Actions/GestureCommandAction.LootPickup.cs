@@ -224,7 +224,7 @@ namespace pitTeam.BigBrain.Actions
                 botPlayer.SaveInteractionRayInfo();
                 try
                 {
-                    botPlayer.CurrentManagedState.Pickup(true, () => ExecuteLootPickupTransaction(lootItem, rootItem, inventory, pickupOperation));
+                    botPlayer.CurrentManagedState.Pickup(true, (System.Action)(() => ExecuteLootPickupTransaction(lootItem, rootItem, inventory, pickupOperation)));
                 }
                 catch (Exception ex)
                 {
@@ -291,7 +291,7 @@ namespace pitTeam.BigBrain.Actions
             Diz.LanguageExtensions.OperationResult<EFT.InventoryLogic.IItemOperationResult> pickupResult = EFT.InventoryLogic.ItemManipulator.QuickFindAppropriatePlace(
                 rootItem,
                 inventory,
-                new[] { inventory.Inventory.Equipment },
+                new CompoundItem[] { inventory.Inventory.Equipment }.ToNativeList(),
                 EFT.InventoryLogic.ItemManipulator.EMoveItemOrder.PickUp,
                 true);
             if (!pickupResult.Succeeded)
@@ -494,7 +494,7 @@ namespace pitTeam.BigBrain.Actions
                     }
                 }
 
-                inventory.RunNetworkTransaction(pickupAction, new Callback(result => CompleteLootPickup(result, botPlayer, rootItem)));
+                inventory.RunNetworkTransaction(pickupAction, (Callback)(System.Action<IResult>)(result => CompleteLootPickup(result, botPlayer, rootItem)));
             }
             catch (Exception ex)
             {

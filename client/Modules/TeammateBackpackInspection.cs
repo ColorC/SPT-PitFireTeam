@@ -154,7 +154,7 @@ namespace pitTeam.Modules
                 _targetFollower = follower;
                 _targetBackpack = backpack;
                 _targetBackpackOwner = backpack.Owner;
-                _targetBackpackOwner.AddItemEvent += HandleBackpackItemAdded;
+                _targetBackpackOwner.add_AddItemEvent((Il2CppSystem.Action<EFT.InventoryLogic.AddItemEventArgs>)HandleBackpackItemAdded);
                 _initialBackpackItemIds = SnapshotAllItemIds(backpack);
                 _initialTrackedItemIds = SnapshotTrackedItemIdsInBackpack(liveBot, _initialBackpackItemIds);
                 _initialTrackedItemTreeIds = SnapshotTrackedItemTreesInBackpack(backpack, _initialTrackedItemIds);
@@ -167,7 +167,7 @@ namespace pitTeam.Modules
                 // this teammate backpack has already been searched.
                 MarkBackpackVisible(owner.Player.SearchController, backpack);
 
-                owner.ShowInventoryScreenLoot(backpack, () => EndInspection("InventoryClosed", true), false);
+                owner.ShowInventoryScreenLoot(backpack, (Il2CppSystem.Action)(() => EndInspection("InventoryClosed", true)), false);
             }
             catch (Exception ex)
             {
@@ -637,7 +637,7 @@ namespace pitTeam.Modules
 
             try
             {
-                _targetBackpackOwner.AddItemEvent -= HandleBackpackItemAdded;
+                _targetBackpackOwner.remove_AddItemEvent((Il2CppSystem.Action<EFT.InventoryLogic.AddItemEventArgs>)HandleBackpackItemAdded);
             }
             catch (Exception ex)
             {

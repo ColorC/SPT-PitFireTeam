@@ -1,7 +1,7 @@
 using EFT;
 using HarmonyLib;
 using pitTeam.BigBrain;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System;
 using System.Reflection;
 
@@ -34,7 +34,7 @@ namespace pitTeam.Patches
             }
         }
 
-        [PatchFinalizer]
+        [HarmonyFinalizer]
         private static void PatchFinalizer()
         {
             FollowerEnemyInfoCorrection.EndLookCheck();

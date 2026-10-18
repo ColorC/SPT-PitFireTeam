@@ -1,0 +1,43 @@
+{
+    "nativeFailure":  {
+                          "evidence":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\isolated-client-reference\\BepInEx\\LogOutput.log:91-94",
+                          "observedException":  "MethodAccessException",
+                          "failedMethod":  "EFT.IBasePriceSource.GetBasePrice",
+                          "sourceObject":  "managed MarketPriceSource",
+                          "callPath":  "EFT.Trading.PriceCalculator.CalculateBuyoutBasePriceForSingleItem",
+                          "relatedReceipt":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261016bn-probe\\probe-fresh-bn-open-equipment-r183-01.json"
+                      },
+    "cases":  [
+                  {
+                      "caseId":  "market-price-precedence",
+                      "marketPrice":  125,
+                      "handbookFallback":  100,
+                      "expectedSource":  "market"
+                  },
+                  {
+                      "caseId":  "handbook-fallback",
+                      "marketPrice":  null,
+                      "handbookFallback":  100,
+                      "expectedSource":  "handbook"
+                  },
+                  {
+                      "caseId":  "missing-price-zero",
+                      "marketPrice":  null,
+                      "handbookFallback":  0,
+                      "expectedSource":  "zero"
+                  },
+                  {
+                      "caseId":  "native-stack-and-custom-price-path",
+                      "priceCall":  "CalculateBuyoutBasePriceForSingleItem",
+                      "postprocess":  "ApplyCustomPriceIfNeeded",
+                      "nativeRuntimeVerified":  false
+                  },
+                  {
+                      "caseId":  "instance-versus-template-key",
+                      "instanceId":  "6581800bfca8fa7cdc4a6914",
+                      "templateId":  "5580223e4bdc2d1c128b457f",
+                      "expectedLookupKey":  "templateId",
+                      "expectedHandbookArgument":  "EFT.MongoID"
+                  }
+              ]
+}

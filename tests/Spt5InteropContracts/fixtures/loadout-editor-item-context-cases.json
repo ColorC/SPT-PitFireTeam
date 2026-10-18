@@ -1,0 +1,72 @@
+{
+    "schema":  "pitFireTeam.loadout-editor-item-context.v1",
+    "provenance":  {
+                       "failureReceipt":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261015be-probe\\probe-be-loadout-editor-r74-17.json",
+                       "failureShape":  "EntryPointNotFoundException in EFT.UI.ItemView.NewItemView while ComplexStashPanel.Show receives a managed LoadoutEditorEquipmentRootContext",
+                       "metadataAssembly":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\isolated-client-reference\\BepInEx\\interop\\Assembly-CSharp.dll"
+                   },
+    "positive":  {
+                     "rootType":  "EFT.InventoryLogic.DefaultItemContext",
+                     "constructorParameters":  [
+                                                   "EFT.InventoryLogic.Item",
+                                                   "EFT.InventoryLogic.EItemViewType"
+                                               ],
+                     "rootItemType":  "EFT.InventoryLogic.InventoryEquipment",
+                     "itemBaseChain":  [
+                                           "EFT.InventoryLogic.InventoryEquipment",
+                                           "EFT.InventoryLogic.CompoundItem",
+                                           "EFT.InventoryLogic.ContainerCollection",
+                                           "EFT.InventoryLogic.Item"
+                                       ],
+                     "createChild":  "public-virtual-concrete",
+                     "identity":  "same-nonzero-native-pointer",
+                     "expected":  true
+                 },
+    "negative":  [
+                     {
+                         "rootType":  "pitTeam.Patches.LoadoutEditorEquipmentRootContext",
+                         "reason":  "managed subclass of abstract native ItemContext without IL2CPP registration",
+                         "expected":  false
+                     },
+                     {
+                         "rootType":  "EFT.InventoryLogic.DefaultItemContext",
+                         "constructorParameters":  [
+                                                       "EFT.InventoryLogic.Item",
+                                                       "EFT.InventoryLogic.ItemContext"
+                                                   ],
+                         "reason":  "metadata marks overload private",
+                         "expected":  false
+                     },
+                     {
+                         "leftNativePointer":  "0x1000",
+                         "rightNativePointer":  "0x2000",
+                         "expected":  false
+                     },
+                     {
+                         "sourceChain":  [
+                                             "0x1000",
+                                             "0x2000",
+                                             "0x1000"
+                                         ],
+                         "reason":  "repeated native pointer terminates traversal",
+                         "expected":  false
+                     }
+                 ],
+    "identityCases":  {
+                          "samePointerDifferentWrappers":  {
+                                                               "leftNativePointer":  "0x1000",
+                                                               "rightNativePointer":  "0x1000",
+                                                               "expected":  true
+                                                           },
+                          "mismatchedPointer":  {
+                                                    "leftNativePointer":  "0x1000",
+                                                    "rightNativePointer":  "0x2000",
+                                                    "expected":  false
+                                                },
+                          "nullPointer":  {
+                                              "leftNativePointer":  "0x0",
+                                              "rightNativePointer":  "0x0",
+                                              "expected":  false
+                                          }
+                      }
+}

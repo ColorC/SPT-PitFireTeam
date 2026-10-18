@@ -5,30 +5,13 @@ using EFT.Communications;
 using EFT.InventoryLogic;
 using EFT.UI;
 using HarmonyLib;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System.Reflection;
 using System.Threading.Tasks;
+using pitTeam.Compat;
 
 namespace pitTeam.Patches
 {
-    internal class LoadoutEditorEquipmentRootContext : EFT.InventoryLogic.EmptyItemContext
-    {
-        public LoadoutEditorEquipmentRootContext(EItemViewType viewType)
-            : base(viewType)
-        {
-        }
-
-        public override EFT.InventoryLogic.ItemContext CreateChild(Item item)
-        {
-            if (item == null)
-            {
-                return this;
-            }
-
-            return new EFT.InventoryLogic.DefaultItemContext(item, this);
-        }
-    }
-
     internal sealed class LoadoutEditorRepairByKitPatch : ModulePatch
     {
         protected override MethodBase GetTargetMethod()
@@ -37,13 +20,13 @@ namespace pitTeam.Patches
         }
 
         [PatchPrefix]
-        private static bool PatchPrefix(RepairItem[] repairKitsInfo, string targetItemId, ref Task<IResult> __result)
+        private static bool PatchPrefix(Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<RepairItem> repairKitsInfo, string targetItemId, ref Il2CppSystem.Threading.Tasks.Task<IResult> __result)
         {
             if (!OtherPlayerProfileScreenPatch.TryGetLoadoutEditorEquipmentItem(targetItemId, out Item itemToRepair))
             {
                 if (OtherPlayerProfileScreenPatch.TryGetLoadoutEditorItem(targetItemId, out _))
                 {
-                    __result = Task.FromResult<IResult>(new FailedResult("This teammate loadout item must remain on teammate equipment to be repaired", 0));
+                    __result = Il2CppTaskBridge.ToNative(Task.FromResult<IResult>(new FailedResult("This teammate loadout item must remain on teammate equipment to be repaired", 0)));
                     return false;
                 }
 
@@ -55,7 +38,17 @@ namespace pitTeam.Patches
                 return true;
             }
 
-            __result = OtherPlayerProfileScreenPatch.RepairLoadoutEditorEquipmentWithKitAsync(repairKitsInfo, itemToRepair);
+            RepairItem[] managedRepairKitsInfo = null;
+            if (repairKitsInfo != null)
+            {
+                managedRepairKitsInfo = new RepairItem[repairKitsInfo.Length];
+                for (int i = 0; i < repairKitsInfo.Length; i++)
+                {
+                    managedRepairKitsInfo[i] = repairKitsInfo[i];
+                }
+            }
+
+            __result = Il2CppTaskBridge.ToNative(OtherPlayerProfileScreenPatch.RepairLoadoutEditorEquipmentWithKitAsync(managedRepairKitsInfo, itemToRepair));
             return false;
         }
     }
@@ -68,7 +61,7 @@ namespace pitTeam.Patches
         }
 
         [PatchPrefix]
-        private static bool PatchPrefix(EFT.Trading.Trader __instance, RepairItem repairItem, ref Task<IResult> __result)
+        private static bool PatchPrefix(EFT.Trading.Trader __instance, RepairItem repairItem, ref Il2CppSystem.Threading.Tasks.Task<IResult> __result)
         {
             if (__instance == null
                 || repairItem == null)
@@ -80,7 +73,7 @@ namespace pitTeam.Patches
             {
                 if (OtherPlayerProfileScreenPatch.TryGetLoadoutEditorItem(repairItem.Id, out _))
                 {
-                    __result = Task.FromResult<IResult>(new FailedResult("This teammate loadout item must remain on teammate equipment to be repaired", 0));
+                    __result = Il2CppTaskBridge.ToNative(Task.FromResult<IResult>(new FailedResult("This teammate loadout item must remain on teammate equipment to be repaired", 0)));
                     return false;
                 }
 
@@ -92,7 +85,7 @@ namespace pitTeam.Patches
                 return true;
             }
 
-            __result = OtherPlayerProfileScreenPatch.RepairLoadoutEditorEquipmentWithTraderAsync(__instance.Id, repairItem, itemToRepair);
+            __result = Il2CppTaskBridge.ToNative(OtherPlayerProfileScreenPatch.RepairLoadoutEditorEquipmentWithTraderAsync(__instance.Id, repairItem, itemToRepair));
             return false;
         }
     }

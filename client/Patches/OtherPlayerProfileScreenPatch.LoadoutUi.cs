@@ -7,10 +7,11 @@ using EFT.InputSystem;
 using EFT.InventoryLogic;
 using EFT.UI;
 using EFT.UI.DragAndDrop;
-using SPT.Common.Http;
+using SPTushonka.Common.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
@@ -23,6 +24,8 @@ namespace pitTeam.Patches
 {
     internal partial class OtherPlayerProfileScreenPatch
     {
+        private static int _loadoutEditorContextDiagnosticCount;
+
         private static void ShowLoadoutEditorOverlay(OtherPlayerProfileScreen screen, ResultProfile profile)
         {
             CloseLoadoutEditorOverlay();
@@ -42,7 +45,7 @@ namespace pitTeam.Patches
                 return;
             }
 
-            GameObject overlayRoot = new GameObject("pitFireTeam_LoadoutEditorOverlay", typeof(RectTransform), typeof(Image));
+            GameObject overlayRoot = new GameObject("pitFireTeam_LoadoutEditorOverlay", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             overlayRoot.transform.SetParent(screen.transform, false);
             RectTransform overlayRect = overlayRoot.GetComponent<RectTransform>();
             overlayRect.anchorMin = Vector2.zero;
@@ -56,7 +59,7 @@ namespace pitTeam.Patches
             backdrop.color = new Color(0f, 0f, 0f, 0.55f);
             backdrop.raycastTarget = true;
 
-            GameObject panel = new GameObject("pitFireTeam_LoadoutEditorPanel", typeof(RectTransform), typeof(Image));
+            GameObject panel = new GameObject("pitFireTeam_LoadoutEditorPanel", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             panel.transform.SetParent(overlayRoot.transform, false);
             RectTransform panelRect = panel.GetComponent<RectTransform>();
             panelRect.anchorMin = Vector2.zero;
@@ -70,7 +73,7 @@ namespace pitTeam.Patches
             panelImage.color = new Color(0f, 0f, 0f, 0.86f);
             panelImage.raycastTarget = true;
 
-            GameObject header = new GameObject("pitFireTeam_LoadoutEditorHeader", typeof(RectTransform), typeof(Image));
+            GameObject header = new GameObject("pitFireTeam_LoadoutEditorHeader", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             header.transform.SetParent(panel.transform, false);
             RectTransform headerRect = header.GetComponent<RectTransform>();
             headerRect.anchorMin = new Vector2(0f, 1f);
@@ -85,7 +88,7 @@ namespace pitTeam.Patches
             AddLoadoutEditorHeaderDivider(header.transform, "TopDivider", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -1f), Vector2.zero);
             AddLoadoutEditorHeaderDivider(header.transform, "BottomDivider", Vector2.zero, new Vector2(1f, 0f), Vector2.zero, new Vector2(0f, 1f));
 
-            ProfileOverlayHeaderDragHandle dragHandle = header.AddComponent<ProfileOverlayHeaderDragHandle>();
+            ProfileOverlayHeaderDragHandle dragHandle = header.AddComponentViaIl2CppType<ProfileOverlayHeaderDragHandle>();
             dragHandle.Target = panelRect;
 
             CreateOverlayText(
@@ -99,7 +102,7 @@ namespace pitTeam.Patches
                 new Color(0.87f, 0.87f, 0.84f, 1f));
 
             Button closeButton = CreateWindowCloseButton(header.transform);
-            if (closeButton.transform is RectTransform closeRect)
+            if (pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(closeButton.transform) is RectTransform closeRect)
             {
                 closeRect.anchorMin = new Vector2(1f, 0.5f);
                 closeRect.anchorMax = new Vector2(1f, 0.5f);
@@ -107,9 +110,9 @@ namespace pitTeam.Patches
                 closeRect.anchoredPosition = new Vector2(-6f, 0f);
             }
 
-            closeButton.onClick.AddListener(new UnityAction(CloseLoadoutEditorOverlay));
+            closeButton.onClick.AddListener((System.Action)CloseLoadoutEditorOverlay);
 
-            CreateOverlayText(
+            CustomTextMeshProUGUI subtitle = CreateOverlayText(
                 "pitFireTeam_LoadoutEditorSubtitle",
                 panel.transform,
                 new Vector2(28f, -62f),
@@ -122,6 +125,13 @@ namespace pitTeam.Patches
                     profile.Info?.Nickname ?? "teammate"),
                 17f,
                 new Color(0.67f, 0.67f, 0.64f, 1f));
+            // This help text belongs to the reserved strip below the header, not the full inventory panel.
+            RectTransform subtitleRect = subtitle.rectTransform;
+            subtitleRect.anchorMin = new Vector2(0f, 1f);
+            subtitleRect.anchorMax = new Vector2(1f, 1f);
+            subtitleRect.offsetMin = new Vector2(28f, -98f);
+            subtitleRect.offsetMax = new Vector2(-28f, -42f);
+            subtitle.raycastTarget = false;
 
             RectTransform leftSection = CreateLoadoutEditorSection(
                 panel.transform,
@@ -147,8 +157,8 @@ namespace pitTeam.Patches
             cancelButton.name = "pitFireTeam_LoadoutEditorCancelButton";
             cancelButton.SetRawText(GetSocialUiText("Cancel"), 20);
             cancelButton.OnClick.RemoveAllListeners();
-            cancelButton.OnClick.AddListener(CloseLoadoutEditorOverlay);
-            if (cancelButton.transform is RectTransform cancelRect)
+            cancelButton.OnClick.AddListener((System.Action)CloseLoadoutEditorOverlay);
+            if (pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(cancelButton.transform) is RectTransform cancelRect)
             {
                 cancelRect.anchorMin = new Vector2(1f, 0f);
                 cancelRect.anchorMax = new Vector2(1f, 0f);
@@ -161,11 +171,11 @@ namespace pitTeam.Patches
             doneButton.name = "pitFireTeam_LoadoutEditorDoneButton";
             doneButton.SetRawText(GetSocialUiText("Save"), 20);
             doneButton.OnClick.RemoveAllListeners();
-            doneButton.OnClick.AddListener(async () =>
+            doneButton.OnClick.AddListener((System.Action)(async () =>
             {
                 await CommitLoadoutEditorPresetFromUiAsync(profile);
-            });
-            if (doneButton.transform is RectTransform doneRect)
+            }));
+            if (pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(doneButton.transform) is RectTransform doneRect)
             {
                 doneRect.anchorMin = new Vector2(1f, 0f);
                 doneRect.anchorMax = new Vector2(1f, 0f);
@@ -186,7 +196,7 @@ namespace pitTeam.Patches
             Vector2 offsetMin,
             Vector2 offsetMax)
         {
-            GameObject section = new GameObject(name, typeof(RectTransform), typeof(Image));
+            GameObject section = new GameObject(name, Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             section.transform.SetParent(parent, false);
             RectTransform sectionRect = section.GetComponent<RectTransform>();
             sectionRect.anchorMin = anchorMin;
@@ -199,7 +209,7 @@ namespace pitTeam.Patches
             sectionImage.color = new Color(0f, 0f, 0f, 0.46f);
             sectionImage.raycastTarget = true;
 
-            GameObject contentRoot = new GameObject($"{name}_Content", typeof(RectTransform));
+            GameObject contentRoot = new GameObject($"{name}_Content", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>());
             contentRoot.transform.SetParent(section.transform, false);
             RectTransform contentRect = contentRoot.GetComponent<RectTransform>();
             contentRect.anchorMin = Vector2.zero;
@@ -218,7 +228,7 @@ namespace pitTeam.Patches
             Vector2 offsetMin,
             Vector2 offsetMax)
         {
-            GameObject dividerObject = new GameObject(name, typeof(RectTransform), typeof(Image));
+            GameObject dividerObject = new GameObject(name, Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             dividerObject.transform.SetParent(parent, false);
             RectTransform rect = dividerObject.GetComponent<RectTransform>();
             rect.anchorMin = anchorMin;
@@ -398,9 +408,9 @@ namespace pitTeam.Patches
             InventoryEquipment sourceEquipment = TryGetCustomBuildById(LoadoutEditorSourceLoadoutId)?.Equipment ?? profile?.Equipment;
             // Real default editing stages the teammate's existing item ids so Done can describe
             // actual ownership movement. Clone-only modes avoid aliasing live profile items.
-            InventoryEquipment clonedEquipment = IsRealDefaultLoadoutEditorCommit()
-                ? sourceEquipment?.CloneItemWithSameId() as InventoryEquipment
-                : sourceEquipment?.CloneItem(null) as InventoryEquipment;
+            InventoryEquipment clonedEquipment = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<InventoryEquipment>(IsRealDefaultLoadoutEditorCommit()
+                ? sourceEquipment?.CloneItemWithSameId()
+                : sourceEquipment?.CloneItem(null));
             if (clonedEquipment == null)
             {
                 return null;
@@ -458,7 +468,7 @@ namespace pitTeam.Patches
 
                 SimpleStashPanel stashPanel = GameObject.Instantiate(stashTemplate, leftSection, false);
                 stashPanel.name = "pitFireTeam_LoadoutEditorStashPanel";
-                if (stashPanel.transform is RectTransform stashRect)
+                if (pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(stashPanel.transform) is RectTransform stashRect)
                 {
                     StretchToFillParent(stashRect);
                 }
@@ -467,7 +477,6 @@ namespace pitTeam.Patches
                     fakeStash,
                     editorInventoryController,
                     stashContext,
-                    false,
                     null,
                     SimpleStashPanel.EStashSearchAvailability.Unavailable,
                     null,
@@ -504,12 +513,12 @@ namespace pitTeam.Patches
                     throw new InvalidOperationException($"equipmentTemplate={(equipmentTemplate != null)}, equipmentView={(equipmentView != null)}, followerController={(editorInventoryController != null)}");
                 }
 
-                EFT.InventoryLogic.ItemContext equipmentContext = new LoadoutEditorEquipmentRootContext(EItemViewType.InventoryDuringMatching);
+                EFT.InventoryLogic.ItemContext equipmentContext = pitTeam.Compat.Il2CppBoundary.CreateDefaultItemContext(equipmentView, EItemViewType.InventoryDuringMatching);
                 LoadoutEditorEquipmentContext = equipmentContext;
 
                 ComplexStashPanel equipmentPanelRoot = GameObject.Instantiate(equipmentTemplate, rightSection, false);
                 equipmentPanelRoot.name = "pitFireTeam_LoadoutEditorEquipmentPanel";
-                if (equipmentPanelRoot.transform is RectTransform equipmentRect)
+                if (pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(equipmentPanelRoot.transform) is RectTransform equipmentRect)
                 {
                     StretchToFillParent(equipmentRect);
                 }
@@ -541,7 +550,7 @@ namespace pitTeam.Patches
 
         private static SimpleStashPanel ResolveLoadoutEditorStashTemplate()
         {
-            SimpleStashPanel screenTemplate = TransferItemsScreenStashPanelField?.GetValue(CommonUI.Instance?.TransferItemsScreen) as SimpleStashPanel;
+            SimpleStashPanel screenTemplate = TransferItemsScreenStashPanelAccessor.GetValue(CommonUI.Instance?.TransferItemsScreen) as SimpleStashPanel;
             if (screenTemplate != null)
             {
                 return screenTemplate;
@@ -553,8 +562,9 @@ namespace pitTeam.Patches
 
         private static ComplexStashPanel ResolveLoadoutEditorEquipmentTemplate()
         {
-            ItemsPanel itemsPanel = InventoryScreenItemsPanelField?.GetValue(CommonUI.Instance?.InventoryScreen) as ItemsPanel;
-            ComplexStashPanel screenTemplate = ItemsPanelComplexStashPanelField?.GetValue(itemsPanel) as ComplexStashPanel;
+            InventoryScreen inventoryScreen = CommonUI.Instance?.InventoryScreen;
+            ItemsPanel itemsPanel = inventoryScreen == null ? null : InventoryScreenItemsPanelAccessor.GetValue(inventoryScreen) as ItemsPanel;
+            ComplexStashPanel screenTemplate = itemsPanel == null ? null : ItemsPanelComplexStashPanelAccessor.GetValue(itemsPanel) as ComplexStashPanel;
             if (screenTemplate != null)
             {
                 return screenTemplate;
@@ -579,6 +589,7 @@ namespace pitTeam.Patches
                 throw new InvalidOperationException("equipment panel root, equipment view, or follower inventory controller was null");
             }
 
+            LogLoadoutEditorContextBeforeShow(followerInventoryController, equipmentContext, equipmentView);
             panelRoot.Show(
                 followerInventoryController,
                 equipmentContext,
@@ -600,6 +611,27 @@ namespace pitTeam.Patches
             HideLoadoutEditorCharacterGearImage(panelRoot.transform);
         }
 
+        private static void LogLoadoutEditorContextBeforeShow(
+            InventoryController controller,
+            EFT.InventoryLogic.ItemContext context,
+            InventoryEquipment equipment)
+        {
+            if (Interlocked.Increment(ref _loadoutEditorContextDiagnosticCount) > 4)
+            {
+                return;
+            }
+
+            string pointer(Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase value) => value == null ? "<null>" : "0x" + value.Pointer.ToInt64().ToString("X");
+            string controllerNative = controller == null ? "<null>" : DescribeNativeClass(controller);
+            string contextNative = context == null ? "<null>" : DescribeNativeClass(context);
+            string equipmentNative = equipment == null ? "<null>" : DescribeNativeClass(equipment);
+            bool contextItemMatches = context != null && equipment != null
+                && pitTeam.Compat.Il2CppBoundary.SameNativeObject(context.Item, equipment);
+
+            pitFireTeam.Log.LogInfo(
+                $"[UI][LoadoutEditorContext] controllerProxy={controller?.GetType().FullName ?? "<null>"};controllerNative={controllerNative};controllerPtr={pointer(controller)};contextProxy={context?.GetType().FullName ?? "<null>"};contextNative={contextNative};contextPtr={pointer(context)};equipmentProxy={equipment?.GetType().FullName ?? "<null>"};equipmentNative={equipmentNative};equipmentPtr={pointer(equipment)};contextItemMatches={contextItemMatches}");
+        }
+
         private static void HideLoadoutEditorContainerSlot(ComplexStashPanel panelRoot, EquipmentSlot slot)
         {
             if (panelRoot == null)
@@ -609,14 +641,14 @@ namespace pitTeam.Patches
 
             try
             {
-                ContainersPanel containersPanel = ComplexStashPanelContainersPanelField?.GetValue(panelRoot) as ContainersPanel;
+                ContainersPanel containersPanel = ComplexStashPanelContainersPanelAccessor.GetValue(panelRoot) as ContainersPanel;
                 if (containersPanel == null)
                 {
                     return;
                 }
 
-                IDictionary<EquipmentSlot, SlotView> slotViews =
-                    ContainersPanelDictionaryField?.GetValue(containersPanel) as IDictionary<EquipmentSlot, SlotView>;
+                Il2CppSystem.Collections.Generic.Dictionary<EquipmentSlot, SlotView> slotViews =
+                    ContainersPanelDictionaryAccessor.GetValue(containersPanel) as Il2CppSystem.Collections.Generic.Dictionary<EquipmentSlot, SlotView>;
                 if (slotViews == null || !slotViews.TryGetValue(slot, out SlotView slotView) || slotView == null)
                 {
                     return;
@@ -756,7 +788,7 @@ namespace pitTeam.Patches
             float fontSize,
             Color color)
         {
-            GameObject textObject = new GameObject(name, typeof(RectTransform), typeof(CustomTextMeshProUGUI));
+            GameObject textObject = new GameObject(name, Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<CustomTextMeshProUGUI>());
             textObject.transform.SetParent(parent, false);
             RectTransform textRect = textObject.GetComponent<RectTransform>();
             textRect.anchorMin = Vector2.zero;
@@ -833,7 +865,7 @@ namespace pitTeam.Patches
                 return;
             }
 
-            GameObject overlayRoot = new GameObject("pitFireTeam_ProfileRecoveryOverlay", typeof(RectTransform), typeof(Image));
+            GameObject overlayRoot = new GameObject("pitFireTeam_ProfileRecoveryOverlay", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             overlayRoot.transform.SetParent(screen.transform, false);
             RectTransform overlayRect = overlayRoot.GetComponent<RectTransform>();
             overlayRect.anchorMin = Vector2.zero;
@@ -847,7 +879,7 @@ namespace pitTeam.Patches
             backdrop.color = new Color(0f, 0f, 0f, 0.58f);
             backdrop.raycastTarget = true;
 
-            GameObject panel = new GameObject("pitFireTeam_ProfileRecoveryPanel", typeof(RectTransform), typeof(Image));
+            GameObject panel = new GameObject("pitFireTeam_ProfileRecoveryPanel", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             panel.transform.SetParent(overlayRoot.transform, false);
             RectTransform panelRect = panel.GetComponent<RectTransform>();
             panelRect.anchorMin = new Vector2(0.5f, 0.5f);
@@ -860,7 +892,7 @@ namespace pitTeam.Patches
             panelImage.color = new Color(0.02f, 0.02f, 0.02f, 0.98f);
             panelImage.raycastTarget = true;
 
-            GameObject header = new GameObject("pitFireTeam_ProfileRecoveryHeader", typeof(RectTransform), typeof(Image));
+            GameObject header = new GameObject("pitFireTeam_ProfileRecoveryHeader", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             header.transform.SetParent(panel.transform, false);
             RectTransform headerRect = header.GetComponent<RectTransform>();
             headerRect.anchorMin = new Vector2(0f, 1f);
@@ -884,7 +916,7 @@ namespace pitTeam.Patches
                 new Color(0.87f, 0.87f, 0.84f, 1f));
 
             Button closeButton = CreateWindowCloseButton(header.transform);
-            if (closeButton.transform is RectTransform closeRect)
+            if (pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(closeButton.transform) is RectTransform closeRect)
             {
                 closeRect.anchorMin = new Vector2(1f, 0.5f);
                 closeRect.anchorMax = new Vector2(1f, 0.5f);
@@ -892,7 +924,7 @@ namespace pitTeam.Patches
                 closeRect.anchoredPosition = new Vector2(-6f, 0f);
             }
 
-            closeButton.onClick.AddListener(new UnityAction(CloseProfileRecoveryOverlay));
+            closeButton.onClick.AddListener((System.Action)CloseProfileRecoveryOverlay);
 
             string body = string.IsNullOrWhiteSpace(notice.Message)
                 ? GetSocialUiText("ProfileRecoveredBody")
@@ -912,7 +944,7 @@ namespace pitTeam.Patches
             okButton.name = "pitFireTeam_ProfileRecoveryOkButton";
             okButton.SetRawText(GetSocialUiText("Ok"), 20);
             okButton.OnClick.RemoveAllListeners();
-            okButton.OnClick.AddListener(CloseProfileRecoveryOverlay);
+            okButton.OnClick.AddListener((System.Action)CloseProfileRecoveryOverlay);
 
             ProfileRecoveryOverlayRoot = overlayRoot;
         }
@@ -1103,7 +1135,7 @@ namespace pitTeam.Patches
                         string.Format("EquipmentBuilds/PresetSaved".Localized(null), editedBuild.Name),
                         ENotificationDurationType.Default,
                         ENotificationIconType.Default,
-                        null);
+                        ((UnityEngine.Color?)null).ToNativeNullable());
 
                     CloseLoadoutEditorOverlay();
                     RefreshCurrentTeammateLoadoutSelector(profile);
@@ -1153,15 +1185,14 @@ namespace pitTeam.Patches
                     Modules.Logger.LogInfo("[UI] Prepared server-authoritative real loadout commit.");
                 }
 
-                string responseJson = await Task.Run(() => RequestHandler.PostJson(
-                    DefaultEquipmentRoute,
-                    SerializeBody(new FriendlyTeammateDefaultEquipmentRequest
+                string requestBody = SerializeBody(new FriendlyTeammateDefaultEquipmentRequest
                     {
                         aid = profile.AccountId,
                         items = serializedEquipment,
                         playerStashItems = serializedPlayerStash,
                         realItemCommit = realItemCommit
-                    })));
+                    });
+                string responseJson = await Task.Run(() => RequestHandler.PostJson(DefaultEquipmentRoute, requestBody));
 
                 FriendlyTeammateBodyResponse<FriendlyTeammateDefaultEquipmentResponse> response =
                     DeserializeBodySuccess<FriendlyTeammateDefaultEquipmentResponse>(responseJson);
@@ -1248,7 +1279,7 @@ namespace pitTeam.Patches
                 throw new InvalidOperationException("Active player stash was unavailable for live refresh.");
             }
 
-            if (activeInventoryController is EFT.InventoryLogic.OfflineInventoryController profileInventoryController)
+            if (pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<EFT.InventoryLogic.OfflineInventoryController>(activeInventoryController) is { } profileInventoryController)
             {
                 try
                 {
@@ -1266,8 +1297,9 @@ namespace pitTeam.Patches
                         activeProfile,
                         profileInventoryController,
                         null,
+                        null,
                         ragFair);
-                    ((EFT.IProfileUpdatesHandler)updater).UpdateProfile(new EFT.ProfileChanges { Stash = delta });
+                    ((EFT.IProfileUpdatesHandler)updater).UpdateProfile(CreateStashOnlyProfileChanges(delta));
                     if (!PlayerStashMatchesSavedSnapshot(activeProfile, savedStashItems))
                     {
                         throw CreateLiveStashRefreshException(
@@ -1295,7 +1327,7 @@ namespace pitTeam.Patches
             InventoryController activeInventoryController,
             JsonType.FlatItem[] savedStashItems)
         {
-            EFT.ItemFactory.FlatItemsToResultTree tree = Singleton<EFT.ItemFactory>.Instance.FlatItemsToTree(savedStashItems, false, null);
+            EFT.ItemFactory.FlatItemsToTreeResult tree = Singleton<EFT.ItemFactory>.Instance.FlatItemsToTree(savedStashItems, false, null);
             if (tree.DeserializationErrors != null && tree.DeserializationErrors.Count > 0)
             {
                 throw CreateLiveStashRefreshException(
@@ -1303,7 +1335,7 @@ namespace pitTeam.Patches
             }
 
             string stashRootId = savedStashItems[0]._id.ToString();
-            if (!tree.Items.TryGetValue(stashRootId, out Item savedRoot) || !(savedRoot is EFT.InventoryLogic.Stash savedStash))
+            if (!tree.Items.TryGetValue(stashRootId, out Item savedRoot) || pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<EFT.InventoryLogic.Stash>(savedRoot) is not { } savedStash)
             {
                 throw new InvalidOperationException("Server-saved player stash root was unavailable for live refresh.");
             }
@@ -1317,8 +1349,8 @@ namespace pitTeam.Patches
             Inventory activeInventory = activeProfile.Inventory;
             activeInventory.Stash = savedStash;
             activeInventoryController.ReplaceInventory(activeInventory);
-            if (!ReferenceEquals(activeInventoryController.Inventory?.Stash, savedStash)
-                || savedStash.Parent?.GetOwner() != activeInventoryController)
+            if (!pitTeam.Compat.Il2CppBoundary.SameNativeObject(activeInventoryController.Inventory?.Stash, savedStash)
+                || !pitTeam.Compat.Il2CppBoundary.SameNativeObject(savedStash.Parent?.GetOwner() as Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase, activeInventoryController))
             {
                 throw CreateLiveStashRefreshException(
                     "Server-saved player stash could not be attached to the active inventory controller.");
@@ -1326,7 +1358,7 @@ namespace pitTeam.Patches
 
             if (Singleton<EFT.Hideout.HideoutRepresentation>.Instantiated)
             {
-                Singleton<EFT.Hideout.HideoutRepresentation>.Instance.method_24();
+                Singleton<EFT.Hideout.HideoutRepresentation>.Instance.UpdateIconStatuses();
             }
 
             foreach (Item item in EnumerateLoadoutEditorItemTree(savedStash))
@@ -1339,9 +1371,9 @@ namespace pitTeam.Patches
 
         private static void RememberActiveBackendInventoryController(EFT.IEftSession session, InventoryController inventoryController)
         {
-            if (inventoryController is EFT.InventoryLogic.OfflineInventoryController backendController
+            if (pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<EFT.InventoryLogic.OfflineInventoryController>(inventoryController) is { } backendController
                 && session?.Profile != null
-                && ReferenceEquals(backendController.Profile, session.Profile))
+                && pitTeam.Compat.Il2CppBoundary.SameNativeObject(backendController.Profile as Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase, session.Profile as Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase))
             {
                 ActiveProfileBackendInventoryController = backendController;
             }
@@ -1351,14 +1383,14 @@ namespace pitTeam.Patches
             Profile activeProfile,
             InventoryController preferredController)
         {
-            if (preferredController is EFT.InventoryLogic.OfflineInventoryController)
+            if (pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<EFT.InventoryLogic.OfflineInventoryController>(preferredController) is { } preferredBackend)
             {
-                return preferredController;
+                return preferredBackend;
             }
 
             if (activeProfile != null
                 && ActiveProfileBackendInventoryController?.Profile != null
-                && ReferenceEquals(ActiveProfileBackendInventoryController.Profile, activeProfile))
+                && pitTeam.Compat.Il2CppBoundary.SameNativeObject(ActiveProfileBackendInventoryController.Profile as Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase, activeProfile))
             {
                 return ActiveProfileBackendInventoryController;
             }
@@ -1371,7 +1403,7 @@ namespace pitTeam.Patches
             return ViewedProfile != null
                 && IsDefaultLoadoutEditorSelection()
                 && IsLoadoutEditorEquipmentItem(item)
-                && item.GetItemComponentsInChildren<RepairableComponent>(true).Any();
+                && item.GetItemComponentsInChildren<RepairableComponent>(true).AsManaged().Any();
         }
 
         private static bool IsLoadoutEditorEquipmentItemSavedToTeammateProfile(Item item)
@@ -1384,7 +1416,7 @@ namespace pitTeam.Patches
             if (IsRealDefaultLoadoutEditorCommit() && LoadoutEditorInitialEquipmentItems != null)
             {
                 return LoadoutEditorInitialEquipmentItems.Any(candidate =>
-                    candidate?._id != null
+                    candidate?._id is not null
                     && string.Equals(candidate._id.ToString(), item.Id, StringComparison.Ordinal));
             }
 
@@ -1418,14 +1450,13 @@ namespace pitTeam.Patches
                     return new FailedResult("This teammate loadout item must remain on teammate equipment to be repaired", 0);
                 }
 
-                string responseJson = await Task.Run(() => RequestHandler.PostJson(
-                    RepairEquipmentRoute,
-                    SerializeBody(new FriendlyTeammateRepairEquipmentRequest
+                string requestBody = SerializeBody(new FriendlyTeammateRepairEquipmentRequest
                     {
                         aid = ViewedProfile.AccountId,
                         target = itemToRepair.Id,
                         repairKitsInfo = repairKitsInfo
-                    })));
+                    });
+                string responseJson = await Task.Run(() => RequestHandler.PostJson(RepairEquipmentRoute, requestBody));
 
                 FriendlyTeammateBodyResponse<FriendlyTeammateRepairEquipmentResponse> response =
                     DeserializeBodySuccess<FriendlyTeammateRepairEquipmentResponse>(responseJson);
@@ -1477,15 +1508,14 @@ namespace pitTeam.Patches
                     return new FailedResult("This teammate loadout item must remain on teammate equipment to be repaired", 0);
                 }
 
-                string responseJson = await Task.Run(() => RequestHandler.PostJson(
-                    RepairEquipmentRoute,
-                    SerializeBody(new FriendlyTeammateRepairEquipmentRequest
+                string requestBody = SerializeBody(new FriendlyTeammateRepairEquipmentRequest
                     {
                         aid = ViewedProfile.AccountId,
                         target = itemToRepair.Id,
                         traderId = traderId,
                         repairCount = repairItem.Count
-                    })));
+                    });
+                string responseJson = await Task.Run(() => RequestHandler.PostJson(RepairEquipmentRoute, requestBody));
 
                 FriendlyTeammateBodyResponse<FriendlyTeammateRepairEquipmentResponse> response =
                     DeserializeBodySuccess<FriendlyTeammateRepairEquipmentResponse>(responseJson);
@@ -1572,15 +1602,14 @@ namespace pitTeam.Patches
                     : null;
 
                 Modules.Logger.LogInfo("[UI] Saving pending teammate loadout editor changes before repair.");
-                string responseJson = await Task.Run(() => RequestHandler.PostJson(
-                    DefaultEquipmentRoute,
-                    SerializeBody(new FriendlyTeammateDefaultEquipmentRequest
+                string requestBody = SerializeBody(new FriendlyTeammateDefaultEquipmentRequest
                     {
                         aid = profile.AccountId,
                         items = serializedEquipment,
                         playerStashItems = serializedPlayerStash,
                         realItemCommit = realItemCommit
-                    })));
+                    });
+                string responseJson = await Task.Run(() => RequestHandler.PostJson(DefaultEquipmentRoute, requestBody));
 
                 FriendlyTeammateBodyResponse<FriendlyTeammateDefaultEquipmentResponse> response =
                     DeserializeBodySuccess<FriendlyTeammateDefaultEquipmentResponse>(responseJson);
@@ -1693,7 +1722,7 @@ namespace pitTeam.Patches
             InventoryController inventoryController = ResolveActiveProfileInventoryControllerForBackendUpdate(
                 activeProfile,
                 ActiveProfileInventoryController);
-            if (activeProfile == null || !(inventoryController is EFT.InventoryLogic.OfflineInventoryController profileInventoryController))
+            if (activeProfile == null || pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<EFT.InventoryLogic.OfflineInventoryController>(inventoryController) is not { } profileInventoryController)
             {
                 return false;
             }
@@ -1704,16 +1733,15 @@ namespace pitTeam.Patches
                     activeProfile,
                     profileInventoryController,
                     null,
+                    null,
                     ActiveProfileSession?.RagFair);
-                ((EFT.IProfileUpdatesHandler)updater).UpdateProfile(new EFT.ProfileChanges
-                {
-                    Stash = new EFT.StashChangesResponse
+                ((EFT.IProfileUpdatesHandler)updater).UpdateProfile(CreateStashOnlyProfileChanges(
+                    new EFT.StashChangesResponse
                     {
                         @new = newItems,
                         change = changedItems,
                         del = deletedItems
-                    }
-                });
+                    }));
 
                 Modules.Logger.LogInfo($"[UI] Applied {reason} player stash delta: new={newItems.Length}, change={changedItems.Length}, del={deletedItems.Length}.");
                 return true;
@@ -1723,6 +1751,17 @@ namespace pitTeam.Patches
                 pitFireTeam.Log.LogWarning($"[UI] {reason} stash delta refresh failed; falling back to full refresh when available. {ex.Message}");
                 return false;
             }
+        }
+
+        private static EFT.ProfileChanges CreateStashOnlyProfileChanges(EFT.StashChangesResponse stash)
+        {
+            // EFT 1.1.5 calls AddNewQuestNotes unconditionally; its empty native ctor
+            // leaves this collection null, unlike the ordinary backend response.
+            return new EFT.ProfileChanges
+            {
+                Stash = stash,
+                NewQuestNotes = new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<MongoID>(0)
+            };
         }
 
         private static JsonType.FlatItem[] CreateDeletedFlatItems(IEnumerable<string> itemIds)
@@ -1790,7 +1829,7 @@ namespace pitTeam.Patches
                         continue;
                     }
 
-                    changedItem.upd.ParseJsonTo(typeof(Item), editorItem, Array.Empty<Newtonsoft.Json.JsonConverter>());
+                    changedItem.upd.ParseJsonTo(Il2CppInterop.Runtime.Il2CppType.Of<Item>(), editorItem, EFT.EftJsonConverters.Converters);
                     editorItem.RaiseRefreshEvent(false, true);
                 }
 
@@ -1841,9 +1880,9 @@ namespace pitTeam.Patches
             try
             {
                 JsonType.FlatItem[] editorStashItems = RemoveLoadoutEditorEquipmentItemsFromSavedStash(savedStashItems);
-                EFT.ItemFactory.FlatItemsToResultTree tree = Singleton<EFT.ItemFactory>.Instance.FlatItemsToTree(editorStashItems, false, null);
+                EFT.ItemFactory.FlatItemsToTreeResult tree = Singleton<EFT.ItemFactory>.Instance.FlatItemsToTree(editorStashItems, false, null);
                 string stashRootId = editorStashItems[0]._id.ToString();
-                if (!tree.Items.TryGetValue(stashRootId, out Item savedRoot) || !(savedRoot is EFT.InventoryLogic.Stash savedStash))
+                if (!tree.Items.TryGetValue(stashRootId, out Item savedRoot) || pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<EFT.InventoryLogic.Stash>(savedRoot) is not { } savedStash)
                 {
                     throw new InvalidOperationException("Server-saved player stash root was unavailable for loadout editor refresh.");
                 }
@@ -1875,7 +1914,7 @@ namespace pitTeam.Patches
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
             string stashRootId = savedStashItems[0]._id.ToString();
             return savedStashItems
-                .Where(item => item?._id != null
+                .Where(item => item?._id is not null
                     && (string.Equals(item._id.ToString(), stashRootId, StringComparison.OrdinalIgnoreCase)
                         || !equipmentIds.Contains(item._id.ToString())))
                 .ToArray();
@@ -1896,11 +1935,11 @@ namespace pitTeam.Patches
                 }
 
                 EFT.InventoryLogic.RepairKit activeRepairKit = ActiveProfileSession?.Profile?.Inventory?
-                    .GetPlayerItems()
+                    .GetPlayerItems().AsManaged()
                     .OfType<EFT.InventoryLogic.RepairKit>()
                     .FirstOrDefault(item => string.Equals(item.Id, repairKitInfo.Id, StringComparison.Ordinal));
                 EFT.InventoryLogic.RepairKit editorRepairKit = LoadoutEditorProfile.Inventory
-                    .GetPlayerItems()
+                    .GetPlayerItems().AsManaged()
                     .OfType<EFT.InventoryLogic.RepairKit>()
                     .FirstOrDefault(item => string.Equals(item.Id, repairKitInfo.Id, StringComparison.Ordinal));
                 if (editorRepairKit == null)
@@ -2015,7 +2054,7 @@ namespace pitTeam.Patches
             Dictionary<string, JsonType.FlatItem> result = new Dictionary<string, JsonType.FlatItem>(StringComparer.OrdinalIgnoreCase);
             foreach (JsonType.FlatItem item in items)
             {
-                if (item?._id == null)
+                if (item?._id is null)
                 {
                     continue;
                 }
@@ -2193,13 +2232,19 @@ namespace pitTeam.Patches
 
         private static string GetParentId(JsonType.FlatItem item)
         {
-            return item?.parentId?.ToString();
+            // Empty Nullable<MongoID> fields cannot be boxed through the generated interop getter.
+            // EFT's native accessor handles HasValue before converting the actual parent ID.
+            return item?.StringParentId;
         }
 
         private static bool JsonTokenEquals(UnparsedData left, UnparsedData right)
         {
-            Newtonsoft.Json.Linq.JToken leftToken = left?.JToken;
-            Newtonsoft.Json.Linq.JToken rightToken = right?.JToken;
+            // The generated native JToken getter can bind to the managed Newtonsoft assembly.
+            // EFT's native UnparsedDataConverter reads its token internally; cross the boundary as JSON only.
+            Newtonsoft.Json.Linq.JToken leftToken = left == null ? null
+                : Newtonsoft.Json.Linq.JToken.Parse(pitTeam.Compat.SptJsonBoundary.Serialize(left));
+            Newtonsoft.Json.Linq.JToken rightToken = right == null ? null
+                : Newtonsoft.Json.Linq.JToken.Parse(pitTeam.Compat.SptJsonBoundary.Serialize(right));
             if (IsNullOrEmptyJson(leftToken) && IsNullOrEmptyJson(rightToken))
             {
                 return true;
@@ -2229,12 +2274,24 @@ namespace pitTeam.Patches
                 return false;
             }
 
+            string stashRootId = activeProfile.Inventory.Stash.Id.ToString();
             foreach (KeyValuePair<string, JsonType.FlatItem> savedEntry in savedById)
             {
                 if (!liveById.TryGetValue(savedEntry.Key, out JsonType.FlatItem liveItem)
-                    || PlacementChanged(liveItem, savedEntry.Value)
+                    || (string.Equals(savedEntry.Key, stashRootId, StringComparison.OrdinalIgnoreCase)
+                        // Native ownership attaches this root to equipment; the backend root has no placement.
+                        ? !string.Equals(liveItem._tpl.ToString(), savedEntry.Value._tpl.ToString(), StringComparison.OrdinalIgnoreCase)
+                        : PlacementChanged(liveItem, savedEntry.Value))
                     || !JsonTokenEquals(liveItem.upd, savedEntry.Value.upd))
                 {
+                    try
+                    {
+                        pitFireTeam.Log.LogWarning($"[UI] Live stash mismatch item={savedEntry.Key}; live={pitTeam.Compat.SptJsonBoundary.Serialize(liveItem)}; saved={pitTeam.Compat.SptJsonBoundary.Serialize(savedEntry.Value)}");
+                    }
+                    catch (Exception diagnosticError)
+                    {
+                        pitFireTeam.Log.LogWarning($"[UI] Unable to describe stash mismatch: {diagnosticError.Message}");
+                    }
                     return false;
                 }
             }
@@ -2257,9 +2314,9 @@ namespace pitTeam.Patches
 
         private static InventoryEquipment CreateSanitizedLoadoutEditorSaveEquipment()
         {
-            InventoryEquipment sanitizedEquipment = IsRealDefaultLoadoutEditorCommit()
-                ? LoadoutEditorProfile?.Inventory?.Equipment?.CloneItemWithSameId() as InventoryEquipment
-                : LoadoutEditorProfile?.Inventory?.Equipment?.CloneItem(null) as InventoryEquipment;
+            InventoryEquipment sanitizedEquipment = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<InventoryEquipment>(IsRealDefaultLoadoutEditorCommit()
+                ? LoadoutEditorProfile?.Inventory?.Equipment?.CloneItemWithSameId()
+                : LoadoutEditorProfile?.Inventory?.Equipment?.CloneItem(null));
             if (sanitizedEquipment == null)
             {
                 throw new InvalidOperationException("Loadout editor equipment was unavailable for save.");
@@ -2402,7 +2459,7 @@ namespace pitTeam.Patches
                 return null;
             }
 
-            foreach (KeyValuePair<MongoID, EFT.UI.Builds.EquipmentBuild> entry in ActiveProfileSession.EquipmentBuildsStorage.EquipmentBuilds)
+            foreach (var entry in ActiveProfileSession.EquipmentBuildsStorage.EquipmentBuilds)
             {
                 if (entry.Value?.BuildType != EEquipmentBuildType.Custom)
                 {
@@ -2485,13 +2542,12 @@ namespace pitTeam.Patches
                 return;
             }
 
-            string responseJson = await Task.Run(() => RequestHandler.PostJson(
-                LoadoutRoute,
-                SerializeBody(new FriendlyTeammateLoadoutRequest
+            string requestBody = SerializeBody(new FriendlyTeammateLoadoutRequest
                 {
                     aid = teammateAccountId,
                     loadoutId = persistedLoadoutId
-                })));
+                });
+            string responseJson = await Task.Run(() => RequestHandler.PostJson(LoadoutRoute, requestBody));
 
             EnsureBodySuccess(responseJson);
         }
@@ -2499,7 +2555,7 @@ namespace pitTeam.Patches
         private static void RefreshCurrentTeammateLoadoutSelector(ResultProfile profile)
         {
             if (profile == null
-                || LoadoutSelector == null
+                || ProfileActionsContainer == null
                 || ActiveProfileInventoryController == null
                 || ActiveProfileSession == null
                 || ActiveProfileScreen == null
@@ -2508,27 +2564,32 @@ namespace pitTeam.Patches
                 return;
             }
 
-            InventoryClothingSelectionPanel loadoutPanel = LoadoutSelector.GetComponent<InventoryClothingSelectionPanel>();
             FriendlyTeammateProfileOptions options = TryLoadProfileOptions(profile.AccountId);
-            if (loadoutPanel == null || options == null)
+            if (options == null)
             {
                 return;
             }
 
-            DisplayLoadoutOptions(
-                ActiveProfileScreen,
-                profile,
-                ActiveProfileInventoryController,
-                ActiveProfileSession,
-                loadoutPanel,
-                ActiveProfilePlayerModelWindow,
-                options);
+            FriendlyTeammateLoadoutOption selectedLoadout = options.Loadouts?.FirstOrDefault(option =>
+                option != null &&
+                string.Equals(option.Id, ActiveTeammateLoadoutId, StringComparison.OrdinalIgnoreCase));
+            if (selectedLoadout != null)
+            {
+                ActiveTeammateLoadoutName = selectedLoadout.Name;
+            }
 
+            if (!string.IsNullOrWhiteSpace(options.CurrentTactic))
+            {
+                ActiveProfileTactic = options.CurrentTactic;
+            }
+
+            RefreshProfileOptionsButtonCaption();
             RefreshPlayerVisualization(
                 profile,
                 ActiveProfileInventoryController,
                 ActiveProfileSession,
                 ActiveProfilePlayerModelWindow);
+
         }
     }
 }

@@ -1,9 +1,9 @@
 using EFT;
 using HarmonyLib;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System.Collections.Generic;
 using System.Reflection;
-using Systems.Effects;
+using Il2CppSystems.Effects;
 using UnityEngine;
 
 using pitTeam.Modules;
@@ -42,7 +42,7 @@ namespace pitTeam.Patches
             {
                 int totalFollowers = 0;
                 int forwarded = 0;
-                string shooterProfileId = info.PlayerProfileID;
+                string shooterProfileId = info.Player?.iPlayer?.ProfileId ?? string.Empty;
                 var followers = BossPlayers.GetFollowers();
                 foreach (var follower in followers)
                 {
@@ -65,7 +65,7 @@ namespace pitTeam.Patches
                 }
                 if (EnableReactionTrace)
                 {
-                    Modules.Logger.LogInfo($"[ReactTrace] BulletImpact shooter={info.PlayerProfileID} processed={processed} followers={totalFollowers} forwarded={forwarded} hit={info.HitPoint}");
+                    Modules.Logger.LogInfo($"[ReactTrace] BulletImpact shooter={info.Player?.iPlayer?.ProfileId ?? string.Empty} processed={processed} followers={totalFollowers} forwarded={forwarded} hit={info.HitPoint}");
                 }
             }
         }

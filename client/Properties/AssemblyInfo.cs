@@ -1,4 +1,4 @@
-﻿using DrakiaXYZ.BigBrain.VersionChecker;
+using DrakiaXYZ.BigBrain.VersionChecker;
 using System.Reflection;
 using System.Runtime.InteropServices;
 

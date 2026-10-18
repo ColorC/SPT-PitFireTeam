@@ -382,7 +382,15 @@ namespace pitTeam.Modules
                 return;
             }
 
-            Component handler = bot.GetPlayer.gameObject.GetComponent(orbitLootHandlerType);
+            Component handler = null;
+            foreach (Component component in bot.GetPlayer.gameObject.GetComponents<Component>())
+            {
+                if (component != null && component.GetType() == orbitLootHandlerType)
+                {
+                    handler = component;
+                    break;
+                }
+            }
             if (handler == null)
             {
                 return;

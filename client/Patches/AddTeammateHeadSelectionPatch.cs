@@ -4,7 +4,7 @@ using EFT;
 using EFT.UI;
 using pitTeam.Modules;
 using HarmonyLib;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,11 +15,11 @@ namespace pitTeam.Patches
 {
     internal static class AddTeammateNicknameFieldUi
     {
-        private static readonly FieldInfo StatusLabelField = AccessTools.Field(typeof(NicknameField), "_statusLabel");
+        private static readonly pitTeam.Compat.NativeUiMemberAccessor? StatusLabelAccessor = pitTeam.Compat.NativeUiMemberAccessor.TryForProperty(typeof(NicknameField), "_statusLabel", typeof(TMP_Text), false, false);
 
         public static void SetStatusLabelText(NicknameField nicknameField, string text)
         {
-            TMP_Text statusLabel = StatusLabelField?.GetValue(nicknameField) as TMP_Text;
+            TMP_Text statusLabel = StatusLabelAccessor?.GetValue(nicknameField) as TMP_Text;
             if (statusLabel != null)
             {
                 statusLabel.text = text;
@@ -75,31 +75,48 @@ namespace pitTeam.Patches
 
     internal class AddTeammateHeadSelectionOptionsPatch : ModulePatch
     {
+        private static object? _probeOptions;
+        private static AppearanceSelector? _probeSelector;
+
         protected override MethodBase GetTargetMethod()
         {
-            return AccessTools.Method(typeof(HeadSelectionState), nameof(HeadSelectionState.PrepareSelectors));
+            return AccessTools.Method(typeof(AppearanceSelector), nameof(AppearanceSelector.CollectAvailableCustomization), Type.EmptyTypes);
         }
 
-        [PatchPrefix]
-        private static bool PatchPrefix(HeadSelectionState __instance)
+        [PatchPostfix]
+        private static void PatchPostfix(AppearanceSelector __instance)
         {
-            if (!AddTeammateCreationFlow.IsActiveForController(EFT.UI.Screens.EftScreenManager.Instance.CurrentScreenController))
-            {
-                return true;
-            }
+            if (!AddTeammateCreationFlow.IsActiveForController(EFT.UI.Screens.EftScreenManager.Instance.CurrentScreenController)) return;
+            var solver = Singleton<EFT.CustomizationSolver>.Instance;
+            if (solver == null || __instance == null) return;
 
-            EFT.CustomizationSolver solver = Singleton<EFT.CustomizationSolver>.Instance;
-            if (solver == null || __instance == null)
+            // SPT5 moved the selectors and their typed template lists from HeadSelectionState
+            // into AppearanceSelector. Populate them before native Show prepares the controls.
+            int originalHeads = __instance._heads?.Count ?? 0;
+            int originalVoices = __instance._voices?.Count ?? 0;
+            var heads = CollectAllHeads(solver);
+            var voices = CollectAllVoices(solver);
+            if (heads.Count == 0 || voices.Count == 0) throw new InvalidOperationException("Teammate appearance options are empty.");
+            __instance._heads = heads.Select(entry => entry.Value).ToNativeList();
+            __instance._voices = voices.Select(entry => entry.Value).ToNativeList();
+            __instance._voiceTagBanks?.Clear();
+            if (Spt5RuntimeInstallProbe.Enabled)
             {
-                return true;
+                _probeSelector = __instance;
+                _probeOptions = new { originalHeads, originalVoices, heads = __instance._heads.Count, voices = __instance._voices.Count,
+                    headIds = heads.Select(entry => entry.Key.ToString()).ToArray(), voiceIds = voices.Select(entry => entry.Key.ToString()).ToArray() };
             }
+        }
 
-            __instance._headTemplates = CollectAllHeads(solver);
-            __instance._voiceTemplates = CollectAllVoices(solver);
-            __instance._voices.Clear();
-            __instance.PrepareFaceSelector();
-            __instance.PrepareVoiceSelector();
-            return false;
+        public static object GetProbeSnapshot()
+        {
+            bool active = AddTeammateCreationFlow.IsActiveForController(EFT.UI.Screens.EftScreenManager.Instance.CurrentScreenController)
+                && _probeSelector != null && _probeSelector.gameObject.activeInHierarchy;
+            return new { available = active && _probeOptions != null, active, frame = UnityEngine.Time.frameCount,
+                selectorPointer = active ? _probeSelector!.Pointer.ToString("X") : null,
+                nativeHeads = active ? Enumerable.Range(0, _probeSelector!._heads.Count).Select(index => _probeSelector._heads[index].Id.ToString()).ToArray() : Array.Empty<string>(),
+                nativeVoices = active ? Enumerable.Range(0, _probeSelector!._voices.Count).Select(index => _probeSelector._voices[index].Id.ToString()).ToArray() : Array.Empty<string>(),
+                options = _probeOptions };
         }
 
         private static List<KeyValuePair<MongoID, EFT.Customization.CustomizationHead>> CollectAllHeads(EFT.CustomizationSolver solver)

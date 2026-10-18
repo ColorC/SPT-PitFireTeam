@@ -11,10 +11,12 @@ using EFT.UI.Health;
 using EFT.UI.Ragfair;
 using EFT.UI.Screens;
 using HarmonyLib;
+using pitTeam.Compat;
+using pitTeam.Modules;
 using Newtonsoft.Json;
-using SPT.Common.Http;
-using SPT.Common.Utils;
-using SPT.Reflection.Patching;
+using SPTushonka.Common.Http;
+using SPTushonka.Common.Utils;
+using SPTushonka.Reflection.Patching;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -30,11 +32,11 @@ namespace pitTeam.Patches
 {
     internal static class TeammateEquipmentBuildsScreenFlow
     {
-        private static readonly FieldInfo ButtonRawTextField = AccessTools.Field(typeof(DefaultUIButton), "_rawText");
-        private static readonly FieldInfo BuildListWeightField = AccessTools.Field(typeof(EquipmentBuildListView), "_weight");
-        private static readonly FieldInfo ScreenSelectedBuildField = AccessTools.Field(typeof(EquipmentBuildsScreen), "_currentBuild");
-        private static readonly FieldInfo ScreenWeightField = AccessTools.Field(typeof(EquipmentBuildsScreen), "_weight");
-        private static readonly FieldInfo EditBuildOnlyAvailableToggleField = AccessTools.Field(typeof(EditBuildScreen), "_onlyAvailableToggle");
+        private static readonly NativeUiMemberAccessor ButtonRawTextAccessor = NativeUiMemberAccessor.ForProperty(typeof(DefaultUIButton), "_rawText", typeof(bool), false, false);
+        private static readonly NativeUiMemberAccessor BuildListWeightAccessor = NativeUiMemberAccessor.ForProperty(typeof(EquipmentBuildListView), "_weight", typeof(HealthParameterPanel), false, false);
+        private static readonly NativeUiMemberAccessor ScreenSelectedBuildAccessor = NativeUiMemberAccessor.ForProperty(typeof(EquipmentBuildsScreen), "_currentBuild", typeof(EFT.UI.Builds.EquipmentBuild), false, false);
+        private static readonly NativeUiMemberAccessor ScreenWeightAccessor = NativeUiMemberAccessor.ForProperty(typeof(EquipmentBuildsScreen), "_weight", typeof(HealthParameterPanel), false, false);
+        private static readonly NativeUiMemberAccessor EditBuildOnlyAvailableToggleAccessor = NativeUiMemberAccessor.ForProperty(typeof(EditBuildScreen), "_onlyAvailableToggle", typeof(Toggle), false, false);
         private const string BuyKitRoute = "/singleplayer/pitfireteam/teammate/profile/buy-kit";
         private const float MarketPricesRefreshIntervalSeconds = 300f;
         private const double PrimaryWeaponBaseDiscount = 0.10;
@@ -75,8 +77,9 @@ namespace pitTeam.Patches
         private static ScreenChromeState _screenChromeState;
         private static GameObject _buyConfirmOverlay;
         private static int _buyConfirmOverlayGeneration;
-        private static readonly List<Action> BuyConfirmIconBindings = new List<Action>();
-        private static readonly MarketPriceSource BuildMarketPriceSource = new MarketPriceSource();
+        private static readonly List<Il2CppSystem.Action> BuyConfirmIconBindings = new List<Il2CppSystem.Action>();
+        private static SupplyData _nativeBuildMarketPriceSource;
+        private static Dictionary<string, float> _nativeBuildMarketPriceSourceMarketPrices;
         private static readonly Dictionary<int, BuildRowState> BuildRowStates = new Dictionary<int, BuildRowState>();
         private static readonly Dictionary<string, TraderWeaponOfferPricingPlan> TraderWeaponOfferPricingPlanCache = new Dictionary<string, TraderWeaponOfferPricingPlan>(StringComparer.Ordinal);
         private static readonly Dictionary<string, RagfairWeaponOfferPricingPlan> RagfairWeaponOfferPricingPlanCache = new Dictionary<string, RagfairWeaponOfferPricingPlan>(StringComparer.Ordinal);
@@ -101,14 +104,18 @@ namespace pitTeam.Patches
             return pitFireTeam.GetSocialUiText(key);
         }
 
-        public static void CaptureAndSuppressMissingItems(ref IEnumerable<Item> notFoundItems)
+        public static void CaptureAndSuppressMissingItems(ref Il2CppSystem.Collections.Generic.IEnumerable<Item> notFoundItems)
         {
             if (!ShouldCustomizeBuildsScreen || notFoundItems == null)
             {
                 return;
             }
 
-            List<Item> missingItems = new List<Item>(notFoundItems);
+            List<Item> missingItems = new List<Item>();
+            foreach (Item item in notFoundItems)
+            {
+                missingItems.Add(item);
+            }
             _selectedBuildMissingItems = missingItems;
             _selectedBuildMissingCounts = SummarizeMissingItems(missingItems);
 
@@ -116,7 +123,20 @@ namespace pitTeam.Patches
             // into GClass3452. The teammate buy screen needs the same availability
             // data for later purchase math, but should not present the stock "you
             // cannot equip this now" warning state.
-            notFoundItems = Array.Empty<Item>();
+            notFoundItems = new Il2CppSystem.Collections.Generic.List<Item>();
+        }
+
+        private static IHealthController CreateMainBuildHealthController(EFT.IEftSession session, EFT.InventoryLogic.BackEndInventoryController backendController)
+        {
+            Profile main = session?.Profile;
+            IInventoryProfileInfo inventoryOwner = backendController?.Profile;
+            if (main == null || inventoryOwner == null) throw new InvalidOperationException("Main profile or build inventory owner is missing.");
+            if (string.IsNullOrWhiteSpace(main.ProfileId) || !string.Equals(main.ProfileId, inventoryOwner.ProfileId, StringComparison.Ordinal)) throw new InvalidOperationException("Build inventory controller does not belong to the main session profile.");
+            if (main.Health == null || main.Skills == null) throw new InvalidOperationException("Main profile health or skills snapshot is missing.");
+            var nativeController = new OfflineHealthController(main.Health, backendController, main.Skills, false);
+            var healthController = nativeController as IHealthController;
+            if (healthController == null) throw new InvalidOperationException("Native OfflineHealthController interface cast failed.");
+            return healthController;
         }
 
         public static void Open(ResultProfile profile, EFT.IEftSession session, InventoryController inventoryController)
@@ -131,10 +151,15 @@ namespace pitTeam.Patches
             if (!TryResolveBackendController(session, inventoryController, out EFT.InventoryLogic.BackEndInventoryController backendController))
             {
                 EFT.Communications.NotificationManager.DisplayWarningNotification(GetSocialUiText("KitLoadoutsOpenFailed"), ENotificationDurationType.Default);
-                pitFireTeam.Log.LogWarning($"[UI] Buy loadout screen aborted: expected backend inventory controller, got '{inventoryController.GetType().Name}'.");
+                string nativeClass = OtherPlayerProfileScreenPatch.DescribeNativeClass(inventoryController);
+                string nativePointer;
+                try { nativePointer = "0x" + inventoryController.Pointer.ToInt64().ToString("X"); } catch (Exception error) { nativePointer = "<error:" + error.GetType().Name + ">"; }
+                pitFireTeam.Log.LogWarning($"[UI] Buy loadout screen aborted: expected EFT.InventoryLogic.BackEndInventoryController; proxy={inventoryController.GetType().FullName}; native={nativeClass}; pointer={nativePointer}.");
                 return;
             }
 
+            try
+            {
             _accountId = profile.AccountId;
             _profile = profile;
             _session = session;
@@ -155,13 +180,21 @@ namespace pitTeam.Patches
             OtherPlayerProfileScreenPatch.DisableMenuTaskBarForReturnOverride();
             RequestMarketPrices(session, forceRefresh: false);
 
-            IHealthController healthController = OtherPlayerProfileScreenPatch.CreateProfileHealthController(session.Profile?.Health);
+            IHealthController healthController = CreateMainBuildHealthController(session, backendController);
             new EquipmentBuildsScreen.EquipmentBuildsScreenController(session, backendController, healthController, backendController.Inventory.Equipment)
                 .ShowScreen(EScreenState.Queued);
 
             if (EnableKitLoadoutPricingDiagnostics)
             {
                 Modules.Logger.LogInfo($"[UI] Opening teammate equipment builds screen for '{profile.AccountId}'. Kit pricing diagnostics phase='{_buildPricingLogPhase}', marketPricesLoaded={_marketPrices != null}.");
+            }
+            }
+            catch (Exception ex)
+            {
+                Clear();
+                OtherPlayerProfileScreenPatch.RestoreMenuTaskBarForReturnOverride();
+                pitFireTeam.Log.LogError($"[UI] Failed to open teammate equipment builds for '{profile.AccountId}': {ex}");
+                NotificationManager.DisplayWarningNotification(GetSocialUiText("KitLoadoutsOpenFailed"), ENotificationDurationType.Default);
             }
         }
 
@@ -220,6 +253,10 @@ namespace pitTeam.Patches
             EnsureExcludeExistingItemsToggle(screen.transform);
             ApplyActionButtonState(screen.transform);
             HideCanEquipIcon(screen.transform);
+            // Native list views may have been populated before this screen's Show
+            // boundary. Apply the scoped shop presentation to every populated row.
+            foreach (var row in screen.GetComponentsInChildren<EquipmentBuildListView>(true))
+                if (row != null && row.BuildWrapper?.Build != null) ApplyBuildListRow(row, row.BuildWrapper);
             ApplySelectedBuildPrice(screen);
         }
 
@@ -289,7 +326,7 @@ namespace pitTeam.Patches
 
         private static bool TryResolveBackendController(EFT.IEftSession session, InventoryController inventoryController, out EFT.InventoryLogic.BackEndInventoryController backendController)
         {
-            backendController = inventoryController as EFT.InventoryLogic.BackEndInventoryController;
+            backendController = Il2CppBoundary.CastNativeOrNull<EFT.InventoryLogic.BackEndInventoryController>(inventoryController);
             if (backendController != null)
             {
                 _backendInventoryController = backendController;
@@ -324,9 +361,9 @@ namespace pitTeam.Patches
             _returningToProfile = true;
             OtherPlayerProfileScreenPatch.PrepareReturnOverride(_profileBackOverrideAction);
             ItemUiContext.Instance.ShowPlayerProfileScreen(_accountId, EItemViewType.OtherPlayerProfile)
-                .ContinueWith(task =>
+                .ContinueWith((System.Action<Il2CppSystem.Threading.Tasks.Task<OtherPlayerProfileScreen.OtherPlayerProfileScreenController>>)(task =>
                 {
-                    if (task.IsFaulted || task.IsCanceled || task.Result == null)
+                    if (task.IsFaulted || task.IsCanceled)
                     {
                         pitFireTeam.Log.LogError("[UI] Failed to return from teammate equipment builds screen to teammate profile.");
                         if (task.Exception != null)
@@ -337,7 +374,7 @@ namespace pitTeam.Patches
                         Clear();
                         OtherPlayerProfileScreenPatch.RestoreMenuTaskBarForReturnOverride();
                     }
-                }, System.Threading.Tasks.TaskScheduler.FromCurrentSynchronizationContext())
+                }), Il2CppSystem.Threading.Tasks.TaskScheduler.FromCurrentSynchronizationContext())
                 .HandleExceptions();
         }
 
@@ -428,7 +465,7 @@ namespace pitTeam.Patches
                 EquipButton = equipButton,
                 EquipButtonText = equipButton?.HeaderText,
                 EquipButtonFontSize = equipButton?.HeaderSize ?? 18,
-                EquipButtonRawText = equipButton != null && ButtonRawTextField?.GetValue(equipButton) is bool rawText && rawText,
+                EquipButtonRawText = equipButton != null && ButtonRawTextAccessor.GetValue(equipButton) is bool rawText && rawText,
                 EquipButtonInteractable = equipButton?.Interactable ?? false,
                 EquipButtonLabel = equipButtonTransform?.GetComponentInChildren<TMP_Text>(true),
                 EquipButtonLabelText = equipButtonTransform?.GetComponentInChildren<TMP_Text>(true)?.text,
@@ -501,7 +538,7 @@ namespace pitTeam.Patches
             }
 
             Transform deleteHolder = FindChildRecursive(view.transform, "DeleteHolder");
-            Image weightIcon = FindChildRecursive(view.transform, "WeightIcon")?.GetComponent<Image>();
+            Image weightIcon = view._weight?._icon;
             BuildRowStates[instanceId] = new BuildRowState
             {
                 DeleteHolder = deleteHolder,
@@ -596,8 +633,8 @@ namespace pitTeam.Patches
             }
 
             Transform buttonTransform = FindEquipButtonTransform(screen);
-            RectTransform buttonRect = buttonTransform as RectTransform;
-            RectTransform parent = buttonTransform?.parent as RectTransform;
+            RectTransform buttonRect = Il2CppBoundary.CastNativeOrNull<RectTransform>(buttonTransform);
+            RectTransform parent = Il2CppBoundary.CastNativeOrNull<RectTransform>(buttonTransform?.parent);
             if (buttonTransform == null || parent == null)
             {
                 pitFireTeam.Log.LogWarning("[UI] Could not add teammate buy exclude-existing checkbox: missing equip button parent.");
@@ -639,12 +676,12 @@ namespace pitTeam.Patches
 
             ConfigureClonedExcludeExistingToggle(clonedToggle);
             clonedToggle.SetIsOnWithoutNotify(false);
-            clonedToggle.onValueChanged.AddListener(isOn =>
+            clonedToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)(isOn =>
             {
                 _excludeExistingItems = isOn;
                 Modules.Logger.LogInfo($"[UI] Teammate buy exclude existing items changed: {isOn}");
                 ApplyActionButtonState(screen);
-            });
+            }));
 
             _screenChromeState.ExcludeExistingItemsToggleRoot = root;
         }
@@ -652,7 +689,9 @@ namespace pitTeam.Patches
         private static bool TryCreateBuyQuote(out EquipmentBuildBuyQuote quote)
         {
             quote = null;
-            EFT.UI.Builds.EquipmentBuild selectedBuild = ScreenSelectedBuildField?.GetValue(_activeScreen) as EFT.UI.Builds.EquipmentBuild;
+            EquipmentBuildsScreen activeScreen = _activeScreen;
+            if (activeScreen == null) return false;
+            EFT.UI.Builds.EquipmentBuild selectedBuild = ScreenSelectedBuildAccessor.GetValue(activeScreen) as EFT.UI.Builds.EquipmentBuild;
             if (selectedBuild?.Equipment == null)
             {
                 return false;
@@ -714,7 +753,7 @@ namespace pitTeam.Patches
                     continue;
                 }
 
-                if (EFT.InventoryLogic.CurrencyUtil.TryGetCurrencyType(new MongoID?(item.TemplateId), out ECurrencyType currencyType)
+                if (EFT.InventoryLogic.CurrencyUtil.TryGetCurrencyType(new Il2CppSystem.Nullable<MongoID>(new MongoID(item.TemplateId)), out ECurrencyType currencyType)
                     && currencyType == ECurrencyType.RUB
                     && !IsLockedForStashUse(item))
                 {
@@ -772,7 +811,7 @@ namespace pitTeam.Patches
                 return;
             }
 
-            GameObject overlayRoot = new GameObject("pitFireTeam_BuyLoadoutConfirmOverlay", typeof(RectTransform), typeof(Image));
+            GameObject overlayRoot = new GameObject("pitFireTeam_BuyLoadoutConfirmOverlay", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             overlayRoot.transform.SetParent(overlayParent, false);
             RectTransform overlayRect = overlayRoot.GetComponent<RectTransform>();
             Stretch(overlayRect);
@@ -783,7 +822,7 @@ namespace pitTeam.Patches
             overlayImage.raycastTarget = true;
             _buyConfirmOverlay = overlayRoot;
 
-            GameObject panel = new GameObject("pitFireTeam_BuyLoadoutConfirmPanel", typeof(RectTransform), typeof(Image));
+            GameObject panel = new GameObject("pitFireTeam_BuyLoadoutConfirmPanel", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             panel.transform.SetParent(overlayRoot.transform, false);
             RectTransform panelRect = panel.GetComponent<RectTransform>();
             panelRect.anchorMin = new Vector2(0.5f, 0.5f);
@@ -798,7 +837,7 @@ namespace pitTeam.Patches
             panelImage.color = new Color(0.02f, 0.02f, 0.02f, 0.98f);
             panelImage.raycastTarget = true;
 
-            GameObject header = new GameObject("pitFireTeam_BuyLoadoutConfirmHeader", typeof(RectTransform), typeof(Image));
+            GameObject header = new GameObject("pitFireTeam_BuyLoadoutConfirmHeader", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             header.transform.SetParent(panel.transform, false);
             RectTransform headerRect = header.GetComponent<RectTransform>();
             headerRect.anchorMin = new Vector2(0f, 1f);
@@ -825,7 +864,7 @@ namespace pitTeam.Patches
             TextMeshProUGUI titleLabel = titleObject.GetComponent<TextMeshProUGUI>();
 
             Button closeButton = CreateOverlayCloseButton(header.transform, "pitFireTeam_BuyLoadoutConfirmCloseButton");
-            if (closeButton.transform is RectTransform closeRect)
+            if (Il2CppBoundary.CastNativeOrNull<RectTransform>(closeButton.transform) is RectTransform closeRect)
             {
                 closeRect.anchorMin = new Vector2(1f, 0.5f);
                 closeRect.anchorMax = new Vector2(1f, 0.5f);
@@ -833,11 +872,11 @@ namespace pitTeam.Patches
                 closeRect.anchoredPosition = new Vector2(-4f, 0f);
             }
 
-            closeButton.onClick.AddListener(() =>
+            closeButton.onClick.AddListener((UnityEngine.Events.UnityAction)(() =>
             {
                 Modules.Logger.LogInfo("[UI] Teammate equipment build buy confirmation closed.");
                 CloseBuyConfirmOverlay();
-            });
+            }));
 
             DefaultUIButton buyButton = CreateOverlayActionButton(panel.transform, new Vector2(0f, 10f), new Vector2(180f, 36f));
             Button fallbackBuyButton = null;
@@ -846,12 +885,12 @@ namespace pitTeam.Patches
             {
                 buyButton.SetRawText(GetQuoteActionButtonText(quote), 22);
                 buyButton.OnClick.RemoveAllListeners();
-                buyButton.OnClick.AddListener(() => ConfirmBuyQuote(quote));
+                buyButton.OnClick.AddListener((UnityEngine.Events.UnityAction)(() => ConfirmBuyQuote(quote)));
             }
             else
             {
                 fallbackBuyButton = CreateFallbackOverlayActionButton(panel.transform, new Vector2(0f, 10f), new Vector2(180f, 36f), GetQuoteActionButtonText(quote));
-                fallbackBuyButton.onClick.AddListener(() => ConfirmBuyQuote(quote));
+                fallbackBuyButton.onClick.AddListener((UnityEngine.Events.UnityAction)(() => ConfirmBuyQuote(quote)));
                 fallbackBuyButtonLabel = fallbackBuyButton.GetComponentInChildren<TextMeshProUGUI>(true);
             }
 
@@ -898,7 +937,7 @@ namespace pitTeam.Patches
             Button fallbackBuyButton,
             TextMeshProUGUI fallbackBuyButtonLabel)
         {
-            GameObject scrollObject = new GameObject("pitFireTeam_BuyLoadoutInteractiveBodyScroll", typeof(RectTransform), typeof(ScrollRect));
+            GameObject scrollObject = new GameObject("pitFireTeam_BuyLoadoutInteractiveBodyScroll", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<ScrollRect>());
             scrollObject.transform.SetParent(parent, false);
             RectTransform scrollRectTransform = scrollObject.GetComponent<RectTransform>();
             scrollRectTransform.anchorMin = new Vector2(0f, 0f);
@@ -906,7 +945,7 @@ namespace pitTeam.Patches
             scrollRectTransform.offsetMin = new Vector2(28f, 72f);
             scrollRectTransform.offsetMax = new Vector2(-28f, -42f);
 
-            GameObject viewportObject = new GameObject("pitFireTeam_BuyLoadoutInteractiveBodyViewport", typeof(RectTransform), typeof(Image), typeof(Mask));
+            GameObject viewportObject = new GameObject("pitFireTeam_BuyLoadoutInteractiveBodyViewport", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>(), Il2CppInterop.Runtime.Il2CppType.Of<Mask>());
             viewportObject.transform.SetParent(scrollObject.transform, false);
             RectTransform viewportRect = viewportObject.GetComponent<RectTransform>();
             Stretch(viewportRect);
@@ -918,7 +957,7 @@ namespace pitTeam.Patches
             Mask mask = viewportObject.GetComponent<Mask>();
             mask.showMaskGraphic = false;
 
-            GameObject contentObject = new GameObject("pitFireTeam_BuyLoadoutInteractiveBodyContent", typeof(RectTransform));
+            GameObject contentObject = new GameObject("pitFireTeam_BuyLoadoutInteractiveBodyContent", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>());
             contentObject.transform.SetParent(viewportObject.transform, false);
             RectTransform contentRect = contentObject.GetComponent<RectTransform>();
             contentRect.anchorMin = new Vector2(0f, 1f);
@@ -991,16 +1030,16 @@ namespace pitTeam.Patches
                 }
 
                 rowToggle.SetIsOnWithoutNotify(backingItem.Selected);
-                rowToggle.onValueChanged.AddListener(isOn =>
+                rowToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)(isOn =>
                 {
                     backingItem.Selected = isOn;
                     RecalculateBuyQuoteSelection(quote);
                     UpdateInteractiveBuyQuoteBody(quote, titleLabel, promptLabel, purchasedItemsContainer, buyButton, fallbackBuyButton, fallbackBuyButtonLabel);
-                });
+                }));
                 rowY -= 52f;
             }
 
-            GameObject purchasedObject = new GameObject("pitFireTeam_BuyLoadoutInteractivePurchasedItems", typeof(RectTransform));
+            GameObject purchasedObject = new GameObject("pitFireTeam_BuyLoadoutInteractivePurchasedItems", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>());
             purchasedObject.transform.SetParent(contentObject.transform, false);
             RectTransform purchasedRect = purchasedObject.GetComponent<RectTransform>();
             purchasedRect.anchorMin = new Vector2(0f, 1f);
@@ -1022,7 +1061,7 @@ namespace pitTeam.Patches
                 return null;
             }
 
-            GameObject rowObject = new GameObject("pitFireTeam_BuyLoadoutStashItemRow", typeof(RectTransform));
+            GameObject rowObject = new GameObject("pitFireTeam_BuyLoadoutStashItemRow", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>());
             rowObject.transform.SetParent(parent, false);
             RectTransform rowRect = rowObject.GetComponent<RectTransform>();
             rowRect.anchorMin = new Vector2(0f, 1f);
@@ -1039,7 +1078,7 @@ namespace pitTeam.Patches
             toggle.group = null;
             toggle.interactable = true;
 
-            RectTransform rect = toggle.transform as RectTransform;
+            RectTransform rect = Il2CppBoundary.CastNativeOrNull<RectTransform>(toggle.transform);
             if (rect != null)
             {
                 rect.anchorMin = new Vector2(0f, 0.5f);
@@ -1117,7 +1156,7 @@ namespace pitTeam.Patches
 
         private static void RefreshInteractiveContentHeight(RectTransform purchasedItemsContainer)
         {
-            if (purchasedItemsContainer?.parent is RectTransform contentRect)
+            if (Il2CppBoundary.CastNativeOrNull<RectTransform>(purchasedItemsContainer?.parent) is RectTransform contentRect)
             {
                 float purchasedBottom = Mathf.Abs(purchasedItemsContainer.offsetMin.y) + purchasedItemsContainer.sizeDelta.y + 48f;
                 contentRect.sizeDelta = new Vector2(0f, Mathf.Max(contentRect.sizeDelta.y, purchasedBottom));
@@ -1126,7 +1165,7 @@ namespace pitTeam.Patches
 
         private static void CreateOverlayPurchaseItemRow(Transform parent, UsedStashItemSummary item, float rowY, List<OverlayItemIconRequest> pendingIconLoads, int iconGeneration)
         {
-            GameObject rowObject = new GameObject("pitFireTeam_BuyLoadoutPurchaseItemRow", typeof(RectTransform));
+            GameObject rowObject = new GameObject("pitFireTeam_BuyLoadoutPurchaseItemRow", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>());
             rowObject.transform.SetParent(parent, false);
             RectTransform rowRect = rowObject.GetComponent<RectTransform>();
             rowRect.anchorMin = new Vector2(0f, 1f);
@@ -1142,7 +1181,7 @@ namespace pitTeam.Patches
 
         private static void CreateOverlayItemIcon(Transform parent, string templateId, Vector2 anchoredPosition, List<OverlayItemIconRequest> pendingIconLoads, int iconGeneration)
         {
-            GameObject frameObject = new GameObject("pitFireTeam_BuyLoadoutItemIconFrame", typeof(RectTransform), typeof(Image));
+            GameObject frameObject = new GameObject("pitFireTeam_BuyLoadoutItemIconFrame", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             frameObject.transform.SetParent(parent, false);
             RectTransform frameRect = frameObject.GetComponent<RectTransform>();
             frameRect.anchorMin = new Vector2(0f, 0.5f);
@@ -1155,7 +1194,7 @@ namespace pitTeam.Patches
             frame.color = new Color(0.12f, 0.12f, 0.12f, 1f);
             frame.raycastTarget = false;
 
-            GameObject iconObject = new GameObject("pitFireTeam_BuyLoadoutItemIcon", typeof(RectTransform), typeof(Image));
+            GameObject iconObject = new GameObject("pitFireTeam_BuyLoadoutItemIcon", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             iconObject.transform.SetParent(frameObject.transform, false);
             RectTransform iconRect = iconObject.GetComponent<RectTransform>();
             iconRect.anchorMin = Vector2.zero;
@@ -1196,7 +1235,7 @@ namespace pitTeam.Patches
 
         private static void CreateOverlayDivider(Transform parent)
         {
-            GameObject dividerObject = new GameObject("pitFireTeam_BuyLoadoutItemDivider", typeof(RectTransform), typeof(Image));
+            GameObject dividerObject = new GameObject("pitFireTeam_BuyLoadoutItemDivider", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             dividerObject.transform.SetParent(parent, false);
             RectTransform dividerRect = dividerObject.GetComponent<RectTransform>();
             dividerRect.anchorMin = new Vector2(0f, 0f);
@@ -1245,22 +1284,23 @@ namespace pitTeam.Patches
 
                 if (icon?.Changed != null)
                 {
-                    BuyConfirmIconBindings.Add(icon.Changed.Bind(() =>
+                    BuyConfirmIconBindings.Add(icon.Changed.Bind((Il2CppSystem.Action)(() =>
                     {
                         if (IsOverlayIconRequestActive(image, iconGeneration) && icon.Sprite != null)
                         {
                             image.sprite = icon.Sprite;
                             image.enabled = true;
                         }
-                    }));
+                    })));
                 }
 
-                ItemViewFactory.GetItemSpriteAsync(item, 1)
-                    .ContinueWith(task =>
-                    {
-                        AssignLoadedItemIconWithRetry(image, item, templateId, task, retryAttempted: false, iconGeneration);
-                    }, TaskScheduler.FromCurrentSynchronizationContext())
-                    .HandleExceptions();
+                Il2CppSystem.Threading.Tasks.Task<Sprite> spriteTask = ItemViewFactory.GetItemSpriteAsync(item, 1);
+                System.Action<Il2CppSystem.Threading.Tasks.Task<Sprite>> managedCallback = task =>
+                {
+                    AssignLoadedItemIconWithRetry(image, item, templateId, task, retryAttempted: false, iconGeneration);
+                };
+                var nativeCallback = (Il2CppSystem.Action<Il2CppSystem.Threading.Tasks.Task<Sprite>>)managedCallback;
+                spriteTask.ContinueWith(nativeCallback, Il2CppSystem.Threading.Tasks.TaskScheduler.FromCurrentSynchronizationContext());
             }
             catch (Exception ex)
             {
@@ -1280,14 +1320,14 @@ namespace pitTeam.Patches
                 && iconGeneration == _buyConfirmOverlayGeneration;
         }
 
-        private static void AssignLoadedItemIconWithRetry(Image image, Item item, string templateId, Task<Sprite> task, bool retryAttempted, int iconGeneration)
+        private static void AssignLoadedItemIconWithRetry(Image image, Item item, string templateId, Il2CppSystem.Threading.Tasks.Task<Sprite> task, bool retryAttempted, int iconGeneration)
         {
             if (!IsOverlayIconRequestActive(image, iconGeneration))
             {
                 return;
             }
 
-            if (task.Status == TaskStatus.RanToCompletion && task.Result != null)
+            if (task.Status == Il2CppSystem.Threading.Tasks.TaskStatus.RanToCompletion && task.Result != null)
             {
                 image.sprite = task.Result;
                 image.enabled = true;
@@ -1300,12 +1340,13 @@ namespace pitTeam.Patches
                 return;
             }
 
-            ItemViewFactory.GetItemSpriteAsync(item, 1)
-                .ContinueWith(retryTask =>
-                {
-                    AssignLoadedItemIconWithRetry(image, item, templateId, retryTask, retryAttempted: true, iconGeneration);
-                }, TaskScheduler.FromCurrentSynchronizationContext())
-                .HandleExceptions();
+            Il2CppSystem.Threading.Tasks.Task<Sprite> retryTask = ItemViewFactory.GetItemSpriteAsync(item, 1);
+            System.Action<Il2CppSystem.Threading.Tasks.Task<Sprite>> managedCallback = task =>
+            {
+                AssignLoadedItemIconWithRetry(image, item, templateId, task, retryAttempted: true, iconGeneration);
+            };
+            var nativeCallback = (Il2CppSystem.Action<Il2CppSystem.Threading.Tasks.Task<Sprite>>)managedCallback;
+            retryTask.ContinueWith(nativeCallback, Il2CppSystem.Threading.Tasks.TaskScheduler.FromCurrentSynchronizationContext());
         }
 
         private static void UpdateInteractiveBuyQuoteBody(
@@ -1364,7 +1405,7 @@ namespace pitTeam.Patches
                 return;
             }
 
-            GameObject overlayRoot = new GameObject("pitFireTeam_BuyLoadoutNotEnoughResourcesOverlay", typeof(RectTransform), typeof(Image));
+            GameObject overlayRoot = new GameObject("pitFireTeam_BuyLoadoutNotEnoughResourcesOverlay", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             overlayRoot.transform.SetParent(overlayParent, false);
             RectTransform overlayRect = overlayRoot.GetComponent<RectTransform>();
             Stretch(overlayRect);
@@ -1374,7 +1415,7 @@ namespace pitTeam.Patches
             overlayImage.color = new Color(0f, 0f, 0f, 0.62f);
             overlayImage.raycastTarget = true;
 
-            GameObject panel = new GameObject("pitFireTeam_BuyLoadoutNotEnoughResourcesPanel", typeof(RectTransform), typeof(Image));
+            GameObject panel = new GameObject("pitFireTeam_BuyLoadoutNotEnoughResourcesPanel", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             panel.transform.SetParent(overlayRoot.transform, false);
             RectTransform panelRect = panel.GetComponent<RectTransform>();
             panelRect.anchorMin = new Vector2(0.5f, 0.5f);
@@ -1386,7 +1427,7 @@ namespace pitTeam.Patches
             panelImage.color = new Color(0.02f, 0.02f, 0.02f, 0.98f);
             panelImage.raycastTarget = true;
 
-            GameObject header = new GameObject("pitFireTeam_BuyLoadoutNotEnoughResourcesHeader", typeof(RectTransform), typeof(Image));
+            GameObject header = new GameObject("pitFireTeam_BuyLoadoutNotEnoughResourcesHeader", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             header.transform.SetParent(panel.transform, false);
             RectTransform headerRect = header.GetComponent<RectTransform>();
             headerRect.anchorMin = new Vector2(0f, 1f);
@@ -1412,7 +1453,7 @@ namespace pitTeam.Patches
             titleRect.offsetMax = new Vector2(-42f, 0f);
 
             Button closeButton = CreateOverlayCloseButton(header.transform, "pitFireTeam_BuyLoadoutNotEnoughResourcesCloseButton");
-            if (closeButton.transform is RectTransform closeRect)
+            if (Il2CppBoundary.CastNativeOrNull<RectTransform>(closeButton.transform) is RectTransform closeRect)
             {
                 closeRect.anchorMin = new Vector2(1f, 0.5f);
                 closeRect.anchorMax = new Vector2(1f, 0.5f);
@@ -1420,7 +1461,7 @@ namespace pitTeam.Patches
                 closeRect.anchoredPosition = new Vector2(-4f, 0f);
             }
 
-            closeButton.onClick.AddListener(CloseBuyConfirmOverlay);
+            closeButton.onClick.AddListener((UnityEngine.Events.UnityAction)(CloseBuyConfirmOverlay));
 
             string bodyText = string.Format(
                 GetSocialUiText("NotEnoughResourcesKitPrompt"),
@@ -1447,12 +1488,12 @@ namespace pitTeam.Patches
             {
                 okButton.SetRawText(okText, 22);
                 okButton.OnClick.RemoveAllListeners();
-                okButton.OnClick.AddListener(CloseBuyConfirmOverlay);
+                okButton.OnClick.AddListener((UnityEngine.Events.UnityAction)(CloseBuyConfirmOverlay));
             }
             else
             {
                 Button fallbackButton = CreateFallbackOverlayActionButton(panel.transform, new Vector2(0f, 10f), new Vector2(180f, 36f), okText);
-                fallbackButton.onClick.AddListener(CloseBuyConfirmOverlay);
+                fallbackButton.onClick.AddListener((UnityEngine.Events.UnityAction)(CloseBuyConfirmOverlay));
             }
 
             _buyConfirmOverlay = overlayRoot;
@@ -1488,9 +1529,7 @@ namespace pitTeam.Patches
                     throw new InvalidOperationException("Selected teammate kit equipment was unavailable for purchase.");
                 }
 
-                string responseJson = await Task.Run(() => RequestHandler.PostJson(
-                    BuyKitRoute,
-                    SerializeBody(new FriendlyTeammateBuyKitRequest
+                string requestBody = SerializeBody(new FriendlyTeammateBuyKitRequest
                     {
                         aid = _accountId,
                         items = serializedEquipment,
@@ -1500,7 +1539,8 @@ namespace pitTeam.Patches
                             .SelectMany(item => item.ExactItems ?? new List<FriendlyTeammateBuyKitUsedItem>())
                             .Select(CloneExactStashItem)
                             .ToArray()
-                    })));
+                    });
+                string responseJson = await Task.Run(() => RequestHandler.PostJson(BuyKitRoute, requestBody));
 
                 FriendlyTeammateBodyResponse<FriendlyTeammateBuyKitResponse> response =
                     DeserializeBodySuccess<FriendlyTeammateBuyKitResponse>(responseJson);
@@ -1536,7 +1576,7 @@ namespace pitTeam.Patches
         private static void CloseBuyConfirmOverlay()
         {
             _buyConfirmOverlayGeneration++;
-            foreach (Action unsubscribe in BuyConfirmIconBindings.ToList())
+            foreach (Il2CppSystem.Action unsubscribe in BuyConfirmIconBindings.ToList())
             {
                 try
                 {
@@ -1585,7 +1625,7 @@ namespace pitTeam.Patches
 
         private static string SerializeBody(object body)
         {
-            return body.ToJson(GetDefaultJsonConverters());
+            return pitTeam.Compat.SptJsonBoundary.Serialize(body);
         }
 
         private static FriendlyTeammateBodyResponse<T> DeserializeBodySuccess<T>(string responseJson)
@@ -1595,7 +1635,7 @@ namespace pitTeam.Patches
                 return null;
             }
 
-            FriendlyTeammateBodyResponse<T> body = JsonConvert.DeserializeObject<FriendlyTeammateBodyResponse<T>>(responseJson);
+            FriendlyTeammateBodyResponse<T> body = pitTeam.Compat.SptJsonBoundary.Deserialize<FriendlyTeammateBodyResponse<T>>(responseJson);
             if (body != null && body.err != 0)
             {
                 throw new InvalidOperationException(body.errmsg ?? "Unknown teammate backend error");
@@ -1603,16 +1643,6 @@ namespace pitTeam.Patches
 
             return body;
         }
-
-        private static JsonConverter[] GetDefaultJsonConverters()
-        {
-            Type converterClass = typeof(AbstractGame).Assembly
-                .GetTypes()
-                .First(type => type.GetField("Converters", BindingFlags.Static | BindingFlags.Public) != null);
-
-            return Traverse.Create(converterClass).Field<JsonConverter[]>("Converters").Value;
-        }
-
         private static DefaultUIButton CreateOverlayActionButton(Transform parent, Vector2 anchoredPosition, Vector2 size)
         {
             DefaultUIButton template = FindEquipButtonTransform(_activeScreen?.transform)?.GetComponent<DefaultUIButton>();
@@ -1623,7 +1653,7 @@ namespace pitTeam.Patches
 
             DefaultUIButton button = UnityEngine.Object.Instantiate(template, parent, false);
             button.name = "pitFireTeam_BuyLoadoutConfirmActionButton";
-            RectTransform rect = button.transform as RectTransform;
+            RectTransform rect = Il2CppBoundary.CastNativeOrNull<RectTransform>(button.transform);
             if (rect != null)
             {
                 rect.anchorMin = new Vector2(0.5f, 0f);
@@ -1642,7 +1672,7 @@ namespace pitTeam.Patches
 
         private static Button CreateFallbackOverlayActionButton(Transform parent, Vector2 anchoredPosition, Vector2 size, string text)
         {
-            GameObject buttonObject = new GameObject("pitFireTeam_BuyLoadoutConfirmFallbackButton", typeof(RectTransform), typeof(Image), typeof(Button));
+            GameObject buttonObject = new GameObject("pitFireTeam_BuyLoadoutConfirmFallbackButton", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>(), Il2CppInterop.Runtime.Il2CppType.Of<Button>());
             buttonObject.transform.SetParent(parent, false);
             RectTransform rect = buttonObject.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0f);
@@ -1665,7 +1695,7 @@ namespace pitTeam.Patches
 
         private static Button CreateOverlayCloseButton(Transform parent, string name)
         {
-            GameObject buttonObject = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
+            GameObject buttonObject = new GameObject(name, Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>(), Il2CppInterop.Runtime.Il2CppType.Of<Button>());
             buttonObject.transform.SetParent(parent, false);
 
             RectTransform rect = buttonObject.GetComponent<RectTransform>();
@@ -1686,7 +1716,7 @@ namespace pitTeam.Patches
 
         private static GameObject CreateOverlayText(string name, string text, float size, TextAlignmentOptions alignment)
         {
-            GameObject textObject = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
+            GameObject textObject = new GameObject(name, Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<TextMeshProUGUI>());
             TextMeshProUGUI label = textObject.GetComponent<TextMeshProUGUI>();
             label.text = text;
             label.fontSize = size;
@@ -1698,7 +1728,7 @@ namespace pitTeam.Patches
 
         private static void CreateScrollableOverlayText(Transform parent, string name, string text, float size, Vector2 offsetMin, Vector2 offsetMax, int lineCount)
         {
-            GameObject scrollObject = new GameObject(name, typeof(RectTransform), typeof(ScrollRect));
+            GameObject scrollObject = new GameObject(name, Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<ScrollRect>());
             scrollObject.transform.SetParent(parent, false);
             RectTransform scrollRectTransform = scrollObject.GetComponent<RectTransform>();
             scrollRectTransform.anchorMin = new Vector2(0f, 0f);
@@ -1706,7 +1736,7 @@ namespace pitTeam.Patches
             scrollRectTransform.offsetMin = offsetMin;
             scrollRectTransform.offsetMax = offsetMax;
 
-            GameObject viewportObject = new GameObject($"{name}_Viewport", typeof(RectTransform), typeof(Image), typeof(Mask));
+            GameObject viewportObject = new GameObject($"{name}_Viewport", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>(), Il2CppInterop.Runtime.Il2CppType.Of<Mask>());
             viewportObject.transform.SetParent(scrollObject.transform, false);
             RectTransform viewportRect = viewportObject.GetComponent<RectTransform>();
             Stretch(viewportRect);
@@ -1915,9 +1945,11 @@ namespace pitTeam.Patches
 
         private static Toggle ResolveEditBuildOnlyAvailableToggleTemplate()
         {
-            return EditBuildOnlyAvailableToggleField?.GetValue(CommonUI.Instance?.EditBuildScreen) as Toggle
-                ?? CommonUI.Instance?.EditBuildScreen?.transform.Find("Toggle Group/OnlyAvailable")?.GetComponent<Toggle>()
-                ?? FindChildRecursive(CommonUI.Instance?.EditBuildScreen?.transform, "OnlyAvailable")?.GetComponent<Toggle>();
+            EditBuildScreen editBuildScreen = CommonUI.Instance?.EditBuildScreen;
+            Toggle template = editBuildScreen == null ? null : EditBuildOnlyAvailableToggleAccessor.GetValue(editBuildScreen) as Toggle;
+            return template
+                ?? editBuildScreen?.transform.Find("Toggle Group/OnlyAvailable")?.GetComponent<Toggle>()
+                ?? FindChildRecursive(editBuildScreen?.transform, "OnlyAvailable")?.GetComponent<Toggle>();
         }
 
         private static void ConfigureClonedExcludeExistingToggle(Toggle toggle)
@@ -1954,8 +1986,8 @@ namespace pitTeam.Patches
                 return;
             }
 
-            EFT.UI.Builds.EquipmentBuild selectedBuild = ScreenSelectedBuildField?.GetValue(screen) as EFT.UI.Builds.EquipmentBuild;
-            HealthParameterPanel weightPanel = ScreenWeightField?.GetValue(screen) as HealthParameterPanel;
+            EFT.UI.Builds.EquipmentBuild selectedBuild = ScreenSelectedBuildAccessor.GetValue(screen) as EFT.UI.Builds.EquipmentBuild;
+            HealthParameterPanel weightPanel = ScreenWeightAccessor.GetValue(screen) as HealthParameterPanel;
             if (selectedBuild == null || weightPanel == null)
             {
                 return;
@@ -1964,12 +1996,43 @@ namespace pitTeam.Patches
             KitLoadoutPricingContext pricingContext = CreateKitLoadoutPricingContext(selectedBuild.Equipment);
             int price = CalculateBuildMarketRoublePrice(selectedBuild.Equipment, pricingContext);
             LogBuildPriceDiagnosticsOnce(selectedBuild, pricingContext, price, "selected");
+            RecordNativePricingValues(selectedBuild, pricingContext, price);
             weightPanel.SetParameterValue(new ValueStruct
             {
                 Current = price,
                 Maximum = 0f
             }, -1f, 0, false, true);
             weightPanel.SetWarningColor(false, false);
+        }
+
+        private static object LastPricingValues;
+
+        public static object GetNativePricingValues() => new { active = ShouldCustomizeBuildsScreen && _activeScreen != null,
+            lastCalculation = LastPricingValues,
+            rowPresentation = BuildRowStates.Values.Where(state => state.View != null).Select(state => new {
+                build = state.Build?.Name, active = state.View.gameObject.activeInHierarchy,
+                renderedPrice = state.View._weight?._currentValue?.text,
+                currencyIcon = state.View._weight?._icon?.sprite?.name
+            }).ToArray() };
+
+        private static void RecordNativePricingValues(EFT.UI.Builds.EquipmentBuild build, KitLoadoutPricingContext context, int price)
+        {
+            if (!pitTeam.Compat.Spt5RuntimeInstallProbe.Enabled) return;
+            try
+            {
+                var included = CollectEquipmentBuildItems(build.Equipment).Where(item => !IsIgnoredKitRequirementItem(item)).ToArray();
+                var includedIds = new HashSet<string>(included.Select(item => item.Id), StringComparer.Ordinal);
+                var raw = new List<Item>();
+                build.Equipment.GetAllItemsFromCollectionNonAlloc(raw);
+                LastPricingValues = new { passed = true, frame = Time.frameCount, accountId = _accountId,
+                    buildName = build.Name, price, marketPricesLoaded = _marketPrices != null,
+                    rows = raw.Where(item => item != null).Select(item => new { id = item.Id, template = item.TemplateId.ToString(),
+                        nativeType = item.GetIl2CppType().FullName, count = item.StackObjectsCount,
+                        structural = IsIgnoredKitRequirementItem(item), included = includedIds.Contains(item.Id),
+                        marketUnitPrice = _marketPrices != null && _marketPrices.TryGetValue(item.TemplateId.ToString(), out float market) ? (float?)market : null,
+                        quotedPrice = includedIds.Contains(item.Id) ? (double?)CalculateKitLoadoutItemMarketRoublePrice(item, context) : null }).ToArray() };
+            }
+            catch (Exception ex) { LastPricingValues = new { passed = false, error = ex.ToString() }; }
         }
 
         private static void ApplyBuildListPrice(EquipmentBuildListView view, EFT.UI.BuildWrapper<EFT.UI.Builds.EquipmentBuild> buildWrapper)
@@ -1979,8 +2042,13 @@ namespace pitTeam.Patches
 
         private static void ApplyBuildListPrice(EquipmentBuildListView view, EFT.UI.Builds.EquipmentBuild build)
         {
-            HealthParameterPanel weightPanel = BuildListWeightField?.GetValue(view) as HealthParameterPanel;
-            if (weightPanel == null || build == null)
+            if (view == null || build == null)
+            {
+                return;
+            }
+
+            HealthParameterPanel weightPanel = BuildListWeightAccessor.GetValue(view) as HealthParameterPanel;
+            if (weightPanel == null)
             {
                 return;
             }
@@ -2256,9 +2324,9 @@ namespace pitTeam.Patches
             // items for armor/helmet stats, but they are integral materials, not
             // player-buyable or swappable kit parts.
             return item == null
-                || item is InventoryEquipment
-                || item is EFT.InventoryLogic.Pockets
-                || item is EFT.InventoryLogic.BuiltInInserts;
+                || Il2CppBoundary.CastNativeOrNull<InventoryEquipment>(item) != null
+                || Il2CppBoundary.CastNativeOrNull<EFT.InventoryLogic.Pockets>(item) != null
+                || Il2CppBoundary.CastNativeOrNull<EFT.InventoryLogic.BuiltInInserts>(item) != null;
         }
 
         private static List<FriendlyTeammateBuyKitUsedItem> CreateSafeExactStashSelections(
@@ -2464,15 +2532,31 @@ namespace pitTeam.Patches
 
         private static double CalculateSingleItemMarketRoublePrice(Item item)
         {
-            if (item == null)
+            if (IsIgnoredKitRequirementItem(item))
             {
                 return 0.0;
+            }
+
+            string templateId = item.TemplateId.ToString();
+            if (_nativeBuildMarketPriceSource == null || !ReferenceEquals(_nativeBuildMarketPriceSourceMarketPrices, _marketPrices))
+            {
+                _nativeBuildMarketPriceSource = Spt5NativeSupplyDataPriceSource.Create(_marketPrices);
+                _nativeBuildMarketPriceSourceMarketPrices = _marketPrices;
+            }
+
+            bool hasMarketPrice = _marketPrices != null
+                && _marketPrices.TryGetValue(templateId, out float marketPrice)
+                && marketPrice > 0f;
+            if (!hasMarketPrice && Singleton<EFT.HandBook.Handbook>.Instantiated)
+            {
+                double handbookFallback = Singleton<EFT.HandBook.Handbook>.Instance.GetBasePrice(item.TemplateId);
+                Spt5NativeSupplyDataPriceSource.AddHandbookFallback(_nativeBuildMarketPriceSource, templateId, handbookFallback);
             }
 
             double price = EFT.Trading.PriceCalculator.CalculateBuyoutBasePriceForSingleItem(
                 item,
                 0,
-                BuildMarketPriceSource,
+                _nativeBuildMarketPriceSource,
                 true);
 
             return price > 0.0
@@ -2538,7 +2622,7 @@ namespace pitTeam.Patches
 
         private static Weapon GetEquipmentWeapon(InventoryEquipment equipment, EquipmentSlot slot)
         {
-            return equipment?.GetSlot(slot)?.ContainedItem as Weapon;
+            return Il2CppBoundary.CastNativeOrNull<Weapon>(equipment?.GetSlot(slot)?.ContainedItem);
         }
 
         private static double CalculatePrimaryWeaponDiscount(Weapon weapon, bool hasArmor, bool hasHelmet, bool hasSupply)
@@ -2622,7 +2706,7 @@ namespace pitTeam.Patches
 
         private static bool HasKitHelmet(InventoryEquipment equipment)
         {
-            return equipment?.GetSlot(EquipmentSlot.Headwear)?.ContainedItem is EFT.InventoryLogic.Headwear;
+            return Il2CppBoundary.CastNativeOrNull<EFT.InventoryLogic.Headwear>(equipment?.GetSlot(EquipmentSlot.Headwear)?.ContainedItem) != null;
         }
 
         private static bool IsArmoredTacticalVest(Item item)
@@ -2634,9 +2718,16 @@ namespace pitTeam.Patches
 
             try
             {
-                return item.TryGetItemComponent<ArmorHolderComponent>(out _)
-                    || item.GetItemComponentsInChildren<ArmorComponent>(true).Any()
-                    || item.GetItemComponentsInChildren<CompositeArmorComponent>(true).Any();
+                if (item.TryGetItemComponent<ArmorHolderComponent>(out _)) return true;
+                foreach (var component in item.GetItemComponentsInChildren<ArmorComponent>(true))
+                {
+                    return true;
+                }
+                foreach (var component in item.GetItemComponentsInChildren<CompositeArmorComponent>(true))
+                {
+                    return true;
+                }
+                return false;
             }
             catch
             {
@@ -2691,7 +2782,11 @@ namespace pitTeam.Patches
                     return false;
                 }
 
-                List<ArmorSlot> armorSlots = armorHolder.ArmorSlots.Where(slot => slot != null).ToList();
+                List<ArmorSlot> armorSlots = new List<ArmorSlot>();
+                foreach (ArmorSlot slot in armorHolder.ArmorSlots)
+                {
+                    if (slot != null) armorSlots.Add(slot);
+                }
                 totalSlots = armorSlots.Count;
                 if (totalSlots <= 0)
                 {
@@ -2799,7 +2894,7 @@ namespace pitTeam.Patches
 
             Slot magazineSlot = GetWeaponMagazineSlot(weapon);
             EFT.InventoryLogic.Magazine currentMagazine = weapon.GetCurrentMagazine();
-            foreach (EFT.InventoryLogic.Magazine magazine in allItems.OfType<EFT.InventoryLogic.Magazine>())
+            foreach (EFT.InventoryLogic.Magazine magazine in allItems.Select(Il2CppBoundary.CastNativeOrNull<EFT.InventoryLogic.Magazine>))
             {
                 if (magazine == null || IsInsideItemTree(magazine, weapon))
                 {
@@ -2839,7 +2934,7 @@ namespace pitTeam.Patches
                 return false;
             }
 
-            foreach (EFT.InventoryLogic.Ammo ammo in allItems.OfType<EFT.InventoryLogic.Ammo>())
+            foreach (EFT.InventoryLogic.Ammo ammo in allItems.Select(Il2CppBoundary.CastNativeOrNull<EFT.InventoryLogic.Ammo>))
             {
                 if (ammo == null
                     || ammo.StackObjectsCount <= 0
@@ -3058,7 +3153,7 @@ namespace pitTeam.Patches
                 handbookId: handbookId,
                 linkedSearchId: string.Empty,
                 neededSearchId: string.Empty,
-                buildItems: new Dictionary<string, int>(),
+                buildItems: new Il2CppSystem.Collections.Generic.Dictionary<string, int>(),
                 buildCount: 0,
                 updateOfferCount: false);
 
@@ -3088,7 +3183,8 @@ namespace pitTeam.Patches
             int rejectedRaw = 0;
             foreach (Offer offer in result.Value.offers)
             {
-                if (offer?.Item is not Weapon candidateWeapon
+                Weapon candidateWeapon = Il2CppBoundary.CastNativeOrNull<Weapon>(offer?.Item);
+                if (candidateWeapon == null
                     || !offer.CanBeBought
                     || !offer.OnlyMoney
                     || !string.Equals(candidateWeapon.TemplateId, weaponTemplateId, StringComparison.Ordinal))
@@ -3270,7 +3366,7 @@ namespace pitTeam.Patches
             foreach (Item item in CollectDeepItemTree(weapon))
             {
                 if (IsIgnoredKitRequirementItem(item)
-                    || item is EFT.InventoryLogic.Ammo
+                    || Il2CppBoundary.CastNativeOrNull<EFT.InventoryLogic.Ammo>(item) != null
                     || string.IsNullOrWhiteSpace(item?.Id))
                 {
                     continue;
@@ -3404,7 +3500,7 @@ namespace pitTeam.Patches
                         continue;
                     }
 
-                    foreach (Weapon candidateWeapon in CollectDeepItemTree(rootItem).OfType<Weapon>())
+                    foreach (Weapon candidateWeapon in CollectDeepItemTree(rootItem).Select(Il2CppBoundary.CastNativeOrNull<Weapon>).Where(weapon => weapon != null))
                     {
                         if (HasParentWeapon(candidateWeapon)
                             || !IsTraderOfferAvailable(trader, assortment, candidateWeapon)
@@ -3512,7 +3608,7 @@ namespace pitTeam.Patches
 
             foreach (Item parent in item.GetAllParentItems())
             {
-                if (parent is Weapon)
+                if (Il2CppBoundary.CastNativeOrNull<Weapon>(parent) != null)
                 {
                     return true;
                 }
@@ -3532,7 +3628,7 @@ namespace pitTeam.Patches
             foreach (Item item in CollectDeepItemTree(weapon))
             {
                 if (IsIgnoredKitRequirementItem(item)
-                    || item is EFT.InventoryLogic.Ammo
+                    || Il2CppBoundary.CastNativeOrNull<EFT.InventoryLogic.Ammo>(item) != null
                     || string.IsNullOrWhiteSpace(item?.TemplateId))
                 {
                     continue;
@@ -3754,7 +3850,13 @@ namespace pitTeam.Patches
 
             try
             {
-                return BuildMarketPriceSource.GetBasePrice(new MongoID(templateId));
+                if (_marketPrices != null && _marketPrices.TryGetValue(templateId, out float marketPrice) && marketPrice > 0f)
+                {
+                    return marketPrice;
+                }
+                return Singleton<EFT.HandBook.Handbook>.Instantiated
+                    ? Singleton<EFT.HandBook.Handbook>.Instance.GetBasePrice(new MongoID(templateId))
+                    : 0.0;
             }
             catch
             {
@@ -3865,19 +3967,20 @@ namespace pitTeam.Patches
             // This is the same market-facing price table Ragfair uses to update
             // handbook node prices. It is a better visible estimate than Prapor's
             // sell-to-trader value and is cheap enough to cache per screen session.
-            session.RagfairGetPrices(new Callback<Dictionary<string, float>>(HandleMarketPricesReceived));
+            FollowerLootPriceService.RequestMarketPrices(session, HandleMarketPricesReceived, error =>
+            {
+                _marketPricesRequestInFlight = false;
+                pitFireTeam.Log.LogWarning($"[UI] Failed to load Ragfair market prices for teammate build pricing: {error.Message}");
+            });
         }
 
-        private static void HandleMarketPricesReceived(Result<Dictionary<string, float>> result)
+        private static void HandleMarketPricesReceived(Il2CppSystem.Collections.Generic.Dictionary<string, float> prices)
         {
             _marketPricesRequestInFlight = false;
-            if (!result.Succeed || result.Value == null)
-            {
-                pitFireTeam.Log.LogWarning("[UI] Failed to load Ragfair market prices for teammate build pricing.");
-                return;
-            }
-
-            _marketPrices = new Dictionary<string, float>(result.Value);
+            if (prices == null) { pitFireTeam.Log.LogWarning("[UI] Market-price task returned no prices."); return; }
+            var managedPrices = new Dictionary<string, float>(StringComparer.Ordinal);
+            foreach (var pair in prices) managedPrices[pair.Key] = pair.Value;
+            _marketPrices = managedPrices;
             _marketPricesUpdatedAt = Time.realtimeSinceStartup;
             TraderWeaponOfferPricingPlanCache.Clear();
             RagfairWeaponOfferPricingPlanCache.Clear();
@@ -3887,6 +3990,7 @@ namespace pitTeam.Patches
             UpdateHandbookPrices(_marketPrices);
             RefreshActivePriceLabels();
         }
+
 
         private static void UpdateHandbookPrices(Dictionary<string, float> prices)
         {
@@ -3974,7 +4078,7 @@ namespace pitTeam.Patches
                 // Buying for a teammate only needs a selected kit here; the confirmation owns resources.
                 EFT.UI.Builds.EquipmentBuild selectedBuild = _activeScreen == null
                     ? null
-                    : ScreenSelectedBuildField?.GetValue(_activeScreen) as EFT.UI.Builds.EquipmentBuild;
+                    : ScreenSelectedBuildAccessor.GetValue(_activeScreen) as EFT.UI.Builds.EquipmentBuild;
                 button.Interactable = selectedBuild?.Equipment != null;
             }
 
@@ -4031,8 +4135,7 @@ namespace pitTeam.Patches
 
         private static void ApplyRoublesIcon(Transform row)
         {
-            Transform iconTransform = FindChildRecursive(row, "WeightIcon");
-            Image image = iconTransform?.GetComponent<Image>();
+            Image image = row?.GetComponent<EquipmentBuildListView>()?._weight?._icon;
             Sprite sprite = LoadRoublesSprite();
             if (image == null || sprite == null)
             {
@@ -4312,26 +4415,6 @@ namespace pitTeam.Patches
             public bool? WeightIconEnabled;
             public bool? WeightIconPreserveAspect;
         }
-
-        private sealed class MarketPriceSource : IBasePriceSource
-        {
-            public double GetBasePrice(MongoID itemId)
-            {
-                // Prefer the live /client/items/prices table; handbook remains a safe
-                // fallback for templates absent from the returned market map.
-                if (_marketPrices != null && _marketPrices.TryGetValue(itemId, out float marketPrice) && marketPrice > 0f)
-                {
-                    return marketPrice;
-                }
-
-                if (Singleton<EFT.HandBook.Handbook>.Instantiated)
-                {
-                    return Singleton<EFT.HandBook.Handbook>.Instance.GetBasePrice(itemId);
-                }
-
-                return 0.0;
-            }
-        }
     }
 
     internal class TeammateEquipmentBuildsScreenShowPatch : ModulePatch
@@ -4345,6 +4428,7 @@ namespace pitTeam.Patches
         private static void PatchPostfix(EquipmentBuildsScreen __instance)
         {
             TeammateEquipmentBuildsScreenFlow.ApplyScreenChrome(__instance);
+            Modules.ScenarioStaminaSupport.SelectScenarioCatalogTab(__instance);
         }
     }
 
@@ -4387,7 +4471,7 @@ namespace pitTeam.Patches
         }
 
         [PatchPrefix]
-        private static void PatchPrefix(ref IEnumerable<Item> notFoundItems)
+        private static void PatchPrefix(ref Il2CppSystem.Collections.Generic.IEnumerable<Item> notFoundItems)
         {
             TeammateEquipmentBuildsScreenFlow.CaptureAndSuppressMissingItems(ref notFoundItems);
         }
@@ -4397,7 +4481,7 @@ namespace pitTeam.Patches
     {
         protected override MethodBase GetTargetMethod()
         {
-            return AccessTools.Method(typeof(EquipmentBuildsScreen), nameof(EquipmentBuildsScreen.CG_Awake));
+            return AccessTools.Method(typeof(EquipmentBuildsScreen), "_Awake_b__55_0");
         }
 
         [PatchPrefix]
@@ -4411,7 +4495,7 @@ namespace pitTeam.Patches
     {
         protected override MethodBase GetTargetMethod()
         {
-            return AccessTools.Method(typeof(EquipmentBuildsScreen), nameof(EquipmentBuildsScreen.CG_Awake1));
+            return AccessTools.Method(typeof(EquipmentBuildsScreen), "_Awake_b__55_1");
         }
 
         [PatchPrefix]
@@ -4507,13 +4591,27 @@ namespace pitTeam.Patches
             return AccessTools.Method(
                 typeof(EquipmentBuildListView),
                 "Show",
-                new[] { typeof(EFT.UI.BuildWrapper<EFT.UI.Builds.EquipmentBuild>), typeof(ValueTuple<float, float, float>?) });
+                new[] { typeof(EFT.UI.BuildWrapper<EFT.UI.Builds.EquipmentBuild>), typeof(Il2CppSystem.Nullable<Il2CppSystem.ValueTuple<float, float, float>>) });
         }
 
         [PatchPostfix]
         private static void PatchPostfix(EquipmentBuildListView __instance, EFT.UI.BuildWrapper<EFT.UI.Builds.EquipmentBuild> buildWrapper)
         {
             TeammateEquipmentBuildsScreenFlow.ApplyBuildListRow(__instance, buildWrapper);
+        }
+    }
+
+    internal class TeammateEquipmentBuildsRowCreatedPatch : ModulePatch
+    {
+        protected override MethodBase GetTargetMethod() => AccessTools.Method(typeof(EquipmentBuildsScreen), "_UpdateBuildList_b__60_3",
+            new[] { typeof(EquipmentBuildsScreen.EquipmentBuildWrapper), typeof(EquipmentBuildListView) });
+
+        [PatchPostfix]
+        private static void Postfix(EquipmentBuildsScreen.EquipmentBuildWrapper equipmentBuildWrapper, EquipmentBuildListView view)
+        {
+            // The native asynchronous row callback inlines the derived Show and
+            // writes stock weight itself. Customize only after that write finishes.
+            TeammateEquipmentBuildsScreenFlow.ApplyBuildListRow(view, equipmentBuildWrapper);
         }
     }
 }

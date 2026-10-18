@@ -1,0 +1,317 @@
+﻿{
+    "patches":  [
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.BotOwnerActivatePatch",
+                        "targetType":  "EFT.BotOwner",
+                        "targetMethod":  "Activate",
+                        "parameterTypes":  [
+
+                                           ],
+                        "returnType":  "System.Void"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.SessionLoadBotsEnglishVoicePatch",
+                        "targetType":  "EFT.ClientBackendSession",
+                        "targetMethod":  "LoadBots",
+                        "parameterTypes":  [
+                                               "Il2CppSystem.Collections.Generic.List`1\u003cEFT.CountTypeBotWave\u003e"
+                                           ],
+                        "returnType":  "Il2CppSystem.Threading.Tasks.Task`1\u003cIl2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray`1\u003cEFT.Profile\u003e\u003e"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.OpenDoorRequestPatch",
+                        "targetType":  "BotGroupRequestController",
+                        "targetMethod":  "TryActivateOpenDoorRequest",
+                        "parameterTypes":  [
+                                               "EFT.IPlayer",
+                                               "EFT.Interactive.Door",
+                                               "Il2CppSystem.Action"
+                                           ],
+                        "returnType":  "System.Boolean"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.ItemSpecificationPanelPatch",
+                        "targetType":  "EFT.UI.ItemSpecificationPanel",
+                        "targetMethod":  "GetModLockedState",
+                        "parameterTypes":  [
+                                               "EFT.InventoryLogic.Slot"
+                                           ],
+                        "returnType":  "Il2CppSystem.Collections.Generic.KeyValuePair`2\u003cEFT.UI.DragAndDrop.EModLockedState,EFT.UI.DragAndDrop.ModSlotView/TooltipData\u003e"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.BotTalkTrySayPatch",
+                        "targetType":  "BotTalk",
+                        "targetMethod":  "TrySay",
+                        "parameterTypes":  [
+                                               "EPhraseTrigger",
+                                               "Il2CppSystem.Nullable`1\u003cETagStatus\u003e",
+                                               "System.Boolean"
+                                           ],
+                        "returnType":  "System.Void"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.PlayerSayFollowerTalkPatch",
+                        "targetType":  "EFT.Player",
+                        "targetMethod":  "Say",
+                        "parameterTypes":  [
+                                               "EPhraseTrigger",
+                                               "System.Boolean",
+                                               "System.Single",
+                                               "ETagStatus",
+                                               "System.Int32",
+                                               "System.Boolean",
+                                               "ETagFilter"
+                                           ],
+                        "returnType":  "System.Void"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.FollowerSupportNoAmmoMainSwitchPolicyPatch",
+                        "targetType":  "BotReloadMagazine",
+                        "targetMethod":  "CanReload",
+                        "parameterTypes":  [
+                                               "System.Boolean",
+                                               "EFT.InventoryLogic.Magazine\u0026",
+                                               "Il2CppSystem.Collections.Generic.List`1\u003cEFT.InventoryLogic.Ammo\u003e\u0026"
+                                           ],
+                        "returnType":  "System.Boolean"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.FollowerGrenadeReleasePatch",
+                        "targetType":  "BotGrenadeController",
+                        "targetMethod":  "ThrowCallbackSlow",
+                        "parameterTypes":  [
+                                               "Comfort.Common.Result`1\u003cEFT.IGrenadeController\u003e"
+                                           ],
+                        "returnType":  "System.Void"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.FootstepSoundPatch",
+                        "targetType":  "EFT.Player",
+                        "targetMethod":  "PlayStepSound",
+                        "parameterTypes":  [
+
+                                           ],
+                        "returnType":  "System.Void"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.PlayerContactAudioFallbackPatch",
+                        "targetType":  "EFT.BaseSpeaker",
+                        "targetMethod":  "Play",
+                        "parameterTypes":  [
+                                               "EPhraseTrigger",
+                                               "ETagStatus",
+                                               "System.Boolean",
+                                               "Il2CppSystem.Nullable`1\u003cSystem.Int32\u003e",
+                                               "ETagFilter"
+                                           ],
+                        "returnType":  "TagBank"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.MainMenuControllerPatch",
+                        "targetType":  "EFT.MainMenuShowOperation",
+                        "targetMethod":  "ShowCharacterSelectionScreen",
+                        "parameterTypes":  [
+
+                                           ],
+                        "returnType":  "System.Void"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.MainMenuControllerReadyScreenGatePatch",
+                        "targetType":  "EFT.MainMenuShowOperation",
+                        "targetMethod":  "ShowCharacterSelectionScreen",
+                        "parameterTypes":  [
+
+                                           ],
+                        "returnType":  "System.Void"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.MatchmakerTimeHasComeShowPatch",
+                        "targetType":  "EFT.UI.Matchmaker.MatchmakerTimeHasCome",
+                        "targetMethod":  "Show",
+                        "parameterTypes":  [
+                                               "EFT.UI.Matchmaker.MatchmakerTimeHasCome/TimeHasComeScreenController"
+                                           ],
+                        "returnType":  "System.Void"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.TarkovApplicationOnlineFallbackPatch",
+                        "targetType":  "EFT.TarkovApplication",
+                        "targetMethod":  "NetworkGameMatching",
+                        "parameterTypes":  [
+                                               "System.String",
+                                               "EFT.EMatchingType"
+                                           ],
+                        "returnType":  "Il2CppSystem.Threading.Tasks.Task"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.MainMenuControllerOpenSideSelectionGuardPatch",
+                        "targetType":  "EFT.TarkovApplication",
+                        "targetMethod":  "OpenCharacterSelectionFromMenu",
+                        "parameterTypes":  [
+
+                                           ],
+                        "returnType":  "Il2CppSystem.Threading.Tasks.Task"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.PlayerModelViewShowProfilePatch",
+                        "targetType":  "EFT.UI.PlayerModelView",
+                        "targetMethod":  "Show",
+                        "parameterTypes":  [
+                                               "EFT.Profile",
+                                               "EFT.InventoryLogic.InventoryController",
+                                               "Il2CppSystem.Action",
+                                               "System.Single",
+                                               "Il2CppSystem.Nullable`1\u003cUnityEngine.Vector3\u003e",
+                                               "System.Boolean"
+                                           ],
+                        "returnType":  "Il2CppSystem.Threading.Tasks.Task"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.MatchMakerGroupPreviewClosePlayerPatch",
+                        "targetType":  "EFT.UI.Matchmaker.MatchMakerGroupPreview",
+                        "targetMethod":  "CloseView",
+                        "parameterTypes":  [
+                                               "EFT.UI.Matchmaker.MatchMakerPlayerPreview"
+                                           ],
+                        "returnType":  "System.Void"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.PlayerModelViewShowLastStatePatch",
+                        "targetType":  "EFT.UI.PlayerModelView",
+                        "targetMethod":  "Show",
+                        "parameterTypes":  [
+                                               "EFT.PlayerVisualRepresentation",
+                                               "EFT.InventoryLogic.InventoryController",
+                                               "Il2CppSystem.Action",
+                                               "System.Single",
+                                               "Il2CppSystem.Nullable`1\u003cUnityEngine.Vector3\u003e",
+                                               "System.Boolean"
+                                           ],
+                        "returnType":  "Il2CppSystem.Threading.Tasks.Task"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.SocialNetworkClassPatch",
+                        "targetType":  "EFT.SocialNetwork",
+                        "targetMethod":  "Init",
+                        "parameterTypes":  [
+                                               "EFT.ISocial",
+                                               "System.String"
+                                           ],
+                        "returnType":  "Il2CppSystem.Threading.Tasks.Task"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.FriendRequestAcceptRefreshPatch",
+                        "targetType":  "EFT.SocialNetwork/__c__DisplayClass132_0",
+                        "targetMethod":  "_AcceptFriendRequest_b__1",
+                        "parameterTypes":  [
+                                               "Comfort.Common.IResult"
+                                           ],
+                        "returnType":  "System.Void"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.FriendRequestAcceptAllRefreshPatch",
+                        "targetType":  "EFT.SocialNetwork",
+                        "targetMethod":  "AcceptAllFriendRequests",
+                        "parameterTypes":  [
+
+                                           ],
+                        "returnType":  "Il2CppSystem.Threading.Tasks.Task"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.CreatePhraseGroupPatch",
+                        "targetType":  "EFT.UI.Gestures.GesturesMenu",
+                        "targetMethod":  "CreatePhraseGroup",
+                        "parameterTypes":  [
+                                               "System.String",
+                                               "EFT.UI.Gestures.GesturesAudioItem",
+                                               "Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray`1\u003cEPhraseTrigger\u003e"
+                                           ],
+                        "returnType":  "EFT.UI.Gestures.GesturesAudioItem"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.AddTeammateHeadSelectionOptionsPatch",
+                        "targetType":  "EFT.UI.HeadSelectionState",
+                        "targetMethod":  "ShowState",
+                        "parameterTypes":  [
+
+                                           ],
+                        "returnType":  "Il2CppSystem.Threading.Tasks.Task"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.SessionResultKillListShowPatch",
+                        "targetType":  "EFT.UI.SessionEnd.SessionResultKillList",
+                        "targetMethod":  "Show",
+                        "parameterTypes":  [
+                                               "Diz.Binding.UpdatableBindableList`1\u003cEFT.VictimStats\u003e",
+                                               "Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray`1\u003cEFT.InventoryLogic.DogtagComponent\u003e",
+                                               "EFT.IEftSession"
+                                           ],
+                        "returnType":  "System.Void"
+                    },
+                    {
+                        "parameterTypes":  [
+                                               "System.String",
+                                               "Il2CppSystem.Collections.Generic.HashSet`1\u003cSystem.String\u003e\u0026",
+                                               "Il2CppSystem.Collections.Generic.HashSet`1\u003cSystem.String\u003e\u0026",
+                                               "System.Boolean\u0026"
+                                           ],
+                        "returnType":  "Il2CppSystem.Collections.Generic.HashSet`1\u003cSystem.String\u003e",
+                        "targetType":  "EFT.Interactive.TransitPoint",
+                        "patchClassFullName":  "pitTeam.Patches.TransitPointPatch",
+                        "targetMethod":  "SeparateGroupPlayers"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.OtherPlayerProfileScreenPatch",
+                        "targetType":  "EFT.UI.OtherPlayerProfileScreen",
+                        "targetMethod":  "Show",
+                        "parameterTypes":  [
+                                               "EFT.OtherPlayerProfile",
+                                               "EFT.InventoryLogic.InventoryController",
+                                               "EFT.InventoryLogic.EItemViewType",
+                                               "EFT.IEftSession",
+                                               "System.Boolean"
+                                           ],
+                        "returnType":  "System.Void"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.TeammateEquipmentBuildsListViewPatch",
+                        "targetType":  "EFT.UI.Builds.EquipmentBuildListView",
+                        "targetMethod":  "Show",
+                        "parameterTypes":  [
+                                               "EFT.UI.BuildWrapper`1\u003cEFT.UI.Builds.EquipmentBuild\u003e",
+                                               "Il2CppSystem.Nullable`1\u003cIl2CppSystem.ValueTuple`3\u003cSystem.Single,System.Single,System.Single\u003e\u003e"
+                                           ],
+                        "returnType":  "System.Void"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.LoadoutEditorUnloadAmmoPatch",
+                        "targetType":  "EFT.InventoryLogic.InventoryEquipmentExtension",
+                        "targetMethod":  "GetPrioritizedGridsForUnloadedObject",
+                        "parameterTypes":  [
+                                               "EFT.InventoryLogic.InventoryEquipment",
+                                               "System.Int32"
+                                           ],
+                        "returnType":  "Il2CppSystem.Collections.Generic.IEnumerable`1\u003cEFT.InventoryLogic.Grid\u003e"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.LoadoutEditorRepairByKitPatch",
+                        "targetType":  "EFT.EftClientBackendSession",
+                        "targetMethod":  "RepairItemsByRepairKit",
+                        "parameterTypes":  [
+                                               "Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray`1\u003cEFT.RepairItem\u003e",
+                                               "System.String"
+                                           ],
+                        "returnType":  "Il2CppSystem.Threading.Tasks.Task`1\u003cComfort.Common.IResult\u003e"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.LoadoutEditorRepairByTraderPatch",
+                        "targetType":  "EFT.Trading.Trader",
+                        "targetMethod":  "RepairItems",
+                        "parameterTypes":  [
+                                               "EFT.RepairItem",
+                                               "EFT.InventoryLogic.RepairKit"
+                                           ],
+                        "returnType":  "Il2CppSystem.Threading.Tasks.Task`1\u003cComfort.Common.IResult\u003e"
+                    }
+                ]
+}

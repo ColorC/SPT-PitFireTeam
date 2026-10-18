@@ -452,7 +452,7 @@ namespace pitTeam.Utils
                 return;
             }
 
-            Player shooter = Singleton<GameWorld>.Instance.GetAlivePlayerByProfileID(bullet.PlayerProfileID);
+            Player shooter = Singleton<GameWorld>.Instance.GetAlivePlayerByProfileID(bullet.Player?.iPlayer?.ProfileId ?? string.Empty);
             if (shooter == null)
             {
                 return;
@@ -633,7 +633,7 @@ namespace pitTeam.Utils
             EnemyInfo? enemyInfo = existingInfo ?? Enemy.MakeEnemy(
                 bot,
                 enemy,
-                EBotEnemyCause.checkAddTODO,
+                EBotEnemyCause.Unknown,
                 countSharedSeenAsPersonal: countAsVisible);
             if (enemyInfo == null)
             {

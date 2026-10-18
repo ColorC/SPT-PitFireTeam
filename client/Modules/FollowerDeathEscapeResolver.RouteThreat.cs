@@ -64,7 +64,7 @@ namespace pitTeam.Modules
                 }
 
                 GameWorld gameWorld = Singleton<GameWorld>.Instance;
-                List<Player> alivePlayers = gameWorld?.AllAlivePlayersList;
+                var alivePlayers = gameWorld?.AllAlivePlayersList;
                 if (alivePlayers == null || alivePlayers.Count == 0)
                 {
                     return RouteThreatSnapshot.Empty;
@@ -141,7 +141,7 @@ namespace pitTeam.Modules
             try
             {
                 GameWorld gameWorld = Singleton<GameWorld>.Instance;
-                List<Player> alivePlayers = gameWorld?.AllAlivePlayersList;
+                var alivePlayers = gameWorld?.AllAlivePlayersList;
                 if (alivePlayers == null || alivePlayers.Count == 0)
                 {
                     return RouteThreatSnapshot.Empty;
@@ -161,7 +161,7 @@ namespace pitTeam.Modules
                 Dictionary<string, Player> candidateEnemies = new Dictionary<string, Player>(StringComparer.Ordinal);
                 AddBossGroupEnemies(boss, candidateEnemies);
                 AddFollowerMemoryEnemies(squadmates, candidateEnemies);
-                AddEnemiesTargetingSquad(alivePlayers, squadProfileIds, candidateEnemies);
+                AddEnemiesTargetingSquad(alivePlayers.AsManaged(), squadProfileIds, candidateEnemies);
 
                 List<float> enemyPowers = new List<float>();
                 foreach (Player enemy in candidateEnemies.Values)

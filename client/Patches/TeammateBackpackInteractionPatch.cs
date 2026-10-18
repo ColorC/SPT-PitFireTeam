@@ -3,7 +3,8 @@ using EFT.InventoryLogic;
 using EFT.UI;
 using HarmonyLib;
 using pitTeam.Modules;
-using SPT.Reflection.Patching;
+using pitTeam.Compat;
+using SPTushonka.Reflection.Patching;
 using System.Reflection;
 using TMPro;
 
@@ -158,9 +159,9 @@ namespace pitTeam.Patches
 
     internal class TeammateBackpackSimpleStashLabelPatch : ModulePatch
     {
-        private static readonly FieldInfo SimpleGridNameField = AccessTools.Field(typeof(SimpleStashPanel), "_simpleGridName");
-        private static readonly FieldInfo ContainerNameField = AccessTools.Field(typeof(SimpleStashPanel), "_containerName");
-        private static readonly FieldInfo ContainerNamePanelField = AccessTools.Field(typeof(SimpleStashPanel), "_containerNamePanel");
+        private static readonly NativeUiMemberAccessor? SimpleGridNameAccessor = NativeUiMemberAccessor.TryForProperty(typeof(SimpleStashPanel), "_simpleGridName", typeof(TextMeshProUGUI), false, false);
+        private static readonly NativeUiMemberAccessor? ContainerNameAccessor = NativeUiMemberAccessor.TryForProperty(typeof(SimpleStashPanel), "_containerName", typeof(TextMeshProUGUI), false, false);
+        private static readonly NativeUiMemberAccessor? ContainerNamePanelAccessor = NativeUiMemberAccessor.TryForProperty(typeof(SimpleStashPanel), "_containerNamePanel", typeof(UnityEngine.GameObject), false, false);
 
         protected override MethodBase GetTargetMethod()
         {
@@ -178,17 +179,17 @@ namespace pitTeam.Patches
             }
 
             string title = TeammateBackpackInspection.GetActiveBackpackTitle();
-            if (SimpleGridNameField.GetValue(__instance) is TMP_Text gridName)
+            if (SimpleGridNameAccessor?.GetValue(__instance) is TMP_Text gridName)
             {
                 gridName.text = title;
             }
 
-            if (ContainerNameField.GetValue(__instance) is TMP_Text containerName)
+            if (ContainerNameAccessor?.GetValue(__instance) is TMP_Text containerName)
             {
                 containerName.text = title;
             }
 
-            if (ContainerNamePanelField.GetValue(__instance) is UnityEngine.GameObject containerNamePanel)
+            if (ContainerNamePanelAccessor?.GetValue(__instance) is UnityEngine.GameObject containerNamePanel)
             {
                 containerNamePanel.SetActive(true);
             }

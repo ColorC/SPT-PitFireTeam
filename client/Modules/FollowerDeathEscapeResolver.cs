@@ -7,7 +7,7 @@ using HarmonyLib;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using pitTeam.Components;
-using SPT.Common.Http;
+using SPTushonka.Common.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -496,14 +496,8 @@ namespace pitTeam.Modules
                 "[DeathEscape] Posting escape outcomes: " +
                 string.Join(", ", entries.Select(entry => $"{entry.Nickname}={(entry.Escaped ? "escaped" : "lost")}({entry.Chance:P0})")));
 
-            JsonConverter[] defaultJsonConverters = GetDefaultJsonConverters();
 
-            string json = new FollowerDeathEscapeOutcomeRequest
-            {
-                Notify = true,
-                ResolveOnly = false,
-                Entries = entries
-            }.ToJson(defaultJsonConverters);
+            string json = pitTeam.Compat.SptJsonBoundary.Serialize(new FollowerDeathEscapeOutcomeRequest { Notify = true, ResolveOnly = false, Entries = entries });
 
             Task.Run(() =>
             {
@@ -526,17 +520,11 @@ namespace pitTeam.Modules
                 return entries ?? new List<FollowerDeathEscapeOutcomeEntry>();
             }
 
-            JsonConverter[] defaultJsonConverters = GetDefaultJsonConverters();
-            string json = new FollowerDeathEscapeOutcomeRequest
-            {
-                Notify = false,
-                ResolveOnly = true,
-                Entries = entries
-            }.ToJson(defaultJsonConverters);
+            string json = pitTeam.Compat.SptJsonBoundary.Serialize(new FollowerDeathEscapeOutcomeRequest { Notify = false, ResolveOnly = true, Entries = entries });
 
             string responseJson = RequestHandler.PostJson(OutcomeRoute, json);
             FollowerDeathEscapeBodyResponse<FollowerDeathEscapeOutcomeResponse> response =
-                JsonConvert.DeserializeObject<FollowerDeathEscapeBodyResponse<FollowerDeathEscapeOutcomeResponse>>(responseJson);
+                pitTeam.Compat.SptJsonBoundary.Deserialize<FollowerDeathEscapeBodyResponse<FollowerDeathEscapeOutcomeResponse>>(responseJson);
             if (response == null || response.err != 0)
             {
                 throw new InvalidOperationException(response?.errmsg ?? "Server failed to resolve teammate raid outcomes.");
@@ -544,15 +532,6 @@ namespace pitTeam.Modules
 
             return response.data?.Entries ?? entries;
         }
-
-        private static JsonConverter[] GetDefaultJsonConverters()
-        {
-            var converterClass = typeof(AbstractGame).Assembly.GetTypes()
-                .First(t => t.GetField("Converters", BindingFlags.Static | BindingFlags.Public) != null);
-            return Traverse.Create(converterClass).Field<JsonConverter[]>("Converters").Value;
-        }
-
-
         private struct FollowerReadiness
         {
             public float HealthRatio;

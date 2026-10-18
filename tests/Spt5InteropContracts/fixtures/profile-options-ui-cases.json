@@ -1,0 +1,97 @@
+{
+    "schemaVersion":  1,
+    "provenance":  {
+                       "receipt":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261015bi-probe\\probe-bi-profile-geometry-r104-04.json",
+                       "screenshot":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261015bi-probe\\probe-bi-profile-visual-r104-05.png",
+                       "nativeGeometryCaptured":  true,
+                       "r117Receipt":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261015bj-probe\\probe-bj-profile-final-layout-r117-01.json",
+                       "r117Screenshot":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261015bj-probe\\probe-bj-profile-final-visual-r117-02.png",
+                       "r118Receipt":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261015bj-probe\\probe-bj-options-layout-r118-02.json",
+                       "r118Screenshot":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261015bj-probe\\probe-bj-options-visual-r118-03.png"
+                   },
+    "observed":  {
+                     "nativeClothingPanels":  2,
+                     "clonedGenericSelectorPanels":  1,
+                     "lowerPanelOverlapPixels":  67,
+                     "selectorItemType":  "CustomizationButton"
+                 },
+    "expected":  {
+                     "nativeClothingPanelsPreserved":  2,
+                     "genericLoadoutSelectorPanels":  0,
+                     "profileActionButtons":  4,
+                     "optionsControlType":  "EFT.UI.DefaultUIButton",
+                     "listLayout":  "VerticalLayoutGroup+ScrollRect"
+                 },
+    "observedLayoutFailures":  {
+                                   "actionButtonRowGapPixels":  321.67,
+                                   "actionButtonSurface":  "caption-only",
+                                   "optionsTitlePlacement":  "panel-middle",
+                                   "optionsButtonSurface":  "not-visible",
+                                   "optionsRowGapsPixels":  [
+                                                                66.7,
+                                                                125.3
+                                                            ]
+                               },
+    "expectedCompactLayout":  {
+                                  "actionColumns":  2,
+                                  "actionRows":  2,
+                                  "actionMaxCenterGapPixels":  90,
+                                  "actionButtonWidthLogical":  220,
+                                  "actionButtonHeightLogical":  44,
+                                  "optionsTitlePlacement":  "panel-top-header",
+                                  "optionsRowHeightLogical":  44,
+                                  "closePlacement":  "panel-bottom-right",
+                                  "buttonSurface":  "opaque-root-image"
+                              },
+    "r117MissingTeammateBackControl":  {
+                                           "observedActiveBackControls":  0,
+                                           "teammateBackOverridePrepared":  true,
+                                           "escapeReturnedToRoster":  true,
+                                           "expectedVisibleBackControl":  "pitFireTeam_TeammateProfileBackButton",
+                                           "expectedCloseRoute":  "OtherPlayerProfileScreen.TranslateCommand(EFT.InputSystem.ECommand.Escape)",
+                                           "strangerProfileShouldGetBack":  false,
+                                           "provenance":  "probe-bh-profile-final-layout-r117-01.json"
+                                       },
+    "r161BackPatchTargets":  {
+                                 "observedFailureShape":  "Profile Back intercepted during EquipmentBuildsScreen.Awake; original Show initialization was skipped and native Show later dereferenced uninitialized state.",
+                                 "observedWrongLifecycleTarget":  "Awake",
+                                 "cases":  [
+                                               {
+                                                   "patchClass":  "TeammateEquipmentBuildsScreenBackButtonPatch",
+                                                   "expectedNativeCallback":  "_Awake_b__55_0",
+                                                   "wrongTargetRejected":  true
+                                               },
+                                               {
+                                                   "patchClass":  "TeammateEquipmentBuildsScreenAltBackButtonPatch",
+                                                   "expectedNativeCallback":  "_Awake_b__55_1",
+                                                   "wrongTargetRejected":  true
+                                               }
+                                           ]
+                             },
+    "r187TitleGraphicBoundary":  {
+                                     "provenance":  {
+                                                        "logPath":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\isolated-client-reference\\BepInEx\\LogOutput.log",
+                                                        "observedStack":  "CreateProfileOptionsTitle line 766 -\u003e ShowProfileOptionsOverlay line 591",
+                                                        "nativeFailureObserved":  true
+                                                    },
+                                     "observed":  {
+                                                      "sameGameObjectHasImageAndTmpGraphic":  true,
+                                                      "tmpComponent":  "CustomTextMeshProUGUI",
+                                                      "error":  "NullReferenceException"
+                                                  },
+                                     "expected":  {
+                                                      "backgroundGraphic":  "Image",
+                                                      "labelGraphic":  "CustomTextMeshProUGUI",
+                                                      "labelIsChild":  true,
+                                                      "headerHeightLogical":  44,
+                                                      "offsetMin":  [
+                                                                        18,
+                                                                        -56
+                                                                    ],
+                                                      "offsetMax":  [
+                                                                        -18,
+                                                                        -12
+                                                                    ]
+                                                  }
+                                 }
+}

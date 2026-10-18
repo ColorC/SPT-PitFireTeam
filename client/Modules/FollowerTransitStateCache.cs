@@ -216,7 +216,7 @@ namespace pitTeam.Modules
                 int resetCount = 0;
                 HashSet<HotObject> resetObjects = new HashSet<HotObject>();
 
-                foreach (HotObject hotObject in weaponPrefab.HotObjects ?? Enumerable.Empty<HotObject>())
+                foreach (HotObject hotObject in weaponPrefab.HotObjects.AsManaged())
                 {
                     if (ResetHotObject(hotObject, ambientWeaponTemperature, resetObjects))
                     {

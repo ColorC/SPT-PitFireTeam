@@ -124,18 +124,11 @@ namespace pitTeam.BigBrain.Actions
                 try
                 {
                     BetterAudio audio = Singleton<BetterAudio>.Instance;
-                    BetterSource source = audio?.PlayAtPoint(
-                        worldPosition,
-                        clip,
-                        BetterAudio.AudioSourceGroupType.Character,
-                        30,
-                        1f,
-                        EOcclusionTest.None,
-                        null,
-                        spatialize: true,
-                        oneShot: false,
-                        autoReleaseSource: false,
-                        enabledHighPassFilter: true);
+                    PlayOptions options = PlayOptions.Default;
+                    options.volume = 1f;
+                    options.occlusionTest = EOcclusionTest.None;
+                    options.spatialize = true;
+                    BetterSource source = audio?.PlayAtPoint(worldPosition, clip, BetterAudio.AudioSourceGroupType.Character, 30, ref options);
 
                     if (source != null)
                     {
@@ -206,7 +199,16 @@ namespace pitTeam.BigBrain.Actions
 
         private void TryMarkContainerLootSearchedForBoss()
         {
-            EFT.InventoryLogic.SearchableItem? containerRoot = activeLootContainer?.ItemOwner?.Items?.FirstOrDefault() as EFT.InventoryLogic.SearchableItem;
+            EFT.InventoryLogic.SearchableItem? containerRoot = null;
+            var items = activeLootContainer?.ItemOwner?.Items;
+            if (items != null)
+            {
+                foreach (Item item in items)
+                {
+                    containerRoot = item as EFT.InventoryLogic.SearchableItem;
+                    break;
+                }
+            }
             if (containerRoot == null)
             {
                 return;

@@ -256,7 +256,7 @@ namespace pitTeam.Modules
             EnemyInfo? info = Enemy.MakeEnemy(
                 follower,
                 enemy,
-                EBotEnemyCause.checkAddTODO,
+                EBotEnemyCause.Unknown,
                 countSharedSeenAsPersonal: false);
             if (info == null)
             {

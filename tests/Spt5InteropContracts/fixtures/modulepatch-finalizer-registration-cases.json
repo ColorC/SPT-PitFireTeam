@@ -1,0 +1,243 @@
+{
+    "description":  "Synthetic contract cases for ModulePatch finalizer owner resolution. These are policy fixtures, not runtime evidence.",
+    "cases":  [
+                  {
+                      "name":  "runtime-owner-not-constructor-guess",
+                      "declaredHooks":  [
+                                            "prefix"
+                                        ],
+                      "getPatchInfoNull":  false,
+                      "runtimePrefixOwners":  [
+                                                  "LootPatrolDecisionBypassPatch"
+                                              ],
+                      "runtimePostfixOwners":  [
+
+                                               ],
+                      "legacyOwnerGuess":  "SPTushonkaLootPatrolDecisionBypassPatch",
+                      "existingOwnerFinalizerCount":  0,
+                      "expectRegistered":  true,
+                      "expectedOwnerSource":  "runtime-prefix",
+                      "expectedOwner":  "LootPatrolDecisionBypassPatch",
+                      "expectAddFinalizer":  true
+                  },
+                  {
+                      "name":  "prefix-postfix-same-runtime-owner",
+                      "declaredHooks":  [
+                                            "prefix",
+                                            "postfix"
+                                        ],
+                      "getPatchInfoNull":  false,
+                      "runtimePrefixOwners":  [
+                                                  "FollowerEnemyInfoCorrectionPatch"
+                                              ],
+                      "runtimePostfixOwners":  [
+                                                   "FollowerEnemyInfoCorrectionPatch"
+                                               ],
+                      "liveHarmonyFieldMatches":  0,
+                      "existingOwnerFinalizerCount":  0,
+                      "expectRegistered":  true,
+                      "expectedOwnerSource":  "runtime-prefix",
+                      "expectedOwner":  "FollowerEnemyInfoCorrectionPatch",
+                      "expectAddFinalizer":  true
+                  },
+                  {
+                      "name":  "legitimate-finalizer-only-null-patch-info",
+                      "declaredHooks":  [
+
+                                        ],
+                      "getPatchInfoNull":  true,
+                      "runtimePrefixOwners":  [
+
+                                              ],
+                      "runtimePostfixOwners":  [
+
+                                               ],
+                      "liveHarmonyFieldMatches":  1,
+                      "liveHarmonyId":  "HideoutGameDisposeSyntheticRaidGuardPatch",
+                      "existingOwnerFinalizerCount":  0,
+                      "expectRegistered":  true,
+                      "expectedOwnerSource":  "modulepatch-harmony-id",
+                      "expectedOwner":  "HideoutGameDisposeSyntheticRaidGuardPatch",
+                      "expectAddFinalizer":  true
+                  },
+                  {
+                      "name":  "finalizer-only-nonnull-info-foreign-prefix-does-not-supply-owner",
+                      "declaredHooks":  [
+
+                                        ],
+                      "getPatchInfoNull":  false,
+                      "runtimePrefixOwners":  [
+                                                  "ForeignOwner"
+                                              ],
+                      "runtimePostfixOwners":  [
+
+                                               ],
+                      "liveHarmonyFieldMatches":  1,
+                      "liveHarmonyId":  "AICoreAgentUpdatePatch",
+                      "existingOwnerFinalizerCount":  0,
+                      "expectRegistered":  true,
+                      "expectedOwnerSource":  "modulepatch-harmony-id",
+                      "expectedOwner":  "AICoreAgentUpdatePatch",
+                      "expectAddFinalizer":  true
+                  },
+                  {
+                      "name":  "finalizer-only-missing-live-harmony-field",
+                      "declaredHooks":  [
+
+                                        ],
+                      "getPatchInfoNull":  true,
+                      "runtimePrefixOwners":  [
+
+                                              ],
+                      "runtimePostfixOwners":  [
+
+                                               ],
+                      "liveHarmonyFieldMatches":  0,
+                      "existingOwnerFinalizerCount":  0,
+                      "expectRegistered":  false,
+                      "expectedOwnerSource":  "none",
+                      "expectedOwner":  null,
+                      "expectAddFinalizer":  false
+                  },
+                  {
+                      "name":  "finalizer-only-ambiguous-live-harmony-fields",
+                      "declaredHooks":  [
+
+                                        ],
+                      "getPatchInfoNull":  true,
+                      "runtimePrefixOwners":  [
+
+                                              ],
+                      "runtimePostfixOwners":  [
+
+                                               ],
+                      "liveHarmonyFieldMatches":  2,
+                      "liveHarmonyId":  "ignored",
+                      "existingOwnerFinalizerCount":  0,
+                      "expectRegistered":  false,
+                      "expectedOwnerSource":  "none",
+                      "expectedOwner":  null,
+                      "expectAddFinalizer":  false
+                  },
+                  {
+                      "name":  "declared-prefix-but-null-patch-info",
+                      "declaredHooks":  [
+                                            "prefix"
+                                        ],
+                      "getPatchInfoNull":  true,
+                      "runtimePrefixOwners":  [
+
+                                              ],
+                      "runtimePostfixOwners":  [
+
+                                               ],
+                      "liveHarmonyFieldMatches":  1,
+                      "liveHarmonyId":  "do-not-fallback",
+                      "existingOwnerFinalizerCount":  0,
+                      "expectRegistered":  false,
+                      "expectedOwnerSource":  "none",
+                      "expectedOwner":  null,
+                      "expectAddFinalizer":  false
+                  },
+                  {
+                      "name":  "declared-prefix-with-no-runtime-match",
+                      "declaredHooks":  [
+                                            "prefix"
+                                        ],
+                      "getPatchInfoNull":  false,
+                      "runtimePrefixOwners":  [
+
+                                              ],
+                      "runtimePostfixOwners":  [
+
+                                               ],
+                      "liveHarmonyFieldMatches":  1,
+                      "liveHarmonyId":  "do-not-fallback",
+                      "existingOwnerFinalizerCount":  0,
+                      "expectRegistered":  false,
+                      "expectedOwnerSource":  "none",
+                      "expectedOwner":  null,
+                      "expectAddFinalizer":  false
+                  },
+                  {
+                      "name":  "ambiguous-runtime-prefix-method",
+                      "declaredHooks":  [
+                                            "prefix"
+                                        ],
+                      "getPatchInfoNull":  false,
+                      "runtimePrefixOwners":  [
+                                                  "OwnerA",
+                                                  "OwnerB"
+                                              ],
+                      "runtimePostfixOwners":  [
+
+                                               ],
+                      "liveHarmonyFieldMatches":  1,
+                      "liveHarmonyId":  "do-not-fallback",
+                      "existingOwnerFinalizerCount":  0,
+                      "expectRegistered":  false,
+                      "expectedOwnerSource":  "none",
+                      "expectedOwner":  null,
+                      "expectAddFinalizer":  false
+                  },
+                  {
+                      "name":  "prefix-postfix-owner-disagreement",
+                      "declaredHooks":  [
+                                            "prefix",
+                                            "postfix"
+                                        ],
+                      "getPatchInfoNull":  false,
+                      "runtimePrefixOwners":  [
+                                                  "OwnerA"
+                                              ],
+                      "runtimePostfixOwners":  [
+                                                   "OwnerB"
+                                               ],
+                      "liveHarmonyFieldMatches":  1,
+                      "liveHarmonyId":  "do-not-fallback",
+                      "existingOwnerFinalizerCount":  0,
+                      "expectRegistered":  false,
+                      "expectedOwnerSource":  "none",
+                      "expectedOwner":  null,
+                      "expectAddFinalizer":  false
+                  },
+                  {
+                      "name":  "existing-finalizer-is-idempotent",
+                      "declaredHooks":  [
+                                            "prefix"
+                                        ],
+                      "getPatchInfoNull":  false,
+                      "runtimePrefixOwners":  [
+                                                  "LootPatrolDecisionBypassPatch"
+                                              ],
+                      "runtimePostfixOwners":  [
+
+                                               ],
+                      "existingOwnerFinalizerCount":  1,
+                      "expectRegistered":  true,
+                      "expectedOwnerSource":  "runtime-prefix",
+                      "expectedOwner":  "LootPatrolDecisionBypassPatch",
+                      "expectAddFinalizer":  false
+                  },
+                  {
+                      "name":  "duplicate-finalizer-fails-closed",
+                      "declaredHooks":  [
+
+                                        ],
+                      "getPatchInfoNull":  true,
+                      "runtimePrefixOwners":  [
+
+                                              ],
+                      "runtimePostfixOwners":  [
+
+                                               ],
+                      "liveHarmonyFieldMatches":  1,
+                      "liveHarmonyId":  "HideoutGameDisposeSyntheticRaidGuardPatch",
+                      "existingOwnerFinalizerCount":  2,
+                      "expectRegistered":  false,
+                      "expectedOwnerSource":  "none",
+                      "expectedOwner":  null,
+                      "expectAddFinalizer":  false
+                  }
+              ]
+}

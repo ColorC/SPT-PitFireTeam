@@ -253,8 +253,7 @@ namespace pitTeam.Modules
                 }
             }
 
-            return part.CanShoot &&
-                   enemyInfo._allPartsVision.TryGetValue(part.BodyPartType, out EnemyPartVision vision) &&
+            return enemyInfo._allPartsVision.TryGetValue(part.BodyPartType, out EnemyPartVision vision) &&
                    vision.Visible;
         }
 
@@ -269,7 +268,7 @@ namespace pitTeam.Modules
                                        (part.BodyPartType == BodyPartType.body && correctedBody));
             return correctionVerified
                 ? part.Position
-                : part.GetPartPositionWithOffset();
+                : part.GetPartPositionWithOffset(Vector3.zero);
         }
 
         private static int CountNonNull(

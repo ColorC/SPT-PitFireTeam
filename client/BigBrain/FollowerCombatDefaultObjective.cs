@@ -26,7 +26,7 @@ namespace pitTeam.BigBrain
         }
 
         public override void DecisionChanged(
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? prevDecision,
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> prevDecision,
             AICoreActionResult<BotLogicDecision, CoreActionResultParams> nextDecision)
         {
             decisionDefault.DecisionChanged(prevDecision, nextDecision);

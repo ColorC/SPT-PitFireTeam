@@ -1,4 +1,4 @@
-using Comfort.Common;
+﻿using Comfort.Common;
 using EFT;
 using EFT.HandBook;
 using EFT.InventoryLogic;
@@ -6,7 +6,9 @@ using JsonType;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using SPTushonka.Common.Http;
 using UnityEngine;
+using pitTeam.Compat;
 
 namespace pitTeam.Modules
 {
@@ -45,13 +47,40 @@ namespace pitTeam.Modules
                 }
 
                 _marketPricesRequestInFlight = true;
-                session.RagfairGetPrices(new Callback<Dictionary<string, float>>(HandleMarketPricesReceived));
+                RequestMarketPrices(session, prices => HandleMarketPricesReceived(prices), error => { _marketPricesRequestInFlight = false; Logger.LogInfo($"[LootCommand] Failed to request market prices: {error.Message}"); });
             }
             catch (Exception ex)
             {
                 _marketPricesRequestInFlight = false;
                 Logger.LogInfo($"[LootCommand] Failed to request market prices: {ex.Message}");
             }
+        }
+
+        internal static void RequestMarketPrices(IEftSession session, Action<Il2CppSystem.Collections.Generic.Dictionary<string, float>> onSuccess, Action<Exception> onFailure)
+        {
+            RequestMarketPricesTask(session, onSuccess, onFailure);
+        }
+        private static async void RequestMarketPricesTask(IEftSession session, Action<Il2CppSystem.Collections.Generic.Dictionary<string, float>> onSuccess, Action<Exception> onFailure)
+        {
+            SendRequest request = null;
+            Il2CppSystem.Object requestParams = null;
+            ClientBackendSession endpoint = null;
+            try
+            {
+                endpoint = Il2CppBoundary.CastNativeOrNull<ClientBackendSession>(session);
+                if (endpoint == null || endpoint._backendUrls?.Main == null) throw new InvalidOperationException("Native backend session unavailable.");
+                requestParams = SptJsonBoundary.ParseNativeJObject("{}");
+                request = new SendRequest();
+                if (request.Pointer == IntPtr.Zero || requestParams == null || requestParams.Pointer == IntPtr.Zero) throw new InvalidOperationException("Market price request pointer is zero.");
+                request.Url = endpoint._backendUrls.Main + "/client/items/prices";
+                request.Method = "POST"; request.Params = requestParams; request.UseCache = false;
+                request.Retries = new Il2CppSystem.Nullable<byte>(SendRequest.DefaultRetries);
+                var prices = await endpoint.Send<Il2CppSystem.Collections.Generic.Dictionary<string, float>>(request);
+                if (prices == null) throw new InvalidOperationException("Market price response was null.");
+                onSuccess?.Invoke(prices);
+            }
+            catch (Exception error) { onFailure?.Invoke(error); }
+            finally { GC.KeepAlive(request); GC.KeepAlive(requestParams); GC.KeepAlive(endpoint); }
         }
 
         public static bool PassesPriceThreshold(Item item)
@@ -114,19 +143,34 @@ namespace pitTeam.Modules
                    GetFreeArea(equipment.GetSlot(EquipmentSlot.Pockets)?.ContainedItem);
         }
 
-        private static void HandleMarketPricesReceived(Result<Dictionary<string, float>> result)
+        private static void HandleMarketPricesReceived(Il2CppSystem.Collections.Generic.Dictionary<string, float> prices)
+    {
+        if (prices == null)
+        {
+            HandleMarketPricesReceived((Dictionary<string, float>)null);
+            return;
+        }
+
+        var managed = new Dictionary<string, float>(StringComparer.Ordinal);
+        foreach (var pair in prices)
+        {
+            managed[pair.Key] = pair.Value;
+        }
+
+        HandleMarketPricesReceived(managed);
+    }
+    private static void HandleMarketPricesReceived(Dictionary<string, float> prices)
         {
             _marketPricesRequestInFlight = false;
-            if (!result.Succeed || result.Value == null)
+            if (prices == null)
             {
                 Logger.LogInfo("[LootCommand] Failed to load market prices; body/container loot will use handbook fallback prices.");
                 return;
             }
 
-            _marketPrices = new Dictionary<string, float>(result.Value, StringComparer.Ordinal);
+            _marketPrices = new Dictionary<string, float>(prices, StringComparer.Ordinal);
             _marketPricesUpdatedAt = Time.realtimeSinceStartup;
         }
-
         private static IEnumerable<Item> CollectDeepItemTree(Item item)
         {
             if (item == null)
@@ -253,7 +297,7 @@ namespace pitTeam.Modules
                 }
 
                 int usedArea = 0;
-                foreach (Item child in grid.Items ?? Enumerable.Empty<Item>())
+                foreach (Item child in grid.Items.AsManaged())
                 {
                     usedArea += GetItemArea(child);
                 }

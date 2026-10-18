@@ -137,28 +137,20 @@ namespace pitTeam.Modules
         public float AimSpeed { get; set; } = DefaultPercent;
         public float Accuracy { get; set; } = DefaultPercent;
 
-        [JsonIgnore]
         public float VisionDistanceFactor => ToFactor(VisionDistance);
 
-        [JsonIgnore]
         public float VisionSpeedFactor => ToFactor(VisionSpeed);
 
-        [JsonIgnore]
         public float AimSpeedFactor => ToFactor(GetAimSpeedPercent());
 
-        [JsonIgnore]
         public float AccuracyFactor => ToFactor(Accuracy);
 
-        [JsonIgnore]
         public float SafeVisionDistanceFactor => ToRuntimeFactor(VisionDistance);
 
-        [JsonIgnore]
         public float SafeVisionSpeedFactor => ToRuntimeFactor(VisionSpeed);
 
-        [JsonIgnore]
         public float SafeAimSpeedFactor => ToRuntimeFactor(GetAimSpeedPercent());
 
-        [JsonIgnore]
         public float SafeAccuracyFactor => ToRuntimeFactor(Accuracy);
 
         public FollowerProficiencyModifierValues Clone()

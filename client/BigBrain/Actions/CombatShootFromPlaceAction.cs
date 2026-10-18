@@ -188,7 +188,7 @@ namespace pitTeam.BigBrain.Actions
                 impactTarget);
 
             BotOwner.Steering.LookToPoint(aimPoint);
-            baseLogic._aiming.UpdateNodeByBrain(new AimingResultParams(aimPoint));
+            baseLogic._aiming.UpdateNodeByBrain(new AimingResultParams(((Vector3?)aimPoint).ToNativeNullable()));
 
             RecordLauncherNormalFire(
                 reason,

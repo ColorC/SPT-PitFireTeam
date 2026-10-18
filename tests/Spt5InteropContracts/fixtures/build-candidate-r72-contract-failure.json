@@ -1,0 +1,48 @@
+{
+    "sourceBatchId":  "r72-bc-hover-cast",
+    "sourceContractLog":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\postconstruction-pit-contracts-r72-bc-hover-cast-contracts.log",
+    "sourceReport":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\postconstruction-pit-contracts-r72-bc-hover-cast-contracts.json",
+    "logLines":  [
+                     "  \"test\": \"other-player-profile-ui-member-boundary\",",
+                     "  \"passed\": false,",
+                     "      \"member\": \"ChatFriendsPanelPatch.cs native Transform-to-RectTransform boundary\",",
+                     "      \"expectedReplacementCount\": 1,",
+                     "      \"replacementCount\": 1,",
+                     "      \"oldClrCastAbsent\": false,",
+                     "      \"passed\": false"
+                 ],
+    "expectedFirstError":  "other-player-profile-ui-member-boundary failed: ChatFriendsPanelPatch.cs native Transform-to-RectTransform boundary; expectedReplacementCount=1; replacementCount=1; oldClrCastAbsent=false.",
+    "interpretation":  "R72 falsely matched a valid CastNativeOrNull\u003cRectTransform\u003e(...) is RectTransform native cast guard as a legacy CLR cast; replacement count was 1 of 1, so the implementation was present.",
+    "r192CompileFailure":  {
+                               "provenanceReceipt":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\postconstruction-build-r192-native-health-price-title-receipt.json",
+                               "provenanceLog":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\postconstruction-pit-contracts-r192-native-health-price-title-build.log",
+                               "expectedStage":  "build-failed",
+                               "firstErrorLine":  "D:\\game\\tarkov workshop\\src\\mods\\pitFireTeam\\client\\Patches\\TeammateEquipmentBuildsScreenPatch.cs(4555,1): error CS1022: 应输入类型、命名空间定义或文件尾 [D:\\game\\tarkov workshop\\src\\mods\\pitFireTeam\\client\\pitFireTeam.csproj]",
+                               "contractReportExpected":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\postconstruction-pit-contracts-r192-native-health-price-title-contracts.json",
+                               "contractReportExists":  false,
+                               "artifactStatuses":  [
+                                                        {
+                                                            "path":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\postconstruction-pit-contracts-r192-native-health-price-title-build.log",
+                                                            "exists":  true,
+                                                            "role":  "build-log"
+                                                        },
+                                                        {
+                                                            "path":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\postconstruction-pit-contracts-r192-native-health-price-title-contracts.json",
+                                                            "exists":  false,
+                                                            "role":  "expected-contract-report"
+                                                        }
+                                                    ]
+                           },
+    "r195NativePrice":  {
+                            "provenanceReceipt":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\postconstruction-build-r195-native-health-price-title-receipt.json",
+                            "provenanceLog":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\postconstruction-pit-contracts-r195-native-health-price-title-contracts.log",
+                            "logLines":  [
+                                             "  \"test\": \"native-supply-price-source-contract\",",
+                                             "  \"passed\": false,",
+                                             "      \"check\": \"metadata-native-interface\",",
+                                             "      \"passed\": false"
+                                         ],
+                            "expectedCheck":  "metadata-native-interface",
+                            "expectedFirstError":  "native-supply-price-source-contract failed: metadata-native-interface."
+                        }
+}

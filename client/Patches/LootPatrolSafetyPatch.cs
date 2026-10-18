@@ -1,7 +1,7 @@
 using EFT;
 using pitTeam.Modules;
 using HarmonyLib;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -28,7 +28,7 @@ namespace pitTeam.Patches
             }
 
             EndStatefulNonCombatAction(botOwner, currentDecision);
-            layer._onEndCurDecision?.Invoke(new AICoreActionEnd(reason, true));
+            // SPT 5.0 removed the old private layer-end delegate; stateful action cleanup above is the safe hook.
         }
 
         public static bool ShouldSuppressLayerUse(AICoreLayer<BotLogicDecision> layer)
@@ -314,7 +314,7 @@ namespace pitTeam.Patches
             }
         }
 
-        [PatchFinalizer]
+        [HarmonyFinalizer]
         private static Exception PatchFinalizer(Exception __exception, FilterState __state)
         {
             try
@@ -581,7 +581,7 @@ namespace pitTeam.Patches
             if (botOwner == null) return false;
             if (botOwner.IsDead || botOwner.BotState != EBotState.Active) return false;
             if (botOwner.BotFollower == null || !botOwner.BotFollower.HaveBoss) return false;
-            if (botOwner.BotFollower.BossToFollow is not Components.pitAIBossPlayer) return false;
+            if (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(botOwner) is not Components.pitAIBossPlayer) return false;
             return BossPlayers.Instance?.GetFollower(botOwner) != null;
         }
     }
@@ -630,7 +630,7 @@ namespace pitTeam.Patches
             }
         }
 
-        [PatchFinalizer]
+        [HarmonyFinalizer]
         private static Exception PatchFinalizer(
             LootPatrolLayer __instance,
             Exception __exception,
@@ -639,6 +639,9 @@ namespace pitTeam.Patches
             if (__exception == null) return null;
 
             BotOwner botOwner = null;
+            string ownerStage = "owner-getter", ownerError = null, fallbackKind = "default", fallbackError = null;
+            bool? fallbackSucceeded = null;
+            bool fallbackStage = false;
             try
             {
                 if (_botOwnerGetter == null && __instance != null)
@@ -647,17 +650,22 @@ namespace pitTeam.Patches
                 }
 
                 botOwner = _botOwnerGetter?.Invoke(__instance);
+                ownerStage = "fallback"; fallbackStage = true; fallbackKind = botOwner != null ? "HoldOrCover" : "default";
                 __result = new AICoreActionResult<BotLogicDecision, CoreActionResultParams>(
                     botOwner != null ? BaseLogicLayerSimple.HoldOrCover(botOwner) : default,
                     "pitFireTeam_lootPatrol_exception_guard");
+                fallbackSucceeded = true;
             }
-            catch
+            catch (Exception diagnosticError)
             {
+                if (fallbackStage) fallbackError = diagnosticError.ToString(); else ownerError = diagnosticError.ToString();
+                fallbackKind = "exception-guard-default"; fallbackSucceeded = false;
                 __result = new AICoreActionResult<BotLogicDecision, CoreActionResultParams>(
                     default,
                     "pitFireTeam_lootPatrol_exception_guard_failed");
             }
 
+            pitTeam.Compat.Spt5LootPatrolDiagnostics.RecordException(__exception, () => pitTeam.Compat.Spt5LootPatrolDiagnostics.Capture(__instance, botOwner, ownerStage, ownerError, fallbackKind, fallbackSucceeded, fallbackError, () => botOwner == null ? (bool?)null : IsConfirmedFollower(botOwner)));
             if (UnityEngine.Time.time >= _nextExceptionLogAt)
             {
                 _nextExceptionLogAt = UnityEngine.Time.time + 1f;
@@ -673,7 +681,7 @@ namespace pitTeam.Patches
             if (botOwner == null) return false;
             if (botOwner.IsDead || botOwner.BotState != EBotState.Active) return false;
             if (botOwner.BotFollower == null || !botOwner.BotFollower.HaveBoss) return false;
-            if (botOwner.BotFollower.BossToFollow is not Components.pitAIBossPlayer) return false;
+            if (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(botOwner) is not Components.pitAIBossPlayer) return false;
             return BossPlayers.Instance?.GetFollower(botOwner) != null;
         }
     }
@@ -714,7 +722,7 @@ namespace pitTeam.Patches
             if (botOwner == null) return false;
             if (botOwner.IsDead || botOwner.BotState != EBotState.Active) return false;
             if (botOwner.BotFollower == null || !botOwner.BotFollower.HaveBoss) return false;
-            if (botOwner.BotFollower.BossToFollow is not Components.pitAIBossPlayer) return false;
+            if (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(botOwner) is not Components.pitAIBossPlayer) return false;
             return BossPlayers.Instance?.GetFollower(botOwner) != null;
         }
     }

@@ -6,7 +6,7 @@ using EFT.InventoryLogic;
 using pitTeam.Components;
 using HarmonyLib;
 using Newtonsoft.Json;
-using SPT.Common.Http;
+using SPTushonka.Common.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -413,7 +413,7 @@ namespace pitTeam.Modules
                 return;
             }
 
-            string json = JsonConvert.SerializeObject(new
+            string json = System.Text.Json.JsonSerializer.Serialize(new
             {
                 itemIds = ids,
                 context
@@ -463,7 +463,7 @@ namespace pitTeam.Modules
                 return;
             }
 
-            string json = JsonConvert.SerializeObject(new
+            string json = System.Text.Json.JsonSerializer.Serialize(new
             {
                 removeItemIds = ids,
                 context
@@ -515,21 +515,13 @@ namespace pitTeam.Modules
                     DetachReturnRoot(root);
                 }
 
-                JsonType.FlatItem[] flatItems = Singleton<EFT.ItemFactory>.Instance.TreeToFlatItems(rootItems);
+                JsonType.FlatItem[] flatItems = Singleton<EFT.ItemFactory>.Instance.TreeToFlatItems(rootItems.ToNativeList());
                 if (flatItems == null || !flatItems.Any())
                 {
                     return false;
                 }
 
-                var converterClass = typeof(AbstractGame).Assembly.GetTypes()
-                    .First(t => t.GetField("Converters", BindingFlags.Static | BindingFlags.Public) != null);
-                var defaultJsonConverters = Traverse.Create(converterClass).Field<JsonConverter[]>("Converters").Value;
-
-                string returnItemsJson = new
-                {
-                    items = flatItems,
-                    member,
-                }.ToJson(defaultJsonConverters);
+                string returnItemsJson = pitTeam.Compat.SptJsonBoundary.Serialize(new { items = flatItems, member });
 
                 bool Send()
                 {
@@ -733,15 +725,7 @@ namespace pitTeam.Modules
                     return;
                 }
 
-                var converterClass = typeof(AbstractGame).Assembly.GetTypes()
-                    .First(t => t.GetField("Converters", BindingFlags.Static | BindingFlags.Public) != null);
-                var defaultJsonConverters = Traverse.Create(converterClass).Field<JsonConverter[]>("Converters").Value;
-
-                string json = new
-                {
-                    Notify = false,
-                    Entries = entries
-                }.ToJson(defaultJsonConverters);
+                string json = pitTeam.Compat.SptJsonBoundary.Serialize(new { Notify = false, Entries = entries });
 
                 Task.Run(() =>
                 {
@@ -1365,8 +1349,8 @@ namespace pitTeam.Modules
                 return true;
             }
 
-            Item firstRoot = first.ItemOwner?.Items?.FirstOrDefault();
-            Item secondRoot = second.ItemOwner?.Items?.FirstOrDefault();
+            Item firstRoot = first.ItemOwner?.Items?.AsManaged().FirstOrDefault();
+            Item secondRoot = second.ItemOwner?.Items?.AsManaged().FirstOrDefault();
             return !string.IsNullOrEmpty(firstRoot?.Id) &&
                    string.Equals(firstRoot.Id, secondRoot?.Id, StringComparison.Ordinal);
         }
@@ -1374,7 +1358,7 @@ namespace pitTeam.Modules
         private static bool TryGetContainerLootTargetId(LootableContainer container, out string targetId)
         {
             targetId = string.Empty;
-            Item root = container?.ItemOwner?.Items?.FirstOrDefault();
+            Item root = container?.ItemOwner?.Items?.AsManaged().FirstOrDefault();
             if (string.IsNullOrEmpty(root?.Id))
             {
                 return false;
@@ -2334,7 +2318,16 @@ namespace pitTeam.Modules
                     var enemy = hit.collider.gameObject.GetComponent<Player>();
                     if (enemy != null)
                     {
-                        if (boss.Followers.Find(fl => fl.ProfileId == enemy.ProfileId) != null) continue;
+                        bool isFollower = false;
+                        foreach (var follower in boss.Followers)
+                        {
+                            if (follower?.ProfileId == enemy.ProfileId)
+                            {
+                                isFollower = true;
+                                break;
+                            }
+                        }
+                        if (isFollower) continue;
 
                         if (player.ProfileId == enemy.ProfileId) continue;
 

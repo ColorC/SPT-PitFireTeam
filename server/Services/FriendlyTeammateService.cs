@@ -816,6 +816,22 @@ public class FriendlyTeammateService(
         return ToOtherProfileResponse(PrepareTeammateForFetch(teammate));
     }
 
+    private static FriendlyTeammateFollowerHealth? CreateFollowerHealthSnapshot(BotBase teammate)
+    {
+        var health = teammate.Health;
+        if (health == null) return null;
+        FriendlyTeammateHealthValue? Project(CurrentMinMax? value) => value == null ? null : new FriendlyTeammateHealthValue { Current = value.Current, Minimum = value.Minimum, Maximum = value.Maximum };
+        return new FriendlyTeammateFollowerHealth
+        {
+            ProfileId = teammate.Id?.ToString() ?? string.Empty,
+            Aid = teammate.Aid,
+            BodyParts = health.BodyParts?.ToDictionary(entry => entry.Key, entry => Project(entry.Value?.Health)) ?? [],
+            Energy = Project(health.Energy),
+            Hydration = Project(health.Hydration),
+            Temperature = Project(health.Temperature),
+            Poison = Project(health.Poison),
+        };
+    }
     public FriendlyTeammateProfileOptionsResponse GetProfileOptions(MongoId sessionId, FriendlyTeammateProfileOptionsRequest request)
     {
         var teammate = FindByAccountId(sessionId, request.Aid);
@@ -826,11 +842,14 @@ public class FriendlyTeammateService(
             SaveTeammateSettings(sessionId, teammate, settings);
         }
 
-        var selectedLoadoutId = NormalizeCurrentLoadoutId(profile, settings.SelectedLoadoutId);
+        bool realTransferMode = IsRealTransferLoadoutManagementMode(
+            NormalizeLoadoutManagementMode(settingsService.LoadSettings().LoadoutManagementMode));
+        var selectedLoadoutId = realTransferMode ? DefaultLoadoutId : NormalizeCurrentLoadoutId(profile, settings.SelectedLoadoutId);
 
         var response = new FriendlyTeammateProfileOptionsResponse
         {
             CurrentLoadoutId = selectedLoadoutId,
+            FollowerHealth = CreateFollowerHealthSnapshot(teammate),
             CurrentTactic = NormalizeCombatTactic(settings.CombatTactic),
             Aggression = NormalizeAggression(settings.Aggression),
             Proficiency = NormalizeProficiency(settings.Proficiency),
@@ -854,7 +873,7 @@ public class FriendlyTeammateService(
                 .ToList(),
         };
 
-        foreach (var build in GetCustomEquipmentBuilds(profile))
+        foreach (var build in realTransferMode ? [] : GetCustomEquipmentBuilds(profile))
         {
             response.Loadouts.Add(
                 new FriendlyTeammateLoadoutOption
@@ -903,13 +922,21 @@ public class FriendlyTeammateService(
 
     public void SetTeammateLoadout(MongoId sessionId, FriendlyTeammateLoadoutRequest request)
     {
-        var teammate = FindByAccountId(sessionId, request.Aid);
         var selectedLoadoutId = NormalizeRequiredValue(request.LoadoutId, "loadoutId");
+        bool realTransferMode = IsRealTransferLoadoutManagementMode(
+            NormalizeLoadoutManagementMode(settingsService.LoadSettings().LoadoutManagementMode));
+        if (realTransferMode && !string.Equals(selectedLoadoutId, DefaultLoadoutId, StringComparison.OrdinalIgnoreCase))
+        {
+            throw CreateRealGearModeException(sessionId, "Rejected virtual preset selection in a real-transfer mode.");
+        }
+
+        var teammate = FindByAccountId(sessionId, request.Aid);
         var settings = GetTeammateSettings(sessionId, teammate);
 
         if (string.Equals(selectedLoadoutId, DefaultLoadoutId, StringComparison.OrdinalIgnoreCase))
         {
-            RestoreDefaultEquipment(sessionId, teammate);
+            // Default is the existing real inventory in these modes, not a recipe to replay.
+            if (!realTransferMode) RestoreDefaultEquipment(sessionId, teammate);
             settings.SelectedLoadoutId = DefaultLoadoutId;
             SaveTeammateSettings(sessionId, teammate, settings);
             SaveTeammate(sessionId, teammate);
@@ -934,6 +961,11 @@ public class FriendlyTeammateService(
 
     public FriendlyTeammateDefaultEquipmentResponse SaveTeammateDefaultEquipment(MongoId sessionId, FriendlyTeammateDefaultEquipmentRequest request)
     {
+        string mode = NormalizeLoadoutManagementMode(settingsService.LoadSettings().LoadoutManagementMode);
+        if (IsRealTransferLoadoutManagementMode(mode) && !request.RealItemCommit)
+        {
+            throw CreateRealGearModeException(sessionId, "Rejected legacy clone-save without a real item commit.");
+        }
         var teammate = FindByAccountId(sessionId, request.Aid);
         var items = request.Items?.Where(item => item != null).ToList();
         if (items == null || items.Count == 0)
@@ -941,11 +973,9 @@ public class FriendlyTeammateService(
             throw new FriendlyTeammateException("Missing teammate default equipment items");
         }
 
-        string mode = NormalizeLoadoutManagementMode(settingsService.LoadSettings().LoadoutManagementMode);
-        if (request.RealItemCommit && IsRealTransferLoadoutManagementMode(mode))
+        if (IsRealTransferLoadoutManagementMode(mode))
         {
-            // Restricted/Immersive/Extreme Default edits are real ownership transfers. Keep the normal
-            // clone-save path for Simple and for future non-default loadout modes until those rules are explicit.
+            // The active server mode owns this decision; a legacy client flag cannot enable cloning.
             return SaveTeammateDefaultEquipmentWithRealItemCommit(sessionId, teammate, request, items, mode);
         }
 
@@ -2456,6 +2486,13 @@ public class FriendlyTeammateService(
             "KitLoadoutPurchaseFailed");
         return new FriendlyTeammateException(
             GetLanguageValue(socialUiText, "KitStashContainerHasUnselectedContents", fallback));
+    }
+
+    private FriendlyTeammateException CreateRealGearModeException(MongoId sessionId, string diagnostic)
+    {
+        logger.Warning(diagnostic);
+        var text = languageService.GetStringMap(sessionId, "socialUi");
+        return new FriendlyTeammateException(GetLanguageValue(text, "ProfileRealGearRequiresTransfer", "ProfileRealGearRequiresTransfer"));
     }
 
     private FriendlyTeammateException CreateKitPurchaseException(MongoId sessionId, string diagnostic)
@@ -4720,6 +4757,12 @@ public class FriendlyTeammateService(
         var customization = teammate.Customization ?? new CommonCustomization();
         var inventory = teammate.Inventory ?? new BotBaseInventory { Items = [] };
         var stats = teammate.Stats ?? new Stats { Eft = new EftStats() };
+        bool isScav = string.Equals(info.Side, "Savage", StringComparison.OrdinalIgnoreCase);
+        // These two legacy descriptors have no skill instances in EFT 1.1.5.
+        // Filter only the response clone; preserve the stored profile and progress.
+        var responseSkills = cloner.Clone(teammate.Skills);
+        if (responseSkills?.Common != null)
+            responseSkills.Common = responseSkills.Common.Where(skill => skill.Id != SkillTypes.ProneMovement && skill.Id != SkillTypes.RecoilControl).ToList();
 
         return new GetOtherProfileResponse
         {
@@ -4744,7 +4787,7 @@ public class FriendlyTeammateService(
                 Dogtag = customization.DogTag,
                 Voice = customization.Voice,
             },
-            Skills = teammate.Skills,
+            Skills = responseSkills,
             Equipment = new OtherProfileEquipment
             {
                 Id = inventory.Equipment?.ToString(),
@@ -4756,16 +4799,16 @@ public class FriendlyTeammateService(
             {
                 Eft = new OtherProfileSubStats
                 {
-                    TotalInGameTime = stats.Eft?.TotalInGameTime,
-                    OverAllCounters = stats.Eft?.OverallCounters,
+                    TotalInGameTime = isScav ? 0 : stats.Eft?.TotalInGameTime ?? 0,
+                    OverAllCounters = isScav ? new OverallCounters { Items = [] } : stats.Eft?.OverallCounters ?? new OverallCounters { Items = [] },
                 },
             },
             ScavStats = new OtherProfileStats
             {
                 Eft = new OtherProfileSubStats
                 {
-                    TotalInGameTime = stats.Eft?.TotalInGameTime,
-                    OverAllCounters = stats.Eft?.OverallCounters,
+                    TotalInGameTime = isScav ? stats.Eft?.TotalInGameTime ?? 0 : 0,
+                    OverAllCounters = isScav ? stats.Eft?.OverallCounters ?? new OverallCounters { Items = [] } : new OverallCounters { Items = [] },
                 },
             },
             Hideout = teammate.Hideout ?? new Hideout(),

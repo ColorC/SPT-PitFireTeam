@@ -97,7 +97,7 @@ namespace pitTeam.Modules
             EnemyInfo? info = Enemy.MakeEnemy(
                 owner,
                 firstVisible,
-                EBotEnemyCause.checkAddTODO,
+                EBotEnemyCause.Unknown,
                 countSharedSeenAsPersonal: false);
             if (info == null)
             {
@@ -113,7 +113,7 @@ namespace pitTeam.Modules
 
             PromoteGoalEnemy(owner, info, hasDirectVisibility: true);
 
-            owner.BotFollower.BossToFollow?.Followers?.ForEach(follower =>
+            owner.BotFollower.BossToFollow?.Followers?.ForEach((System.Action<BotOwner>)(follower =>
             {
                 if (follower == null || follower.IsDead || follower.GetPlayer == null || follower == owner)
                 {
@@ -132,7 +132,7 @@ namespace pitTeam.Modules
                 EnemyInfo? followerInfo = Enemy.MakeEnemy(
                     follower,
                     firstVisible,
-                    EBotEnemyCause.checkAddTODO,
+                    EBotEnemyCause.Unknown,
                     countSharedSeenAsPersonal: false);
                 bool siblingHasDirectContact = FollowerEnemyInfoCorrection.RefreshDirectContactForAcquisition(follower, followerInfo);
                 Enemy.RepairPersonalMemory(followerInfo, firstVisible.Position, siblingHasDirectContact);
@@ -142,7 +142,7 @@ namespace pitTeam.Modules
                 }
 
                 PromoteGoalEnemy(follower, followerInfo, hasDirectVisibility: true);
-            });
+            }));
         }
 
         private static void PromoteGoalEnemy(BotOwner follower, EnemyInfo? info, bool hasDirectVisibility)
@@ -169,7 +169,7 @@ namespace pitTeam.Modules
 
         public static bool CandidateHasBossOrFollowerAsEnemy(BotOwner owner, Player candidate)
         {
-            if (owner?.BotFollower?.BossToFollow is not pitAIBossPlayer boss)
+            if (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(owner) is not pitAIBossPlayer boss)
             {
                 return false;
             }
@@ -195,7 +195,7 @@ namespace pitTeam.Modules
                 return true;
             }
 
-            List<BotOwner> followers = boss.Followers;
+            var followers = boss.Followers;
             if (followers == null || followers.Count == 0)
             {
                 return false;
@@ -220,7 +220,7 @@ namespace pitTeam.Modules
 
         public static bool CandidateHasGoalEnemyBossOrFollower(BotOwner owner, Player candidate)
         {
-            if (owner?.BotFollower?.BossToFollow is not pitAIBossPlayer boss)
+            if (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(owner) is not pitAIBossPlayer boss)
             {
                 return false;
             }
@@ -248,7 +248,7 @@ namespace pitTeam.Modules
                 return true;
             }
 
-            List<BotOwner> followers = boss.Followers;
+            var followers = boss.Followers;
             if (followers == null || followers.Count == 0)
             {
                 return false;
@@ -325,7 +325,7 @@ namespace pitTeam.Modules
                 return results;
             }
 
-            List<Player> alivePlayers = gameWorld.AllAlivePlayersList;
+            var alivePlayers = gameWorld.AllAlivePlayersList;
             if (alivePlayers == null || alivePlayers.Count == 0)
             {
                 return results;
@@ -445,7 +445,7 @@ namespace pitTeam.Modules
 
         private static int GetBossFollowerCount(BotOwner owner)
         {
-            List<BotOwner> followers = owner.BotFollower?.BossToFollow?.Followers;
+            var followers = owner.BotFollower?.BossToFollow?.Followers;
             if (followers == null || followers.Count == 0)
             {
                 return 0;
@@ -573,7 +573,7 @@ namespace pitTeam.Modules
 
         private static string GetBossProfileId(BotOwner owner)
         {
-            if (owner?.BotFollower?.BossToFollow is not pitAIBossPlayer boss || boss.realPlayer == null)
+            if (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(owner) is not pitAIBossPlayer boss || boss.realPlayer == null)
             {
                 return null;
             }

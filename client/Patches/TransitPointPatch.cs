@@ -6,7 +6,7 @@ using EFT.Game.Spawning;
 using pitTeam.Components;
 using pitTeam.Modules;
 using HarmonyLib;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -27,14 +27,12 @@ namespace pitTeam.Patches
         [PatchPostfix]
         private static void PatchPostfix(TransitPoint __instance,
                         string groupId,
-                        HashSet<string> __result,
-                        HashSet<string> singlePlayers,
-                        HashSet<string> partyPlayers,
+                        Il2CppSystem.Collections.Generic.HashSet<string> __result,
                         ref bool partyIsFull)
         {
             partyIsFull = true;
 
-            IEnumerable<IPlayer> groupPlayers = Singleton<GameWorld>.Instance.GroupPlayers(groupId, null);
+            IEnumerable<IPlayer> groupPlayers = Singleton<GameWorld>.Instance.GroupPlayers(groupId, null).AsManaged();
 
             Utils.SpawnHelper.spawnMemberIdsScav.Clear();
             Utils.SpawnHelper.spawnMemberIds.Clear();

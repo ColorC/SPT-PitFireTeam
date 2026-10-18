@@ -272,7 +272,7 @@ namespace pitTeam.Components
             float spacingSqr = spacing * spacing;
             if (includeFollowerPositions)
             {
-                List<BotOwner>? followers = boss.Followers;
+                var followers = boss.Followers;
                 if (followers != null)
                 {
                     for (int i = 0; i < followers.Count; i++)
@@ -506,7 +506,7 @@ namespace pitTeam.Components
 
         private static bool TryGetBoss(BotOwner owner, out pitAIBossPlayer? boss)
         {
-            boss = owner?.BotFollower?.BossToFollow as pitAIBossPlayer;
+            boss = pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(owner) as pitAIBossPlayer;
             return boss != null;
         }
 

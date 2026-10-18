@@ -343,7 +343,7 @@ namespace pitTeam.Modules
             EnemyInfo? missionEnemy = Enemy.MakeEnemy(
                 follower,
                 missionTarget,
-                EBotEnemyCause.checkAddTODO,
+                EBotEnemyCause.Unknown,
                 countSharedSeenAsPersonal: false);
             if (missionEnemy == null)
             {

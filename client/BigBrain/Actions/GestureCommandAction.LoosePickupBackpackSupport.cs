@@ -1,4 +1,4 @@
-using Comfort.Common;
+﻿using Comfort.Common;
 using EFT;
 using EFT.InventoryLogic;
 using pitTeam.Modules;
@@ -258,7 +258,7 @@ namespace pitTeam.BigBrain.Actions
             RunBodyGearMoveTransaction(
                 inventory,
                 move,
-                new Callback(result => CompleteLoosePickupBackpackSupportMove(result, move)));
+                (Callback)(System.Action<IResult>)(result => CompleteLoosePickupBackpackSupportMove(result, move)));
         }
 
         private void CompleteLoosePickupBackpackSupportMove(IResult result, BodyGearMove move)

@@ -29,8 +29,8 @@ namespace pitTeam.BigBrain
         private FollowerCombatLogicBase? combatLogic;
         private readonly string brainShortName;
 
-        private AICoreActionResult<BotLogicDecision, CoreActionResultParams>? currentDecision;
-        private AICoreActionResult<BotLogicDecision, CoreActionResultParams>? lastDecision;
+        private AICoreActionResult<BotLogicDecision, CoreActionResultParams> currentDecision;
+        private AICoreActionResult<BotLogicDecision, CoreActionResultParams> lastDecision;
         private bool hadCombatSinceActivation;
         private float lingerUntil;
         private bool lingerArmed;
@@ -68,10 +68,7 @@ namespace pitTeam.BigBrain
                 return false;
             }
 
-            if (!BotOwner.BotFollower.HaveBoss || BotOwner.BotFollower.BossToFollow is not pitAIBossPlayer)
-            {
-                return false;
-            }
+            if (BossPlayers.GetResolvedBossForFollower(BotOwner) == null) return false;
 
             FollowerRecovery.CheckReloadTimeout(BotOwner);
             if (pitFireTeam.UseSainFollowerCombat)
@@ -270,14 +267,14 @@ namespace pitTeam.BigBrain
 
             bool isHealingAction = IsHealingDecision(currentDecision);
 
-            if (currentDecision.Value.Reason != LingerReason && !ShouldTreatCombatAsActive() && !isHealingAction)
+            if (currentDecision.Reason != LingerReason && !ShouldTreatCombatAsActive() && !isHealingAction)
             {
                 return true;
             }
 
             // Linger hold: layer is active but no live enemy. End immediately if combat becomes live
             // again; otherwise end when the linger window expires.
-            if (currentDecision.HasValue && currentDecision.Value.Reason == LingerReason)
+            if (currentDecision != null && currentDecision.Reason == LingerReason)
             {
                 if (ShouldYieldPostCombatLingerToRequestCommand())
                 {
@@ -317,27 +314,27 @@ namespace pitTeam.BigBrain
             }
 
             if (!isHealingAction &&
-                IsMovementOrPushDecision(currentDecision.Value.Action) &&
+                IsMovementOrPushDecision(currentDecision.Action) &&
                 combatLogic.HasImmediateExplosiveDanger())
             {
                 BattleRecorder.RecordDecisionEnd(
                     BotOwner,
-                    currentDecision.Value,
+                    currentDecision,
                     new AICoreActionEnd("explosiveDanger", true),
                     combatLogic.GetCurrentObjectiveName());
                 return true;
             }
 
             // The concrete logic decides end conditions; it may delegate to shared common logic.
-            AICoreActionEnd endResult = combatLogic.ShallEndCurrentDecision(currentDecision.Value);
+            AICoreActionEnd endResult = combatLogic.ShallEndCurrentDecision(currentDecision);
             if (endResult.Value)
             {
-                BattleRecorder.RecordDecisionEnd(BotOwner, currentDecision.Value, endResult, combatLogic.GetCurrentObjectiveName());
+                BattleRecorder.RecordDecisionEnd(BotOwner, currentDecision, endResult, combatLogic.GetCurrentObjectiveName());
             }
 
             if (endResult.Value &&
-                (currentDecision.Value.Action == BotLogicDecision.runToCover ||
-                 currentDecision.Value.Action == BotLogicDecision.runToEnemy))
+                (currentDecision.Action == BotLogicDecision.runToCover ||
+                 currentDecision.Action == BotLogicDecision.runToEnemy))
             {
                 BotOwner.BotRun.EndMove();
             }
@@ -515,7 +512,8 @@ namespace pitTeam.BigBrain
 
         private static void NotifyBossCombatLayerStarted(BotOwner? botOwner)
         {
-            if (botOwner?.BotFollower?.BossToFollow is pitAIBossPlayer boss)
+            pitAIBossPlayer boss = botOwner == null ? null : BossPlayers.GetResolvedBossForFollower(botOwner);
+            if (boss != null)
             {
                 boss.NotifyFollowerCombatLayerStarted(botOwner);
             }
@@ -523,7 +521,8 @@ namespace pitTeam.BigBrain
 
         private static void NotifyBossCombatLayerReleased(BotOwner? botOwner, string reason)
         {
-            if (botOwner?.BotFollower?.BossToFollow is pitAIBossPlayer boss)
+            pitAIBossPlayer boss = botOwner == null ? null : BossPlayers.GetResolvedBossForFollower(botOwner);
+            if (boss != null)
             {
                 boss.NotifyFollowerCombatLayerReleased(botOwner, reason);
             }
@@ -588,9 +587,9 @@ namespace pitTeam.BigBrain
                 return true;
             }
 
-            if (currentDecision.HasValue &&
-                IsMovementContinuationDecision(currentDecision.Value.Action) &&
-                FollowerCombatCommon.IsNoEnemyThreatCoverReason(currentDecision.Value.Reason) &&
+            if (currentDecision != null &&
+                IsMovementContinuationDecision(currentDecision.Action) &&
+                FollowerCombatCommon.IsNoEnemyThreatCoverReason(currentDecision.Reason) &&
                 FollowerAwareness.TryGetRecentThreatLookPoint(BotOwner, out _))
             {
                 return true;
@@ -614,14 +613,14 @@ namespace pitTeam.BigBrain
                     return true;
                 }
 
-                if (currentDecision.HasValue && IsMovementContinuationDecision(currentDecision.Value.Action))
+                if (currentDecision != null && IsMovementContinuationDecision(currentDecision.Action))
                 {
                     return true;
                 }
             }
 
             bool recentCombatThreat =
-                (hadCombatSinceActivation || currentDecision.HasValue) &&
+                (hadCombatSinceActivation || currentDecision != null) &&
                 FollowerAwareness.WasRecentlyHit(BotOwner);
             return recentCombatThreat ||
                    (BotOwner?.Memory?.IsUnderFire == true &&
@@ -630,12 +629,12 @@ namespace pitTeam.BigBrain
 
         private bool TryKeepActiveForOrderedPush()
         {
-            if (BotOwner == null || !currentDecision.HasValue)
+            if (BotOwner == null || currentDecision == null)
             {
                 return false;
             }
 
-            if (!IsOrderedPushMovementContinuation(currentDecision.Value))
+            if (!IsOrderedPushMovementContinuation(currentDecision))
             {
                 return false;
             }
@@ -687,7 +686,7 @@ namespace pitTeam.BigBrain
             EnemyInfo? restored = Enemy.MakeEnemy(
                 BotOwner,
                 target,
-                EBotEnemyCause.checkAddTODO,
+                EBotEnemyCause.Unknown,
                 countSharedSeenAsPersonal: false);
             if (restored == null)
             {
@@ -815,9 +814,9 @@ namespace pitTeam.BigBrain
             return true;
         }
 
-        private static bool IsHealingDecision(AICoreActionResult<BotLogicDecision, CoreActionResultParams>? decision)
+        private static bool IsHealingDecision(AICoreActionResult<BotLogicDecision, CoreActionResultParams> decision)
         {
-            return decision.HasValue && FollowerCombatCommon.IsMedicalDecision(decision.Value);
+            return decision != null && FollowerCombatCommon.IsMedicalDecision(decision);
         }
 
         private void ClearFollowerCommandOnCombatTransition(string reason)
@@ -873,9 +872,9 @@ namespace pitTeam.BigBrain
 
         private bool IsActiveFollowerSuppressContinuation()
         {
-            if (!currentDecision.HasValue ||
-                currentDecision.Value.Action != BotLogicDecision.suppressFire ||
-                !FollowerCombatCommon.IsFollowerSuppressReason(currentDecision.Value.Reason))
+            if (currentDecision == null ||
+                currentDecision.Action != BotLogicDecision.suppressFire ||
+                !FollowerCombatCommon.IsFollowerSuppressReason(currentDecision.Reason))
             {
                 return false;
             }
@@ -885,7 +884,7 @@ namespace pitTeam.BigBrain
                 !followerData.TryPeekActiveCommand(out FollowerCommandType command, out _, out _) ||
                 command != FollowerCommandType.SuppressEnemy)
             {
-                return FollowerCombatCommon.IsAutonomousSuppressReason(currentDecision.Value.Reason);
+                return FollowerCombatCommon.IsAutonomousSuppressReason(currentDecision.Reason);
             }
 
             return true;

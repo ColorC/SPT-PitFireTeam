@@ -1,7 +1,7 @@
 using EFT;
 using pitTeam.Modules;
 using HarmonyLib;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
@@ -58,7 +58,7 @@ namespace pitTeam.Patches
     internal class FollowerSprintStateDirectionPatch : ModulePatch
     {
         private static readonly Dictionary<string, float> NextLogAt = new Dictionary<string, float>();
-        private static readonly FieldInfo PlayerField = AccessTools.Field(typeof(MovementContext), "_player");
+        private static readonly PropertyInfo PlayerProperty = AccessTools.Property(typeof(MovementContext), "_player");
 
         protected override MethodBase GetTargetMethod()
         {
@@ -76,7 +76,7 @@ namespace pitTeam.Patches
                     return;
                 }
 
-                Player player = PlayerField?.GetValue(__instance.MovementContext) as Player;
+                Player player = PlayerProperty?.GetValue(__instance.MovementContext) as Player;
                 BotOwner bot = player?.AIData?.BotOwner;
                 if (bot == null || !BossPlayers.IsFollower(bot))
                 {

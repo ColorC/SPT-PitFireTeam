@@ -15,6 +15,7 @@ using pitTeam.Modules;
 using DrakiaXYZ.BigBrain.Brains;
 using pitTeam.BigBrain;
 using pitTeam.Patches;
+using pitTeam.Compat;
 
 namespace pitTeam.Components
 {
@@ -60,6 +61,7 @@ namespace pitTeam.Components
         protected BotOwner _bot;
         private readonly FollowerPostCombatDiagnostics postCombatDiagnostics = new FollowerPostCombatDiagnostics();
         protected pitAIBossPlayer _player;
+        private Spt5BeingHitActionSubscription? _beingHitSubscription;
 
         protected BotSettingsInGameModif settingModif;
 
@@ -119,6 +121,8 @@ namespace pitTeam.Components
         private bool _patrolLeaderSectorAnchorSet;
         private Vector3 _patrolLeaderSectorAnchor;
         private bool _peaceChangeHooked = false;
+        private Il2CppSystem.Action<bool>? _peaceChangeToken;
+        private BotMemory? _peaceChangeOwner;
         private bool _manualUpdateHooked = false;
         private bool _lootedWeaponPromotionInProgress;
         private float _nextLootedWeaponPromotionCheckAt;
@@ -487,8 +491,8 @@ namespace pitTeam.Components
             _bot.Memory.IsPeace = false;
             // let the bot talk
             _bot.BotTalk.SetSilence(0f);
-            _bot.GetPlayer.BeingHitAction -= OnBeingHit;
-            _bot.GetPlayer.BeingHitAction += OnBeingHit;
+            _beingHitSubscription?.Dispose();
+            _beingHitSubscription = Spt5BeingHitActionBridge.Subscribe(_bot.GetPlayer, OnBeingHit);
             // force bot to turn off light
             if (_bot.BotLight != null && _bot.BotLight.IsEnable) _bot.BotLight.TurnOff(false, true);
             // make bot follower of player
@@ -507,17 +511,17 @@ namespace pitTeam.Components
             // make bot join the player's group
             if (_player.bossGroup != null)
             {
-                Dictionary<IPlayer, EnemyInfo>? enemyInfos = _bot.EnemiesController?.EnemyInfos;
+                var enemyInfos = _bot.EnemiesController?.EnemyInfos;
                 BotsGroup currentGroup = _bot.BotsGroup;
 
                 // clear the player's followers from being enemies to the bot
-                _player.Followers.ForEach(bt =>
+                _player.Followers.ForEach((System.Action<BotOwner>)(bt =>
                 {
                     if (enemyInfos != null && enemyInfos.TryGetValue(bt, out _))
                     {
                         enemyInfos.Remove(bt);
                     }
-                });
+                }));
                 // clear the player from being an enemy to the bot
                 if (enemyInfos != null && enemyInfos.TryGetValue(_player.realPlayer, out _))
                 {
@@ -545,7 +549,7 @@ namespace pitTeam.Components
                         _player.bossGroup.RemoveEnemy(_bot.GetPlayer);
                     }
 
-                    var botEnemies = enemyInfos?.ToList();
+                    var botEnemies = enemyInfos == null ? null : enemyInfos.Keys.AsManaged().Select(key => new KeyValuePair<IPlayer, EnemyInfo>(key, enemyInfos[key])).ToList();
                     if (botEnemies == null)
                     {
                         botEnemies = new List<KeyValuePair<IPlayer, EnemyInfo>>();
@@ -573,8 +577,8 @@ namespace pitTeam.Components
 
                 _bot.BotsGroup.RemoveAlly(_bot);
 
-                _bot.Settings.GetEnemyBotTypes().RemoveAll(x => Utils.Props.friendlyBotTypes.Contains(x));
-                _bot.Settings.GetFriendlyBotTypes().AddRange(Utils.Props.friendlyBotTypes);
+                var enemyTypes = _bot.Settings.GetEnemyBotTypes(); foreach (WildSpawnType type in Utils.Props.friendlyBotTypes) enemyTypes.Remove(type);
+                var friendlyTypes = _bot.Settings.GetFriendlyBotTypes(); foreach (WildSpawnType type in Utils.Props.friendlyBotTypes) friendlyTypes.Add(type);
 
                 BotZone zone = _bot.BotsController.BotSpawner.GetClosestZone(_bot.GetPlayer.Transform.position, out var zoneDist);
 
@@ -585,14 +589,14 @@ namespace pitTeam.Components
                         activeEnemies.Add(item2);
                 }
 
-                BotsGroup group = new BotsGroupPlayer(zone, _bot.BotsController.BotGame, _bot, activeEnemies, _bot.BotsController.BotSpawner._deadBodiesController, _bot.BotsController.BotSpawner._allPlayers, _player);
+                BotsGroup group = new BotsGroupPlayer(zone, _bot.BotsController.BotGame, _bot, activeEnemies, _bot.BotsController.BotSpawner._deadBodiesController, _bot.BotsController.BotSpawner._allPlayers.AsManaged().ToList(), _player);
 
                 _bot.BotsGroup = group;
                 RefreshSainEnemyListAfterGroupReassign();
 
                 // - go through the enemy filtering process
                 var groupEnemies = _bot.BotsGroup.Enemies;
-                var botEnemies = _bot.EnemiesController.EnemyInfos.ToList();
+                var botEnemies = _bot.EnemiesController.EnemyInfos.AsManaged().ToList();
                 foreach (var item in botEnemies)
                 {
                     _bot.Memory.DeleteInfoAboutEnemy(item.Key);
@@ -615,7 +619,7 @@ namespace pitTeam.Components
                 var _groupRequestController = _bot.BotRequestController._groupRequestController;
                 if (_groupRequestController != null)
                 {
-                    _groupRequestController.OnAddRequest -= _bot.BotRequestController.OnAddRequest;
+                    NativeBotRequestEvents.DetachVanillaGroupListener(_bot.BotRequestController);
                 }
 
                 _bot.Memory._botsGroup = _bot.BotsGroup;
@@ -634,8 +638,8 @@ namespace pitTeam.Components
             if (friendsWithRogue)
             {
 
-                _bot.Settings.GetEnemyBotTypes().RemoveAll(x => _rougeTypes.Contains(x));
-                _bot.Settings.GetFriendlyBotTypes().AddRange(_rougeTypes);
+                var enemyTypes = _bot.Settings.GetEnemyBotTypes(); foreach (WildSpawnType type in _rougeTypes) enemyTypes.Remove(type);
+                var friendlyTypes = _bot.Settings.GetFriendlyBotTypes(); foreach (WildSpawnType type in _rougeTypes) friendlyTypes.Add(type);
             }
 
             foreach (var item in _bots.BotOwners)
@@ -689,9 +693,15 @@ namespace pitTeam.Components
 
         protected virtual void SetFollowerSettings(BotOwner bot)
         {
+            string settingsStage = "entry";
+            try
+            {
 
+
+                settingsStage = "resolve-role-and-proficiency";
             bool isGoon = Utils.Props.BossFollowersType.Contains(_botRole);
             FollowerVanillaProficiencyValues proficiency = Proficiency.Vanilla;
+                settingsStage = "get-native-bot-settings";
             BotSettings settings = Singleton<BotSettingsController>.Instance.GetSettings(
                 proficiency.TemplateDifficulty,
                 _botRole,
@@ -699,6 +709,7 @@ namespace pitTeam.Components
 
             // BossPlayers assigns CombatTactic before Init. Capture the real selected role template
             // now, apply the follower-local tactic values, and only then construct the modifier.
+                settingsStage = "finalize-tactic-proficiency";
             Proficiency.FinalizeForTactic(settings, CombatTactic);
             if (_botRole == WildSpawnType.followerBirdEye)
             {
@@ -708,6 +719,7 @@ namespace pitTeam.Components
             FollowerVanillaRuntimeDifficultyValues runtime = proficiency.RuntimeDifficulty;
             FollowerProficiencyModifierValues modifiers = Proficiency.Modifiers;
             float accuracyFactor = modifiers.SafeAccuracyFactor;
+                settingsStage = "create-runtime-settings-modifier";
             settingModif = new BotSettingsInGameModif(
                 runtime.PrecicingSpeedCoef * accuracyFactor,
                 runtime.AccuratySpeedCoef,
@@ -719,6 +731,7 @@ namespace pitTeam.Components
                 runtime.PriorityScatteringCoef,
                 runtime.TriggerDownDelay);
 
+                settingsStage = "apply-follower-settings";
             // - hardcode some settings to make the bot more efficient
             settings.FileSettings.Move.REACH_DIST = 1.5f;
             settings.FileSettings.Move.REACH_DIST_COVER = 2f;
@@ -734,15 +747,16 @@ namespace pitTeam.Components
             settings.FileSettings.Mind.CHANCE_TO_RUN_CAUSE_DAMAGE_0_100 = 50f;
 
 
+                settingsStage = "configure-talk-settings";
             settings.FileSettings.Mind.CAN_TALK = true;
             settings.FileSettings.Mind.TALK_WITH_QUERY = true;
             bot.BotTalk._canSay = true;
             // - fix missing phrases (bug appeared in 0.16)
-            if (!bot.BotTalk._priority.Any(x => x.Key == EPhraseTrigger.Ready))
+            if (!bot.BotTalk._priority.ContainsKey(EPhraseTrigger.Ready))
                 bot.BotTalk._priority.Add(EPhraseTrigger.Ready, 140f);
-            if (!bot.BotTalk._priority.Any(x => x.Key == EPhraseTrigger.Going))
+            if (!bot.BotTalk._priority.ContainsKey(EPhraseTrigger.Going))
                 bot.BotTalk._priority.Add(EPhraseTrigger.Going, 141f);
-            if (!bot.BotTalk._priority.Any(x => x.Key == EPhraseTrigger.DontKnow))
+            if (!bot.BotTalk._priority.ContainsKey(EPhraseTrigger.DontKnow))
                 bot.BotTalk._priority.Add(EPhraseTrigger.DontKnow, 142f);
 
             settings.FileSettings.Mind.CAN_STAND_BY = false;
@@ -771,6 +785,7 @@ namespace pitTeam.Components
             settings.FileSettings.Mind.CHANCE_FUCK_YOU_ON_CONTACT_100 = 0;
             settings.FileSettings.Mind.REVENGE_TO_GROUP = true;
 
+                settingsStage = "resolve-player-side";
             EPlayerSide playerSide = _player.Player().Side;
 
             // force follower loyality
@@ -784,11 +799,12 @@ namespace pitTeam.Components
             settings.FileSettings.Mind.REVENGE_FOR_SAVAGE_PLAYERS = false;
 
             // follower can turn enemy to anyone and cares only for the boss
+                settingsStage = "configure-faction-relations";
             settings.GetWarnBotTypes().Clear();
             settings.FileSettings.Mind.WARN_BOT_TYPES = new WildSpawnType[] { };
             settings.FileSettings.Mind.REVENGE_BOT_TYPES = new WildSpawnType[] { };
-            List<WildSpawnType> friendList = settings.GetFriendlyBotTypes();
-            friendList.AddRange(Utils.Props.friendlyBotTypes);
+            var friendList = settings.GetFriendlyBotTypes();
+            foreach (WildSpawnType friendlyType in Utils.Props.friendlyBotTypes) friendList.Add(friendlyType);
             settings.FileSettings.Mind.FRIENDLY_BOT_TYPES = Utils.Props.friendlyBotTypes.ToArray();
 
             // opposing sides are always enemies
@@ -807,7 +823,7 @@ namespace pitTeam.Components
                     settings.FileSettings.Mind.DEFAULT_USEC_BEHAVIOUR = EWarnBehaviour.AlwaysEnemies;
                     settings.FileSettings.Mind.DEFAULT_BEAR_BEHAVIOUR = EWarnBehaviour.AlwaysEnemies;
 
-                    List<WildSpawnType> enemyList = settings.GetEnemyBotTypes();
+                    var enemyList = settings.GetEnemyBotTypes();
 
                     if (!enemyList.Contains(WildSpawnType.pmcUSEC))
                         enemyList.Add(WildSpawnType.pmcUSEC);
@@ -844,6 +860,7 @@ namespace pitTeam.Components
             settings.FileSettings.Boss.SHALL_WARN = false;
             settings.FileSettings.Patrol.MAX_YDIST_TO_START_WARN_REQUEST_TO_REQUESTER = 0f;
 
+                settingsStage = "configure-vision-settings";
             settings.FileSettings.Look.MINIMUM_VISIBLE_DIST = proficiency.Vision.MINIMUM_VISIBLE_DIST;
 
             // Keep follower grenade capability hard-disabled by default.
@@ -945,6 +962,7 @@ namespace pitTeam.Components
             settings.FileSettings.Grenade.CAN_THROW_STRAIGHT_CONTACT = false;
             settings.FileSettings.Grenade.NO_RUN_FROM_AI_GRENADES = false;
 
+                settingsStage = "apply-settings-to-bot";
             bot.Settings = settings;
 
             bot.ENEMY_LOOK_AT_ME = Mathf.Cos(settings.FileSettings.Mind.ENEMY_LOOK_AT_ME_ANG * 0.017453292f);
@@ -967,10 +985,14 @@ namespace pitTeam.Components
 
             bot.Tactic.AggressionChange(1f);
 
+                settingsStage = "apply-native-look-sensor-properties";
             // - take on the new vision values
-            AccessTools.Field(typeof(LookSensor), "VISIBLE_ANGLE").SetValue(bot.LookSensor, Mathf.Cos(settings.FileSettings.Core.VisibleAngle * 0.017453292f));
-            AccessTools.Field(typeof(LookSensor), "VISIBLE_ANGLE_LIGHT").SetValue(bot.LookSensor, Mathf.Cos(settings.FileSettings.Look.VISIBLE_ANG_LIGHT * 0.017453292f));
-            AccessTools.Field(typeof(LookSensor), "VISIBLE_ANGLE_NIGHTVISION").SetValue(bot.LookSensor, Mathf.Cos(settings.FileSettings.Look.VISIBLE_ANG_NIGHTVISION * 0.017453292f));
+            var lookSensor = bot.LookSensor;
+            if (lookSensor == null)
+                throw new InvalidOperationException("SetFollowerSettings: BotOwner.LookSensor receiver is null.");
+            lookSensor.VISIBLE_ANGLE = Mathf.Cos(settings.FileSettings.Core.VisibleAngle * 0.017453292f);
+            lookSensor.VISIBLE_ANGLE_LIGHT = Mathf.Cos(settings.FileSettings.Look.VISIBLE_ANG_LIGHT * 0.017453292f);
+            lookSensor.VISIBLE_ANGLE_NIGHTVISION = Mathf.Cos(settings.FileSettings.Look.VISIBLE_ANG_NIGHTVISION * 0.017453292f);
 
             _bot.LookSensor.ManualUpdate();
 
@@ -992,9 +1014,21 @@ namespace pitTeam.Components
             // Override it here so both paths use the player-configured value.
             // This must run after bot.Settings = settings above, and is safe to call before SAIN
             // AddFollower postfix fires since GetSainBot falls back gracefully when SAIN is absent.
+                settingsStage = "apply-optional-sain-settings";
             if (pitFireTeam.IsSAINInstalled)
             {
                 TryOverrideSainForgetEnemyTime(bot, pitFireTeam.enemyRemember.Value);
+            }
+            }
+            catch (Exception ex)
+            {
+                string failureProfileId = "<unknown-profile>";
+                string failureBotPointer = "unavailable";
+                try { failureProfileId = _bot?.Profile?.ProfileId ?? failureProfileId; } catch { }
+                try { if (bot != null) failureBotPointer = bot.Pointer.ToString(); } catch { }
+                Modules.Logger.LogError("[FollowerInit] SetFollowerSettings failed stage=" + settingsStage + " profileId=" + failureProfileId + " botPointer=" + failureBotPointer + " botNull=" + (bot == null) + " followerBotNull=" + (_bot == null) + " playerNull=" + (_player == null));
+                Modules.Logger.LogError(ex);
+                throw;
             }
         }
 
@@ -1071,7 +1105,7 @@ namespace pitTeam.Components
                 // - ensure bot no longer follows the player
                 if (_bot.BotFollower.HaveBoss)
                 {
-                    if (_bot.BotFollower.BossToFollow is pitAIBossPlayer followerBoss)
+                    if (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(_bot) is pitAIBossPlayer followerBoss)
                     {
                         followerBoss.NotifyFollowerCombatLayerReleased(_bot, "followerDismissed");
                     }
@@ -1091,13 +1125,13 @@ namespace pitTeam.Components
 
                 // -- bot needs a new group
                 BotZone zone = _bot.BotsController.BotSpawner.GetClosestZone(_bot.GetPlayer.Transform.position, out var zoneDist);
-                BotsGroup group = _bot.BotsController.BotSpawner.GetGroupAndSetEnemies(_bot, zone);
+                BotsGroup group = _bot.BotsController.BotSpawner.GetGroupAndSetEnemies(_bot, zone, new BotSpawnBossAndGroupParams(false, true));
 
                 _bot.BotsGroup = group;
 
                 if (_bot.BotRequestController._groupRequestController != null)
                 {
-                    _bot.BotRequestController._groupRequestController.OnAddRequest -= _bot.BotRequestController.OnAddRequest;
+                    NativeBotRequestEvents.DetachVanillaGroupListener(_bot.BotRequestController);
                 }
 
                 _bot.Memory._botsGroup = group;
@@ -1115,22 +1149,22 @@ namespace pitTeam.Components
                 // make player and his followers enemies of the bot
                 if (warnPlayer)
                 {
-                    _player.Followers.ForEach(fl =>
+                    _player.Followers.ForEach((System.Action<BotOwner>)(fl =>
                     {
                         if (_bot.EnemiesController.EnemyInfos.TryGetValue(fl.GetPlayer, out var info))
                         {
                             _bot.Memory.DeleteInfoAboutEnemy(fl.GetPlayer);
                         }
                         _bot.BotsGroup.AddEnemy(fl.GetPlayer, EBotEnemyCause.addPlayer);
-                    });
+                    }));
 
                     if (_bot.EnemiesController.EnemyInfos.TryGetValue(_player.Player(), out var plinfo))
                     {
                         _bot.Memory.DeleteInfoAboutEnemy(_player.Player());
                     }
 
-                    _bot.BotsGroup.CheckAndAddEnemy(_player.Player());
-                    _bot.BotsGroup.Enemies.ExecuteForEach((key, value) =>
+                    _bot.BotsGroup.CheckAndAddEnemy(_player.Player(), EBotEnemyCause.addPlayer, false);
+                    _bot.BotsGroup.Enemies.ExecuteForEach((System.Action<IPlayer, BotGroupEnemyInfo>)((key, value) =>
                     {
                         value.IsHaveSeen = key.ProfileId == _player.Player().ProfileId || BossPlayers.GetFollowers().Find(fl => fl.GetBot().ProfileId == key.ProfileId) != null;
                         _bot.Memory.AddEnemy(key, value, false);
@@ -1143,7 +1177,7 @@ namespace pitTeam.Components
                             }
                             Modules.Logger.LogInfo("Make player the enemy");
                         }
-                    });
+                    }));
                 }
 
             }
@@ -1159,10 +1193,8 @@ namespace pitTeam.Components
                 // Fire lifecycle event for addon integration (cleanup, cache removal, etc).
                 Modules.SainAddonBridge.RaiseFollowerLifecycleEvent(_bot, FollowerLifecycleEvent.OnDismiss);
 
-                if (_bot?.GetPlayer != null)
-                {
-                    _bot.GetPlayer.BeingHitAction -= OnBeingHit;
-                }
+                _beingHitSubscription?.Dispose();
+                _beingHitSubscription = null;
 
                 if (_bot != null)
                 {
@@ -1191,7 +1223,7 @@ namespace pitTeam.Components
 
             if (_bot.EnemiesController?.EnemyInfos != null)
             {
-                foreach (IPlayer enemy in _bot.EnemiesController.EnemyInfos.Keys.ToList())
+                foreach (IPlayer enemy in _bot.EnemiesController.EnemyInfos.Keys.AsManaged().ToList())
                 {
                     if (!IsValidEnemyRef(enemy))
                     {
@@ -1202,7 +1234,7 @@ namespace pitTeam.Components
 
             if (_bot.BotsGroup?.Enemies != null)
             {
-                foreach (IPlayer enemy in _bot.BotsGroup.Enemies.Keys.ToList())
+                foreach (IPlayer enemy in _bot.BotsGroup.Enemies.Keys.AsManaged().ToList())
                 {
                     if (!IsValidEnemyRef(enemy))
                     {
@@ -2875,8 +2907,7 @@ namespace pitTeam.Components
             {
                 if (baseBrain == null) return;
 
-                var dictField = AccessTools.Field(typeof(AICoreStrategy<BotLogicDecision>), "_layers");
-                var layers = dictField?.GetValue(baseBrain) as Dictionary<int, AICoreLayer<BotLogicDecision>>;
+                var layers = baseBrain._layers;
                 if (layers == null) return;
 
                 var toRemove = new List<int>();
@@ -2923,15 +2954,17 @@ namespace pitTeam.Components
         {
             if (_peaceChangeHooked) return;
             if (_bot?.Memory == null) return;
-            _bot.Memory.OnPeaceChange += OnPeaceChange;
+            _peaceChangeOwner = _bot.Memory;
+            _peaceChangeToken ??= (Il2CppSystem.Action<bool>)(System.Action<bool>)OnPeaceChange;
+            _peaceChangeOwner.OnPeaceChange += _peaceChangeToken;
             _peaceChangeHooked = true;
         }
 
         private void UnhookPeaceChange()
         {
             if (!_peaceChangeHooked) return;
-            if (_bot?.Memory == null) return;
-            _bot.Memory.OnPeaceChange -= OnPeaceChange;
+            if (_peaceChangeOwner != null && _peaceChangeToken != null) _peaceChangeOwner.OnPeaceChange -= _peaceChangeToken;
+            _peaceChangeOwner = null;
             _peaceChangeHooked = false;
         }
 
@@ -3079,7 +3112,7 @@ namespace pitTeam.Components
                 $"destination=FirstPrimaryWeapon decisionReason=ready {readiness.ToDiagnosticString()}");
             inventory.RunNetworkTransaction(
                 moveResult.Value,
-                new Callback(result => CompleteLootedWeaponPromotion(owner, weapon, evaluation, result)));
+                (Callback)(System.Action<IResult>)(result => CompleteLootedWeaponPromotion(owner, weapon, evaluation, result)));
         }
 
         private bool TryFindReadyLootedWeaponPromotionCandidate(
@@ -3117,7 +3150,7 @@ namespace pitTeam.Components
             }
 
             List<(Weapon Weapon, WeaponPrimaryReadinessSnapshot Readiness)> readyCargo = backpack
-                .GetAllItems()
+                .GetAllItems().AsManaged()
                 .OfType<Weapon>()
                 .Where(candidate => IsTrackedPrimaryCandidate(owner, candidate))
                 .GroupBy(candidate => candidate.Id, StringComparer.Ordinal)
@@ -3282,7 +3315,7 @@ namespace pitTeam.Components
 
                 if (_player.Followers != null)
                 {
-                    friendlyPlayers.AddRange(_player.Followers);
+                    foreach (BotOwner follower in _player.Followers) friendlyPlayers.Add(follower.GetPlayer);
                 }
 
                 HashSet<string> protectedIds = new HashSet<string>(StringComparer.Ordinal);
@@ -3374,7 +3407,7 @@ namespace pitTeam.Components
 
             if (brain.CurLayerInfo is BaseLogicLayer simpleLayer)
             {
-                simpleLayer.CalcActionNextFrame(BotLogicDecision.holdPosition);
+                simpleLayer.CalcActionNextFrame(new Il2CppSystem.Nullable<BotLogicDecision>(BotLogicDecision.holdPosition));
             }
             else if (brain.CurLayerInfo is BaseLogicLayerSimple baseLayer)
             {
@@ -3527,19 +3560,19 @@ namespace pitTeam.Components
         {
             try
             {
-                var activeLayerField = AccessTools.Field(typeof(AICoreStrategy<BotLogicDecision>), "aICoreLayer");
-                activeLayerField?.SetValue(brain, null);
+                var currentLayerProperty = AccessTools.Property(typeof(AICoreStrategy<BotLogicDecision>), "CurLayer");
+                currentLayerProperty?.SetValue(brain, null);
 
-                var agentActiveLayerField = AccessTools.Field(typeof(AICoreAgent<BotLogicDecision>), "_lastActiveLayer");
-                agentActiveLayerField?.SetValue(agent, null);
+                var agentActiveLayerProperty = AccessTools.Property(typeof(AICoreAgent<BotLogicDecision>), "_lastActiveLayer");
+                agentActiveLayerProperty?.SetValue(agent, null);
 
                 agent.UsingLayer = string.Empty;
 
-                var lastResultField = AccessTools.Field(typeof(AICoreAgent<BotLogicDecision>), "_lastResult");
-                if (lastResultField != null)
+                var lastResultProperty = AccessTools.Property(typeof(AICoreAgent<BotLogicDecision>), "_lastResult");
+                if (lastResultProperty != null)
                 {
-                    var defaultResult = default(AICoreActionResult<BotLogicDecision, CoreActionResultParams>);
-                    lastResultField.SetValue(agent, defaultResult);
+                    var defaultResult = new AICoreActionResult<BotLogicDecision, CoreActionResultParams>();
+                    lastResultProperty.SetValue(agent, defaultResult);
                 }
             }
             catch (Exception ex)

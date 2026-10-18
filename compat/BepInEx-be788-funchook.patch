@@ -1,0 +1,70 @@
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/Funchook/FunchookDetour.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/Funchook/FunchookDetour.cs
+index 019b841..59bfce2 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/Funchook/FunchookDetour.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/Funchook/FunchookDetour.cs
+@@ -1,15 +1,29 @@
+ using System;
++using System.IO;
+ using System.Runtime.CompilerServices;
++using System.Runtime.InteropServices;
+ 
+ namespace BepInEx.Unity.IL2CPP.Hook.Funchook;
+ 
+ internal class FunchookDetour : BaseNativeDetour<FunchookDetour>
+ {
+     private readonly nint funchookInstance;
++    private static readonly object TraceLock = new();
++    private static bool traceConfigured;
+ 
+     public FunchookDetour(nint originalMethodPtr, Delegate detourMethod) : base(originalMethodPtr, detourMethod)
+     {
+         funchookInstance = FunchookLib.Create();
++        lock (TraceLock)
++        {
++            string probeRoot = Environment.GetEnvironmentVariable("PIT_SPT5_PROBE_ROOT");
++            if (!traceConfigured && Environment.GetEnvironmentVariable("PIT_SPT5_SHADOW_MODE") == "true"
++                && !string.IsNullOrWhiteSpace(probeRoot) && Path.IsPathRooted(probeRoot) && Directory.Exists(probeRoot))
++            {
++                EnsureSuccess(FunchookLib.SetDebugFile(Path.Combine(probeRoot, "funchook-native-trace.log")));
++                traceConfigured = true;
++            }
++        }
+     }
+ 
+     protected override void ApplyImpl() => EnsureSuccess(FunchookLib.Install(funchookInstance, 0));
+@@ -26,13 +40,20 @@ internal class FunchookDetour : BaseNativeDetour<FunchookDetour>
+     protected override void FreeImpl() => EnsureSuccess(FunchookLib.Destroy(funchookInstance));
+ 
+     private string GetErrorMessage()
+-        => FunchookLib.ErrorMessage(funchookInstance);
++        => Marshal.PtrToStringAnsi(FunchookLib.ErrorMessage(funchookInstance)) ?? string.Empty;
+ 
+     private void EnsureSuccess(FunchookResult result, [CallerArgumentExpression("result")] string methodName = null)
+     {
+         if (result == FunchookResult.Success) return;
+         var errorMsg = GetErrorMessage();
+         if (result == FunchookResult.OutOfMemory) throw new OutOfMemoryException($"{methodName} failed: {errorMsg}");
+-        throw new Exception($"{methodName} failed with result {result}: {errorMsg}");
++        string detail = string.Empty;
++        if (result == FunchookResult.TooShortInstructions)
++        {
++            var code = new byte[16];
++            Marshal.Copy(OriginalMethodPtr, code, 0, code.Length);
++            detail = $"; nativeTarget=0x{OriginalMethodPtr:X}; prefix={BitConverter.ToString(code)}";
++        }
++        throw new Exception($"{methodName} failed with result {result}: {errorMsg}{detail}");
+     }
+ }
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/Funchook/FunchookLib.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/Funchook/FunchookLib.cs
+index 498aa0f..524e2d7 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/Funchook/FunchookLib.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Hook/Funchook/FunchookLib.cs
+@@ -37,7 +37,7 @@ internal static unsafe class FunchookLib
+     public static extern FunchookResult Uninstall(nint handle, int flags);
+ 
+     [DllImport("funchook", EntryPoint = "funchook_error_message", CallingConvention = CallingConvention.Cdecl)]
+-    public static extern string ErrorMessage(nint handle);
++    public static extern nint ErrorMessage(nint handle);
+ 
+     [DllImport("funchook", EntryPoint = "funchook_set_debug_file", CallingConvention = CallingConvention.Cdecl)]
+     public static extern FunchookResult SetDebugFile([MarshalAs(UnmanagedType.LPStr)] string name);

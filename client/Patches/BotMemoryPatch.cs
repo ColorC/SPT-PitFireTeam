@@ -1,9 +1,10 @@
-using EFT;
+﻿using EFT;
 
 using HarmonyLib;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System.Reflection;
 
+using pitTeam.Compat;
 using pitTeam.Modules;
 using pitTeam.Utils;
 using pitTeam.BigBrain;
@@ -12,11 +13,12 @@ namespace pitTeam.Patches
 {
     internal static class BotMemoryOwnerAccessor
     {
-        private static readonly FieldInfo OwnerField = AccessTools.Field(typeof(EFT.BotMemory), "_owner");
+        private static readonly NativeUiMemberAccessor OwnerAccessor =
+            NativeUiMemberAccessor.ForProperty(typeof(EFT.BotMemory), "_owner", typeof(BotOwner), false, false);
 
         internal static BotOwner Get(EFT.BotMemory memory)
         {
-            return OwnerField.GetValue(memory) as BotOwner;
+            return memory == null ? null : OwnerAccessor.GetValue(memory) as BotOwner;
         }
     }
 
@@ -49,10 +51,10 @@ namespace pitTeam.Patches
 
                 if (botOwner_0.BotFollower.BossToFollow == null) return;
 
-                botOwner_0.BotFollower.BossToFollow.Followers.ForEach(bt =>
+                botOwner_0.BotFollower.BossToFollow.Followers.ForEach((System.Action<BotOwner>)(bt =>
                 {
                     if (bt.ProfileId == damageInfo.Player.iPlayer.ProfileId) isTeamate = true;
-                });
+                }));
 
                 if (!(isBossEnemy || isTeamate)) return;
 

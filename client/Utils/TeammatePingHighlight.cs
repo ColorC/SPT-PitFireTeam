@@ -31,7 +31,7 @@ namespace pitTeam.Utils
 
         private readonly List<HighlightMeshTarget> _targets = new List<HighlightMeshTarget>();
         private readonly List<BotOwner> _teammates = new List<BotOwner>();
-        private readonly List<Renderer> _rendererBuffer = new List<Renderer>();
+        private readonly Il2CppSystem.Collections.Generic.List<Renderer> _rendererBuffer = new Il2CppSystem.Collections.Generic.List<Renderer>();
         private readonly HashSet<Renderer> _seenRenderers = new HashSet<Renderer>();
         private readonly Dictionary<Renderer, HighlightMeshTarget> _targetCache = new Dictionary<Renderer, HighlightMeshTarget>();
         private readonly Dictionary<BotOwner, Material> _healthHighlightMaterials = new Dictionary<BotOwner, Material>();

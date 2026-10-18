@@ -2,9 +2,11 @@ using Comfort.Common;
 using EFT;
 using EFT.Interactive;
 using EFT.InventoryLogic;
+using EFT.HealthSystem;
 using pitTeam.BigBrain;
 using pitTeam.Modules;
 using pitTeam.Patches;
+using pitTeam.Compat;
 using pitTeam.Utils;
 using System;
 using System.Collections.Generic;
@@ -28,6 +30,13 @@ namespace pitTeam.Components
         private BotsGroup _group = null;
 
         private BotsController _botsController;
+        private OnReportEnemyDelegate? _reportEnemyToken;
+        private GlobalEventDispatcher? _eventDispatcher;
+        private GlobalEventDispatcher.PhraseDelegate? _phraseToken;
+        private GlobalEventDispatcher.GestusDelegate? _gestureToken;
+        private Il2CppSystem.Action? _staticUpdateToken;
+        private StaticManager? _staticUpdateOwner;
+        private readonly Dictionary<(IntPtr Controller, Action<EDamageType> Handler), (IHealthController Owner, Il2CppSystem.Action<EDamageType> Token)> _deathSubscriptions = new();
 
         public BotsGroup bossGroup
         {
@@ -36,13 +45,14 @@ namespace pitTeam.Components
             {
                 if (_group != null)
                 {
-                    _group.OnReportEnemy -= OnReportEnemy;
+                    if (_reportEnemyToken != null) _group.OnReportEnemy -= _reportEnemyToken;
                     UnsubscribeBossGroupStaticUpdate();
                 }
                 _group = value;
                 if (_group != null)
                 {
-                    _group.OnReportEnemy += OnReportEnemy;
+                    _reportEnemyToken ??= (OnReportEnemyDelegate)(System.Action<IPlayer, Vector3, Vector3, EEnemyPartVisibleType, BotOwner>)OnReportEnemy;
+                    _group.OnReportEnemy += _reportEnemyToken;
                     SubscribeBossGroupStaticUpdate();
                 }
             }
@@ -120,10 +130,13 @@ namespace pitTeam.Components
             aBossLogic = new AIBossPlayerLogic(player, this);
             _botsController = botsController;
 
-            player.HealthController.DiedEvent += OnDead;
+            SubscribeDied(player, (System.Action<EDamageType>)OnDead);
 
-            Singleton<GlobalEventDispatcher>.Instance.OnPhraseSay += PhraseSaid;
-            Singleton<GlobalEventDispatcher>.Instance.OnGestusShow += GestusShown;
+            _eventDispatcher = Singleton<GlobalEventDispatcher>.Instance;
+            _phraseToken = (GlobalEventDispatcher.PhraseDelegate)(System.Action<EventInfo>)PhraseSaid;
+            _gestureToken = (GlobalEventDispatcher.GestusDelegate)(System.Action<BotReceiverGestus>)GestusShown;
+            _eventDispatcher.OnPhraseSay += _phraseToken;
+            _eventDispatcher.OnGestusShow += _gestureToken;
 
         }
 
@@ -138,6 +151,33 @@ namespace pitTeam.Components
             return;
         }
 
+        private void SubscribeDied(Player owner, Action<EDamageType> handler)
+        {
+            IHealthController controller = owner?.HealthController;
+            if (controller == null) return;
+            var key = (controller.Pointer, handler);
+            if (_deathSubscriptions.ContainsKey(key)) return;
+            var token = (Il2CppSystem.Action<EDamageType>)(Action<EDamageType>)(damage =>
+            {
+                try { handler(damage); }
+                finally { RemoveDiedSubscription(key); }
+            });
+            _deathSubscriptions.Add(key, (controller, token));
+            try { controller.add_DiedEvent(token); }
+            catch { _deathSubscriptions.Remove(key); throw; }
+        }
+
+        private void UnsubscribeDied(Player owner, Action<EDamageType> handler)
+        {
+            var controller = owner?.HealthController;
+            if (controller != null) RemoveDiedSubscription((controller.Pointer, handler));
+        }
+
+        private void RemoveDiedSubscription((IntPtr Controller, Action<EDamageType> Handler) key)
+        {
+            if (_deathSubscriptions.Remove(key, out var subscription))
+                subscription.Owner.remove_DiedEvent(subscription.Token);
+        }
         private void OnDead(EDamageType _damageType)
         {
             InteractableObjects.BossIsDead();
@@ -151,7 +191,7 @@ namespace pitTeam.Components
             {
                 return;
             }
-            _group.CheckAndAddEnemy(enemy);
+            _group.CheckAndAddEnemy(enemy, EBotEnemyCause.addPlayer);
         }
 
         // Boss command map:
@@ -179,6 +219,23 @@ namespace pitTeam.Components
                     $"requesterMatchesBoss={info.PlayerRequester?.ProfileId == realPlayer?.ProfileId}");
             }
 
+            if (info.phrase == EPhraseTrigger.CheckHim || info.phrase == EPhraseTrigger.LootBody)
+            {
+                try
+                {
+                    Spt5BodyLootDiagnostics.RecordRoute("GlobalEventDispatcher.OnPhraseSay", "phraseReceived", () =>
+                    {
+                        string? requesterId = info.PlayerRequester?.ProfileId;
+                        string? bossId = realPlayer?.ProfileId;
+                        var corpse = InteractableObjects.GetCurBodyLootTarget();
+                        string? corpsePointer = corpse == null ? null : corpse.Pointer.ToInt64().ToString("X");
+                        return new Spt5BodyLootDiagnostics.RouteFields(info.phrase.ToString(), requesterId, bossId,
+                            requesterId != null && bossId != null ? string.Equals(requesterId, bossId, StringComparison.Ordinal) : (bool?)null,
+                            corpsePointer);
+                    });
+                }
+                catch { }
+            }
             if (info.PlayerRequester != null && info.PlayerRequester.ProfileId == realPlayer.ProfileId)
             {
                 // Phrase command path:
@@ -304,7 +361,7 @@ namespace pitTeam.Components
                          info.phrase == EPhraseTrigger.LootBody)
                 {
                     // Body check: closest eligible follower moves to the corpse and recovers gear as cargo.
-                    ApplyTakeBodyGearCommand(info.PlayerRequester);
+                    ApplyTakeBodyGearCommand(info.PlayerRequester, info.phrase);
                     return;
                 }
                 else if (info.phrase == EPhraseTrigger.LootContainer)
@@ -752,7 +809,7 @@ namespace pitTeam.Components
                 return;
             }
 
-            BotOwner reporter = Followers?.FirstOrDefault(IsFollowerEligibleForGroupEnemySync);
+            BotOwner reporter = Followers?.AsManaged().FirstOrDefault(IsFollowerEligibleForGroupEnemySync);
             if (reporter == null || bossGroup == null)
             {
                 return;
@@ -818,7 +875,7 @@ namespace pitTeam.Components
             out Player enemy)
         {
             enemy = null;
-            IEnumerable<IPlayer> allPlayers = _botsController?.BotSpawner?._allPlayers;
+            IEnumerable<IPlayer> allPlayers = _botsController?.BotSpawner?._allPlayers?.AsManaged();
             if (allPlayers == null || realPlayer == null)
             {
                 return false;
@@ -907,7 +964,7 @@ namespace pitTeam.Components
         private bool TryGetEnemyAimingAtPlayer(out Player enemy)
         {
             enemy = null;
-            IEnumerable<IPlayer> allPlayers = _botsController?.BotSpawner?._allPlayers;
+            IEnumerable<IPlayer> allPlayers = _botsController?.BotSpawner?._allPlayers?.AsManaged();
             if (allPlayers == null || realPlayer == null)
             {
                 return false;
@@ -976,7 +1033,7 @@ namespace pitTeam.Components
 
             try
             {
-                follower.BotsGroup?.AddEnemy(enemy, EBotEnemyCause.checkAddTODO);
+                follower.BotsGroup?.AddEnemy(enemy, EBotEnemyCause.addPlayer);
 
                 follower.BotsGroup?.ReportAboutEnemy(enemy, reportVisibleType, follower);
             }
@@ -992,7 +1049,7 @@ namespace pitTeam.Components
             EnemyInfo? trackedEnemy = Enemy.MakeEnemy(
                 follower,
                 enemy,
-                EBotEnemyCause.checkAddTODO,
+                EBotEnemyCause.addPlayer,
                 countSharedSeenAsPersonal: false);
             if (trackedEnemy != null)
             {
@@ -1306,7 +1363,7 @@ namespace pitTeam.Components
                 return trackedEnemy.GroupInfo;
             }
 
-            return new BotGroupEnemyInfo(enemy, follower.BotsGroup, EBotEnemyCause.checkAddTODO);
+            return new BotGroupEnemyInfo(enemy, follower.BotsGroup, EBotEnemyCause.addPlayer);
         }
 
         private List<Player> GetBossVisibleEnemiesForContact(IPlayer requester)
@@ -1324,7 +1381,7 @@ namespace pitTeam.Components
                 Player enemy = enemyBot.GetPlayer as Player;
                 if (enemy == null) continue;
                 if (enemy.ProfileId == realPlayer.ProfileId) continue;
-                if (Followers.Any(f => f != null && f.ProfileId == enemy.ProfileId)) continue;
+                if (Followers.AsManaged().Any(f => f != null && f.ProfileId == enemy.ProfileId)) continue;
 
 
                 if (enemy.MainParts == null) continue;
@@ -1370,7 +1427,7 @@ namespace pitTeam.Components
             List<Player> result = new List<Player>();
             if (requester == null) return result;
 
-            IEnumerable<IPlayer> allPlayers = _botsController?.BotSpawner?._allPlayers;
+            IEnumerable<IPlayer> allPlayers = _botsController?.BotSpawner?._allPlayers?.AsManaged();
             if (allPlayers == null) return result;
 
             Vector3 firePos = requester.PlayerBones?.WeaponRoot?.position ?? (requester.Position + Vector3.up * 1.2f);
@@ -1380,7 +1437,7 @@ namespace pitTeam.Components
                 if (enemy == null) continue;
                 if (enemy.HealthController?.IsAlive != true) continue;
                 if (enemy.ProfileId == requester.ProfileId || enemy.ProfileId == realPlayer.ProfileId) continue;
-                if (Followers.Any(f => f != null && f.ProfileId == enemy.ProfileId)) continue;
+                if (Followers.AsManaged().Any(f => f != null && f.ProfileId == enemy.ProfileId)) continue;
 
                 BotOwner enemyBot = enemy.AIData?.BotOwner;
                 if (enemyBot == null || enemyBot.IsDead || enemyBot.BotState != EBotState.Active) continue;
@@ -1413,7 +1470,7 @@ namespace pitTeam.Components
                 return result;
             }
 
-            IEnumerable<IPlayer> allPlayers = _botsController?.BotSpawner?._allPlayers;
+            IEnumerable<IPlayer> allPlayers = _botsController?.BotSpawner?._allPlayers?.AsManaged();
             if (allPlayers == null)
             {
                 return result;
@@ -1475,7 +1532,7 @@ namespace pitTeam.Components
                 return false;
             }
 
-            if (Followers.Any(follower => follower != null && follower.ProfileId == candidate.ProfileId))
+            if (Followers.AsManaged().Any(follower => follower != null && follower.ProfileId == candidate.ProfileId))
             {
                 return false;
             }
@@ -1805,7 +1862,7 @@ namespace pitTeam.Components
             // Remove known enemies from bot memory so command intent applies immediately.
             if (follower.EnemiesController?.EnemyInfos != null)
             {
-                List<IPlayer> knownEnemies = follower.EnemiesController.EnemyInfos.Keys.ToList();
+                List<IPlayer> knownEnemies = follower.EnemiesController.EnemyInfos.Keys.AsManaged().ToList();
                 foreach (IPlayer enemy in knownEnemies)
                 {
                     if (enemy == null) continue;
@@ -1820,7 +1877,7 @@ namespace pitTeam.Components
                 bool shouldClearGroup = string.IsNullOrEmpty(groupId) || clearedGroupIds == null || clearedGroupIds.Add(groupId);
                 if (shouldClearGroup)
                 {
-                    List<IPlayer> groupEnemies = follower.BotsGroup.Enemies.Keys.ToList();
+                    List<IPlayer> groupEnemies = follower.BotsGroup.Enemies.Keys.AsManaged().ToList();
                     foreach (IPlayer enemy in groupEnemies)
                     {
                         if (enemy == null) continue;
@@ -1848,14 +1905,14 @@ namespace pitTeam.Components
             {
                 bossEnemies.Add(bot);
 
-                if (bot.HealthController != null) bot.HealthController.DiedEvent += (EDamageType type) =>
+                if (bot.HealthController != null) SubscribeDied(bot.GetPlayer, (System.Action<EDamageType>)((EDamageType type) =>
                 {
                     RemoveEnemy(bot);
-                };
-                if (bot.LeaveData != null) bot.LeaveData.OnLeave += (BotOwner _bot) =>
+                }));
+                if (bot.LeaveData != null) bot.LeaveData.OnLeave += (Il2CppSystem.Action<BotOwner>)(_bot =>
                 {
                     RemoveEnemy(_bot);
-                };
+                });
 
                 return true;
             }
@@ -2170,7 +2227,7 @@ namespace pitTeam.Components
             closestFollower.Gesture.TryGestus(EInteraction.OkGesture, false);
         }
 
-        private void ApplyTakeBodyGearCommand(IPlayer requester)
+        private void ApplyTakeBodyGearCommand(IPlayer requester, EPhraseTrigger phrase)
         {
             if (requester == null)
             {
@@ -2192,7 +2249,7 @@ namespace pitTeam.Components
                 return;
             }
 
-            InventoryEquipment corpseEquipment = corpse.ItemOwner?.RootItem as InventoryEquipment;
+            InventoryEquipment corpseEquipment = Il2CppBoundary.CastNativeOrNull<InventoryEquipment>(corpse.ItemOwner?.RootItem);
             bool teammateCorpse = TeammateCorpseIdentity.IsTeammateCorpseEquipment(corpseEquipment);
             if (!InteractableObjects.TryGetLootNavPosition(corpse, out Vector3 bodyPosition))
             {
@@ -2239,6 +2296,19 @@ namespace pitTeam.Components
             // Body looting can take multiple inventory transactions, so reserve the corpse and
             // let the request action own the approach/interruption/cleanup lifecycle.
             closestFollowerData.SetTakeBodyGear(75f);
+            try
+            {
+                Spt5BodyLootDiagnostics.RecordRoute("ApplyTakeBodyGearCommand", "commandStateSet", () =>
+                {
+                    string? requesterId = requester?.ProfileId;
+                    string? bossId = realPlayer?.ProfileId;
+                    string? corpsePointer = corpse == null ? null : corpse.Pointer.ToInt64().ToString("X");
+                    return new Spt5BodyLootDiagnostics.RouteFields(phrase.ToString(), requesterId, bossId,
+                        requesterId != null && bossId != null ? string.Equals(requesterId, bossId, StringComparison.Ordinal) : (bool?)null,
+                        corpsePointer, closestFollower.ProfileId);
+                });
+            }
+            catch { }
             LogFollowerCommandState(
                 "body",
                 closestFollower,
@@ -2558,7 +2628,6 @@ namespace pitTeam.Components
                 : "unknown";
         }
 
-        [System.Diagnostics.Conditional("DEBUG")]
         private static void LogLootCandidate(
             string command,
             BotOwner follower,
@@ -2567,12 +2636,28 @@ namespace pitTeam.Components
             float? navDistance = null,
             int? freeArea = null)
         {
+            if (string.Equals(command, "body", StringComparison.Ordinal))
+            {
+                try
+                {
+                    if (Spt5BodyLootDiagnostics.CaptureEnabled)
+                    {
+                        Spt5BodyLootDiagnostics.RecordCandidate(result, reason, follower?.ProfileId, navDistance, freeArea);
+                    }
+                }
+                catch
+                {
+                    // Optional diagnostics must not alter candidate selection.
+                }
+            }
+#if DEBUG
             Modules.Logger.LogInfo(
                 $"[LootCommand][Candidate] command={command} " +
                 $"follower='{follower?.Profile?.Nickname ?? follower?.ProfileId ?? "none"}' " +
                 $"result={result} reason={reason} " +
                 $"navDistance={(navDistance.HasValue ? navDistance.Value.ToString("F1") : "n/a")} " +
                 $"freeBackpackPocketArea={(freeArea.HasValue ? freeArea.Value.ToString() : "n/a")}");
+#endif
         }
 
         [System.Diagnostics.Conditional("DEBUG")]
@@ -2599,7 +2684,6 @@ namespace pitTeam.Components
                 $"target='{DescribeLootTarget(target)}'");
         }
 
-        [System.Diagnostics.Conditional("DEBUG")]
         private static void LogLootAssignment(
             string command,
             BotOwner follower,
@@ -2607,6 +2691,20 @@ namespace pitTeam.Components
             string result,
             UnityEngine.Object target = null)
         {
+            if (string.Equals(command, "body", StringComparison.Ordinal))
+            {
+                try
+                {
+                    string? targetPointer = null;
+                    if ((object?)target is Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase nativeTarget && nativeTarget.Pointer != IntPtr.Zero)
+                        targetPointer = nativeTarget.Pointer.ToString("X");
+                    Spt5BodyLootDiagnostics.Record(command, result, follower?.ProfileId, targetPointer);
+                }
+                catch
+                {
+                    // Optional diagnostics cannot affect assignment.
+                }
+            }
             Modules.Logger.LogInfo(
                 $"[LootCommand][Assignment] command={command} " +
                 $"result={result} " +
@@ -2798,7 +2896,7 @@ namespace pitTeam.Components
 
             Action<EDamageType> handler = _ => HandleFollowerDeath(follower);
             _followerDeathHandlers[follower.ProfileId] = handler;
-            follower.HealthController.DiedEvent += handler;
+            SubscribeDied(follower.GetPlayer, handler);
         }
 
         private void UnhookFollowerDeath(BotOwner follower)
@@ -2806,7 +2904,7 @@ namespace pitTeam.Components
             if (follower == null || follower.HealthController == null) return;
             if (!_followerDeathHandlers.TryGetValue(follower.ProfileId, out Action<EDamageType> handler)) return;
 
-            follower.HealthController.DiedEvent -= handler;
+            UnsubscribeDied(follower.GetPlayer, handler);
             _followerDeathHandlers.Remove(follower.ProfileId);
         }
 
@@ -2972,7 +3070,7 @@ namespace pitTeam.Components
         {
             try
             {
-                List<BotOwner> candidates = Followers.Where(follower =>
+                List<BotOwner> candidates = Followers.AsManaged().Where(follower =>
                     follower != null &&
                     !follower.IsDead &&
                     follower.BotState == EBotState.Active &&
@@ -4230,7 +4328,7 @@ namespace pitTeam.Components
             }
 
             if (candidate.ProfileId == realPlayer.ProfileId ||
-                Followers.Any(follower => follower != null && follower.ProfileId == candidate.ProfileId))
+                Followers.AsManaged().Any(follower => follower != null && follower.ProfileId == candidate.ProfileId))
             {
                 return false;
             }
@@ -4800,22 +4898,28 @@ namespace pitTeam.Components
         {
             UnsubscribeBossGroupStaticUpdate();
             _stableEnemyReportByFollower.Clear();
-            realPlayer.HealthController.DiedEvent -= OnDead;
+            UnsubscribeDied(realPlayer, (System.Action<EDamageType>)OnDead);
 
-            Singleton<GlobalEventDispatcher>.Instance.OnPhraseSay -= PhraseSaid;
-            Singleton<GlobalEventDispatcher>.Instance.OnGestusShow -= GestusShown;
+            if (_eventDispatcher != null)
+            {
+                if (_phraseToken != null) _eventDispatcher.OnPhraseSay -= _phraseToken;
+                if (_gestureToken != null) _eventDispatcher.OnGestusShow -= _gestureToken;
+            }
+            _eventDispatcher = null; _phraseToken = null; _gestureToken = null;
 
             //_botsController.Bots.OnBotAdd -= OnBotAdd;
 
             if (bossGroup != null)
             {
                 bossGroup.RemoveInfo(Player());
+                bossGroup = null;
             }
 
-            foreach (BotOwner follower in Followers.ToList())
+            foreach (BotOwner follower in Followers.AsManaged().ToList())
             {
                 UnhookFollowerDeath(follower);
             }
+            foreach (var key in _deathSubscriptions.Keys.ToArray()) RemoveDiedSubscription(key);
             _pendingFriendlyDown.Clear();
             _activeFollowerCombatProfiles.Clear();
             _postCombatEpisodeParticipants.Clear();
@@ -4834,18 +4938,21 @@ namespace pitTeam.Components
                 return;
             }
 
-            StaticManager.Instance.StaticUpdate += OnBossGroupStaticUpdate;
+            _staticUpdateOwner = StaticManager.Instance;
+            _staticUpdateToken ??= (Il2CppSystem.Action)(System.Action)OnBossGroupStaticUpdate;
+            _staticUpdateOwner.StaticUpdate += _staticUpdateToken;
             _bossGroupStaticUpdateSubscribed = true;
         }
 
         private void UnsubscribeBossGroupStaticUpdate()
         {
-            if (!_bossGroupStaticUpdateSubscribed || StaticManager.Instance == null)
+            if (!_bossGroupStaticUpdateSubscribed)
             {
                 return;
             }
 
-            StaticManager.Instance.StaticUpdate -= OnBossGroupStaticUpdate;
+            if (_staticUpdateOwner != null && _staticUpdateToken != null) _staticUpdateOwner.StaticUpdate -= _staticUpdateToken;
+            _staticUpdateOwner = null;
             _bossGroupStaticUpdateSubscribed = false;
         }
 
@@ -5083,11 +5190,12 @@ namespace pitTeam.Components
     {
         private Player _player;
         private pitAIBossPlayer _aiplayer;
+        private Spt5BeingHitActionSubscription? _beingHitSubscription;
         public AIBossPlayerLogic(Player player, pitAIBossPlayer aiplayer) : base(null, null)
         {
-            player.BeingHitAction += OnHit;
             _player = player;
             _aiplayer = aiplayer;
+            _beingHitSubscription = Spt5BeingHitActionBridge.Subscribe(player, OnHit);
         }
 
         public void OnHit(EFT.Ballistics.DamageInfo arg1, EBodyPart arg2, float arg3)
@@ -5131,7 +5239,7 @@ namespace pitTeam.Components
                 }
 
                 _aiplayer.AddEnemy(enemyBot);
-                BotOwner followerBotOwner = _aiplayer.Followers.FirstOrDefault();
+                BotOwner followerBotOwner = _aiplayer.Followers.AsManaged().FirstOrDefault();
                 _aiplayer.bossGroup.AddEnemy(enemyBot, EBotEnemyCause.addPlayerToBoss);
                 if (followerBotOwner != null)
                 {
@@ -5178,7 +5286,8 @@ namespace pitTeam.Components
 
         public override void Dispose()
         {
-            _player.BeingHitAction -= OnHit;
+            _beingHitSubscription?.Dispose();
+            _beingHitSubscription = null;
         }
 
 

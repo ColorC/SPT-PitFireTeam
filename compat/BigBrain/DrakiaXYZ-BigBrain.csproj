@@ -1,0 +1,105 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <RootNamespace>DrakiaXYZ.BigBrain</RootNamespace>
+    <Nullable>disable</Nullable>
+
+    <Authors>DrakiaXYZ</Authors>
+    <Copyright>Copyright © 2026 DrakiaXYZ</Copyright>
+    <AssemblyVersion>1.5.0</AssemblyVersion>
+    <FileVersion>$(AssemblyVersion)</FileVersion>
+    <Configurations>Debug;Release;Package</Configurations>
+    <Version>$(AssemblyVersion)</Version>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Package|AnyCPU'">
+    <DefineConstants>$(DefineConstants);RELEASE</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Package\**" />
+    <EmbeddedResource Remove="Package\**" />
+    <None Remove="Package\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="0Harmony">
+      <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\core\0Harmony.dll</HintPath>
+    </Reference>
+    <Reference Include="DissonanceVoip, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\DissonanceVoip.dll</HintPath>
+    </Reference>
+    <Reference Include="spt-common">
+      <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\plugins\sptushonka\SPTushonka.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="spt-reflection">
+      <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\plugins\sptushonka\SPTushonka.Reflection.dll</HintPath>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\Assembly-CSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="BepInEx">
+      <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\core\BepInEx.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Comfort">
+      <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\Comfort.dll</HintPath>
+    </Reference>
+    <Reference Include="Comfort.Unity">
+      <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\Comfort.Unity.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\UnityEngine.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.AIModule">
+      <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\UnityEngine.AIModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\UnityEngine.CoreModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\UnityEngine.IMGUIModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\UnityEngine.PhysicsModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\UnityEngine.TextRenderingModule.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="BepInEx.Unity.IL2CPP">
+      <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\core\BepInEx.Unity.IL2CPP.dll</HintPath>
+    </Reference>
+    <Reference Include="Il2CppInterop.Runtime">
+      <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\core\Il2CppInterop.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="Il2Cppmscorlib">
+      <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\Il2Cppmscorlib.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Patches\BotAgentUpdatePatch.cs" />
+
+
+  </ItemGroup>
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(DeployToGame)' == 'true'">
+    <Exec Command="copy &quot;$(TargetPath)&quot; &quot;$(ProjectDir)\..\..\BepInEx\plugins\$(TargetFileName)&quot;&#xD;&#xA;if $(ConfigurationName) == Package (&#xD;&#xA;    powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File $(ProjectDir)\package.ps1 -modName &quot;$(AssemblyName)&quot; -modVersion &quot;$(Version)&quot;&#xD;&#xA;)" />
+  </Target>
+
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent" Condition="'$(DeployToGame)' == 'true'">
+    <Exec Command="powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File &quot;$(ProjectDir)\VersionChecker\setbuild.ps1&quot;" />
+  </Target>
+
+  <PropertyGroup>
+    <Spt5ContractScript Condition="'$(Spt5ContractScript)' == ''">$(MSBuildProjectDirectory)\..\..\tests\Check-Spt5Build.ps1</Spt5ContractScript>
+  </PropertyGroup>
+  <Target Name="VerifySpt5InteropContracts" AfterTargets="Build" Condition="'$(SkipSpt5Contracts)' != 'true'">
+    <Error Condition="!Exists('$(Spt5ContractScript)')" Text="SPT5 contract verifier is missing: $(Spt5ContractScript)" />
+    <Exec Command="powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;$(Spt5ContractScript)&quot; -ModDll &quot;$(TargetPath)&quot; -ClientRuntimeRoot &quot;$(ClientRuntimeRoot)&quot; -ModKind BigBrain" />
+  </Target>
+</Project>

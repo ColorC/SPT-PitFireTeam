@@ -1,0 +1,131 @@
+{
+    "negativeBaseline":  {
+                             "logPath":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261014z-LogOutput-after-mainmenu.log",
+                             "line":  96,
+                             "unavailableMessage":  "Failed to fetch member profile: client backend session is unavailable",
+                             "completionMessage":  "Failed to fetch profile for AID: 1419139. Task status: RanToCompletion, Exception:"
+                         },
+    "cases":  [
+                  {
+                      "name":  "generated interface values retain native identity",
+                      "expected":  "native TryCast through IIl2CppObjectBase"
+                  },
+                  {
+                      "name":  "missing backend session fails explicitly",
+                      "expected":  "resolve-backend-session exception, not null task success"
+                  },
+                  {
+                      "name":  "Params native pointer unavailable",
+                      "phase":  "native-params-pointer",
+                      "expected":  "Failure is attributed before SendRequest creation."
+                  },
+                  {
+                      "name":  "SendRequest native pointer unavailable",
+                      "phase":  "native-request-pointer",
+                      "expected":  "Failure is attributed after request creation and before URL/Params setters."
+                  },
+                  {
+                      "name":  "Params setter rejects a valid request and Params pointer",
+                      "phase":  "native-request-params",
+                      "expected":  "Setter failure is distinct from both earlier Pointer reads."
+                  }
+              ],
+    "nativeBoundaryFailure":  {
+                                  "logPath":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261014aa-LogOutput-after-kia-return.log",
+                                  "exception":  "Il2CppInterop.Runtime.ObjectCollectedException: Object was garbage collected in IL2CPP domain",
+                                  "setterFrame":  "at SendRequest.set_Params(Object value)",
+                                  "callerFrame":  "at pitTeam.Patches.BotsControllerPatch.FetchMemberProfile",
+                                  "line":  97
+                              },
+    "runtimeAliasFailureBaseline":  {
+                                        "probePath":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261014ad-probe\\probe-ad-preaccept-json04.json",
+                                        "phase":  "native-params-parse",
+                                        "expectedError":  "System.MissingMethodException: Method not found: \u0027Void Newtonsoft.Json.Linq.JObject..ctor(IntPtr)\u0027."
+                                    },
+    "nativeJObjectLookup":  {
+                                "assemblyName":  "Newtonsoft.Json.dll",
+                                "namespace":  "Newtonsoft.Json.Linq",
+                                "className":  "JObject",
+                                "methodName":  "Parse",
+                                "generic":  false,
+                                "returnType":  "Newtonsoft.Json.Linq.JObject",
+                                "parameterType":  "System.String",
+                                "getIl2CppClassApi":  "GetIl2CppClass",
+                                "getIl2CppMethodApi":  "GetIl2CppMethod",
+                                "getIl2CppMethodParameters":  [
+                                                                  "System.IntPtr",
+                                                                  "System.Boolean",
+                                                                  "System.String",
+                                                                  "System.String",
+                                                                  "System.String[]"
+                                                              ]
+                            },
+    "managedAliasMetadata":  {
+                                 "path":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\isolated-client-reference\\BepInEx\\plugins\\Newtonsoft.Json.dll",
+                                 "assemblyFullName":  "Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed",
+                                 "typeName":  "Newtonsoft.Json.Linq.JObject",
+                                 "objectConstructor":  "System.Object",
+                                 "exactIntPtrConstructor":  false
+                             },
+    "freshWrapperFailureBaseline":  {
+                                        "logPath":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261014ac-LogOutput-after-mainmenu.log",
+                                        "firstLine":  96,
+                                        "expectedLines":  [
+                                                              "Follower profile phase=native-params-pointer failed",
+                                                              "ObjectCollectedException: Object was garbage collected in IL2CPP domain",
+                                                              "Il2CppObjectBase.get_Pointer()",
+                                                              "BotsControllerPatch.FetchMemberProfile"
+                                                          ]
+                                    },
+    "diagnosticPhases":  [
+                             "native-params-parse",
+                             "native-params-pointer",
+                             "native-request-create",
+                             "native-request-pointer",
+                             "native-request-url",
+                             "native-request-params",
+                             "backend-request-await"
+                         ],
+    "lookSensorNativePropertyFailure":  {
+                                            "logPath":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261014ag-BepInEx.log",
+                                            "accessToolsWarning":  "AccessTools.Field: Could not find field for type LookSensor and name VISIBLE_ANGLE",
+                                            "exception":  "System.NullReferenceException: Object reference not set to an instance of an object.",
+                                            "stackFrame":  "at pitTeam.Components.BotFollowerPlayer.SetFollowerSettings(BotOwner bot)",
+                                            "interopAssembly":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\isolated-client-reference\\BepInEx\\interop\\Assembly-CSharp.dll",
+                                            "baseType":  "Il2CppSystem.Object",
+                                            "nativeProperties":  [
+                                                                     {
+                                                                         "name":  "VISIBLE_ANGLE",
+                                                                         "type":  "System.Single",
+                                                                         "getter":  true,
+                                                                         "setter":  true
+                                                                     },
+                                                                     {
+                                                                         "name":  "VISIBLE_ANGLE_LIGHT",
+                                                                         "type":  "System.Single",
+                                                                         "getter":  true,
+                                                                         "setter":  true
+                                                                     },
+                                                                     {
+                                                                         "name":  "VISIBLE_ANGLE_NIGHTVISION",
+                                                                         "type":  "System.Single",
+                                                                         "getter":  true,
+                                                                         "setter":  true
+                                                                     }
+                                                                 ],
+                                            "negativeMetadataCases":  [
+                                                                          {
+                                                                              "name":  "legacy-field-missing",
+                                                                              "member":  "VISIBLE_ANGLE",
+                                                                              "expectedFieldPresent":  false,
+                                                                              "observedWarning":  "AccessTools.Field: Could not find field for type LookSensor and name VISIBLE_ANGLE"
+                                                                          },
+                                                                          {
+                                                                              "name":  "wrong-property-type",
+                                                                              "member":  "VISIBLE_ANGLE",
+                                                                              "observedType":  "System.Double",
+                                                                              "expectedWriteAllowed":  false
+                                                                          }
+                                                                      ]
+                                        }
+}

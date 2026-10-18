@@ -2,7 +2,7 @@ using Arena.UI;
 using EFT;
 using EFT.Communications;
 using EFT.UI;
-using SPT.Common.Http;
+using SPTushonka.Common.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -25,13 +25,13 @@ namespace pitTeam.Patches
                 NicknameRenameButton = null;
             }
 
-            OriginalNicknameLabel = NicknameLabelField?.GetValue(window) as CustomTextMeshProUGUI;
+            OriginalNicknameLabel = NicknameLabelAccessor.GetValue(window) as CustomTextMeshProUGUI;
             if (OriginalNicknameLabel == null)
             {
                 return;
             }
 
-            RectTransform sourceRect = OriginalNicknameLabel.transform as RectTransform;
+            RectTransform sourceRect = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(OriginalNicknameLabel.transform);
             if (sourceRect == null)
             {
                 return;
@@ -44,25 +44,17 @@ namespace pitTeam.Patches
 
             sourceRect.anchoredPosition = OriginalNicknameAnchoredPosition.Value;
 
-            DefaultUIButton hideoutButton = HideoutButtonField?.GetValue(screen) as DefaultUIButton;
+            DefaultUiButtonNewStyle hideoutButton = HideoutButtonAccessor.GetValue(screen) as DefaultUiButtonNewStyle;
             if (hideoutButton == null)
             {
                 return;
             }
 
-            OriginalHideoutButtonText ??= hideoutButton.HeaderText;
-            OriginalHideoutButtonFontSize ??= hideoutButton.HeaderSize;
-
             HideStockHideoutButtonPanel(hideoutButton);
         }
 
-        private static void CreateEditNameButton(OtherPlayerProfileScreen screen, RectTransform loadoutSelector, Transform parent, ResultProfile profile, int rowOffset = 1)
+        private static void CreateEditNameButton(OtherPlayerProfileScreen screen, RectTransform actionContainer, Transform parent, ResultProfile profile, int slot = 3)
         {
-            if (screen == null || loadoutSelector == null || parent == null || profile == null)
-            {
-                return;
-            }
-
             if (NicknameRenameButtonRoot != null)
             {
                 GameObject.Destroy(NicknameRenameButtonRoot.gameObject);
@@ -70,51 +62,21 @@ namespace pitTeam.Patches
                 NicknameRenameButton = null;
             }
 
-            DefaultUIButton buttonTemplate = HideoutButtonField?.GetValue(screen) as DefaultUIButton;
-            if (buttonTemplate == null)
+            if (screen == null || actionContainer == null || parent == null || profile == null)
             {
-                pitFireTeam.Log.LogWarning("[UI] Edit Name button aborted: hideout button template not found.");
                 return;
             }
 
-            RectTransform rowClone = GameObject.Instantiate(loadoutSelector, parent, true);
-            rowClone.name = "pitFireTeam_NameEdit";
-            rowClone.anchoredPosition = loadoutSelector.anchoredPosition + GetProfileControlRowOffset(loadoutSelector, Mathf.Max(1, rowOffset));
-            rowClone.gameObject.SetActive(true);
+            DefaultUIButton button = CreateProfileActionButton(
+                screen,
+                actionContainer,
+                "pitFireTeam_NicknameRenameButton",
+                GetSocialUiText("RenameChange"),
+                slot,
+                () => ShowRenameOverlay(screen, profile));
+            ConfigureCompactProfileActionButton(button, slot);
 
-            Transform upperRoot = rowClone.Find("Upper");
-            if (upperRoot != null)
-            {
-                upperRoot.gameObject.SetActive(false);
-            }
-
-            Transform lowerRoot = rowClone.Find("Lower");
-            if (lowerRoot != null)
-            {
-                lowerRoot.gameObject.SetActive(false);
-            }
-
-            DefaultUIButton button = GameObject.Instantiate(buttonTemplate, rowClone, false);
-            button.name = "pitFireTeam_NicknameRenameButton";
-            button.gameObject.SetActive(true);
-            button.Interactable = true;
-            button.SetRawText(GetSocialUiText("RenameChange"), 18);
-            HideProfileButtonIconContainer(button);
-            HideHideoutButtonDecorations(button);
-            button.OnClick.RemoveAllListeners();
-            button.OnClick.AddListener(() => ShowRenameOverlay(screen, profile));
-
-            if (button.transform is RectTransform buttonRect && buttonTemplate.transform is RectTransform templateRect)
-            {
-                buttonRect.anchorMin = new Vector2(0.5f, 0.5f);
-                buttonRect.anchorMax = new Vector2(0.5f, 0.5f);
-                buttonRect.pivot = new Vector2(0.5f, 0.5f);
-                buttonRect.anchoredPosition = Vector2.zero;
-                buttonRect.sizeDelta = templateRect.sizeDelta;
-                buttonRect.localScale = Vector3.one;
-            }
-
-            NicknameRenameButtonRoot = rowClone;
+            NicknameRenameButtonRoot = button?.transform;
             NicknameRenameButton = button;
         }
 
@@ -129,7 +91,7 @@ namespace pitTeam.Patches
                     continue;
                 }
 
-                RectTransform rect = image.transform as RectTransform;
+                RectTransform rect = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(image.transform);
                 if (rect == null)
                 {
                     continue;
@@ -146,7 +108,7 @@ namespace pitTeam.Patches
             }
         }
 
-        private static void HideStockHideoutButtonPanel(DefaultUIButton hideoutButton)
+        private static void HideStockHideoutButtonPanel(Component hideoutButton)
         {
             if (hideoutButton == null)
             {
@@ -215,36 +177,16 @@ namespace pitTeam.Patches
 
             HiddenRenameButtonDecorations.Clear();
 
-            DefaultUIButton hideoutButton = HideoutButtonField?.GetValue(screen) as DefaultUIButton;
-            if (hideoutButton == null)
-            {
-                return;
-            }
-
-            hideoutButton.OnClick.RemoveAllListeners();
-            if (HideoutButtonHandlerMethod != null)
-            {
-                hideoutButton.OnClick.AddListener(() => HideoutButtonHandlerMethod.Invoke(screen, null));
-            }
-
-            if (!string.IsNullOrWhiteSpace(OriginalHideoutButtonText))
-            {
-                hideoutButton.SetHeaderText(OriginalHideoutButtonText, OriginalHideoutButtonFontSize ?? hideoutButton.HeaderSize);
-            }
-            if (profile != null)
-            {
-                hideoutButton.gameObject.SetActive(profile.HideoutData != null);
-            }
+            // Native Back and VisitHideout have distinct types and own their event bindings.
+            // Restore only the visibility that our teammate customization actually changed.
         }
 
         internal static void RestoreProfileRightSideContent(OtherPlayerProfileScreen screen)
         {
-            foreach (KeyValuePair<GameObject, bool> pair in HiddenRightSideRoots)
+            foreach (KeyValuePair<long, HiddenRightSideRootState> pair in HiddenRightSideRoots)
             {
-                if (pair.Key != null)
-                {
-                    pair.Key.SetActive(pair.Value);
-                }
+                var root = pair.Value.root;
+                if (root != null && root.Pointer != IntPtr.Zero && root.Pointer.ToInt64() == pair.Key) root.SetActive(pair.Value.active);
             }
 
             HiddenRightSideRoots.Clear();
@@ -265,14 +207,14 @@ namespace pitTeam.Patches
                     field != null &&
                     field.gameObject != null &&
                     field.gameObject.scene.IsValid() &&
-                    NicknameFieldInputField?.GetValue(field) is TMP_InputField);
+                    NicknameFieldInputAccessor.GetValue(field) is TMP_InputField);
             if (buttonTemplate == null || nicknameTemplate == null)
             {
                 pitFireTeam.Log.LogWarning("[UI] Teammate rename overlay aborted: template button or NicknameField not found.");
                 return;
             }
 
-            GameObject overlayRoot = new GameObject("pitFireTeam_RenameOverlay", typeof(RectTransform), typeof(Image));
+            GameObject overlayRoot = new GameObject("pitFireTeam_RenameOverlay", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             overlayRoot.transform.SetParent(screen.transform, false);
             RectTransform overlayRect = overlayRoot.GetComponent<RectTransform>();
             overlayRect.anchorMin = Vector2.zero;
@@ -286,7 +228,7 @@ namespace pitTeam.Patches
             backdrop.color = new Color(0f, 0f, 0f, 0.08f);
             backdrop.raycastTarget = true;
 
-            GameObject panel = new GameObject("pitFireTeam_RenamePanel", typeof(RectTransform), typeof(Image));
+            GameObject panel = new GameObject("pitFireTeam_RenamePanel", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             panel.transform.SetParent(overlayRoot.transform, false);
             RectTransform panelRect = panel.GetComponent<RectTransform>();
             panelRect.anchorMin = new Vector2(0.5f, 0.5f);
@@ -300,7 +242,7 @@ namespace pitTeam.Patches
             panelImage.color = new Color(0.02f, 0.02f, 0.02f, 0.98f);
             panelImage.raycastTarget = true;
 
-            GameObject header = new GameObject("pitFireTeam_RenameHeader", typeof(RectTransform), typeof(Image));
+            GameObject header = new GameObject("pitFireTeam_RenameHeader", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             header.transform.SetParent(panel.transform, false);
             RectTransform headerRect = header.GetComponent<RectTransform>();
             headerRect.anchorMin = new Vector2(0f, 1f);
@@ -313,7 +255,7 @@ namespace pitTeam.Patches
             headerImage.color = new Color(0.06f, 0.06f, 0.06f, 1f);
             headerImage.raycastTarget = true;
 
-            GameObject titleObject = new GameObject("pitFireTeam_RenameTitle", typeof(RectTransform), typeof(CustomTextMeshProUGUI));
+            GameObject titleObject = new GameObject("pitFireTeam_RenameTitle", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<CustomTextMeshProUGUI>());
             titleObject.transform.SetParent(header.transform, false);
             RectTransform titleRect = titleObject.GetComponent<RectTransform>();
             titleRect.anchorMin = new Vector2(0f, 0f);
@@ -329,7 +271,7 @@ namespace pitTeam.Patches
             title.color = new Color(0.87f, 0.87f, 0.84f, 1f);
 
             Button closeButton = CreateWindowCloseButton(header.transform);
-            if (closeButton.transform is RectTransform closeRect)
+            if (pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(closeButton.transform) is RectTransform closeRect)
             {
                 closeRect.anchorMin = new Vector2(1f, 0.5f);
                 closeRect.anchorMax = new Vector2(1f, 0.5f);
@@ -337,11 +279,11 @@ namespace pitTeam.Patches
                 closeRect.anchoredPosition = new Vector2(-4f, 0f);
             }
 
-            closeButton.onClick.AddListener(new UnityAction(CloseRenameOverlay));
+            closeButton.onClick.AddListener((System.Action)CloseRenameOverlay);
 
             GameObject fieldRoot = GameObject.Instantiate(nicknameTemplate.gameObject, panel.transform, false);
             fieldRoot.name = "pitFireTeam_RenameNicknameField";
-            RectTransform fieldRect = fieldRoot.transform as RectTransform;
+            RectTransform fieldRect = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(fieldRoot.transform);
             if (fieldRect != null)
             {
                 fieldRect.anchorMin = new Vector2(0f, 1f);
@@ -353,7 +295,7 @@ namespace pitTeam.Patches
             }
 
             NicknameField nicknameField = fieldRoot.GetComponent<NicknameField>();
-            TMP_InputField inputField = NicknameFieldInputField?.GetValue(nicknameField) as TMP_InputField;
+            TMP_InputField inputField = NicknameFieldInputAccessor.GetValue(nicknameField) as TMP_InputField;
             if (nicknameField == null || inputField == null)
             {
                 GameObject.Destroy(overlayRoot);
@@ -361,6 +303,7 @@ namespace pitTeam.Patches
             }
 
             string currentNickname = OriginalNicknameLabel.text?.Trim() ?? string.Empty;
+            PrepareLocalizedTemplates(nicknameField.transform);
             nicknameField.Init(string.Empty);
             inputField.SetTextWithoutNotify(currentNickname);
             inputField.text = currentNickname;
@@ -372,7 +315,7 @@ namespace pitTeam.Patches
                 nicknameField,
                 GetSocialUiText("EnterNickname"));
 
-            TMP_Text stockStatusLabel = NicknameFieldStatusLabelField?.GetValue(nicknameField) as TMP_Text;
+            TMP_Text stockStatusLabel = NicknameFieldStatusLabelAccessor.GetValue(nicknameField) as TMP_Text;
             if (stockStatusLabel != null)
             {
                 stockStatusLabel.gameObject.SetActive(true);
@@ -380,13 +323,13 @@ namespace pitTeam.Patches
                 stockStatusLabel.color = new Color(0.88f, 0.39f, 0.35f, 1f);
             }
 
-            LocalizedText usedSymbolsLabel = NicknameFieldUsedSymbolsField?.GetValue(nicknameField) as LocalizedText;
+            LocalizedText usedSymbolsLabel = NicknameFieldUsedSymbolsAccessor.GetValue(nicknameField) as LocalizedText;
             if (usedSymbolsLabel != null)
             {
                 usedSymbolsLabel.gameObject.SetActive(false);
             }
 
-            if (inputField.transform is RectTransform inputRect)
+            if (pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(inputField.transform) is RectTransform inputRect)
             {
                 inputRect.offsetMin = Vector2.zero;
                 inputRect.offsetMax = Vector2.zero;
@@ -397,8 +340,8 @@ namespace pitTeam.Patches
             DefaultUIButton saveButton = CreateOverlayButton(buttonTemplate, panel.transform, new Vector2(0f, 12f), new Vector2(180f, 36f));
             saveButton.SetRawText(GetSocialUiText("RenameSave"), 22);
             saveButton.OnClick.RemoveAllListeners();
-            saveButton.OnClick.AddListener(() => TryPersistNickname(inputField.text, profile, nicknameField, stockStatusLabel));
-            if (saveButton.transform is RectTransform saveRect)
+            saveButton.OnClick.AddListener((System.Action)(() => TryPersistNickname(inputField.text, profile, nicknameField, stockStatusLabel)));
+            if (pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(saveButton.transform) is RectTransform saveRect)
             {
                 saveRect.anchorMin = new Vector2(0.5f, 0f);
                 saveRect.anchorMax = new Vector2(0.5f, 0f);
@@ -422,7 +365,7 @@ namespace pitTeam.Patches
         {
             DefaultUIButton button = GameObject.Instantiate(template, parent, false);
             button.name = $"pitFireTeam_{template.name}";
-            RectTransform rect = button.transform as RectTransform;
+            RectTransform rect = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(button.transform);
             if (rect != null)
             {
                 rect.anchorMin = new Vector2(0f, 0f);
@@ -435,12 +378,13 @@ namespace pitTeam.Patches
 
             button.gameObject.SetActive(true);
             button.Interactable = true;
+            ApplyProfileButtonSurface(button);
             return button;
         }
 
         private static Button CreateWindowCloseButton(Transform parent)
         {
-            GameObject buttonObject = new GameObject("pitFireTeam_WindowCloseButton", typeof(RectTransform), typeof(Image), typeof(Button));
+            GameObject buttonObject = new GameObject("pitFireTeam_WindowCloseButton", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>(), Il2CppInterop.Runtime.Il2CppType.Of<Button>());
             buttonObject.transform.SetParent(parent, false);
 
             RectTransform rect = buttonObject.GetComponent<RectTransform>();
@@ -451,7 +395,7 @@ namespace pitTeam.Patches
             background.color = new Color(0.43f, 0.12f, 0.12f, 1f);
             background.raycastTarget = true;
 
-            GameObject labelObject = new GameObject("pitFireTeam_RenameCloseLabel", typeof(RectTransform), typeof(CustomTextMeshProUGUI));
+            GameObject labelObject = new GameObject("pitFireTeam_RenameCloseLabel", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<CustomTextMeshProUGUI>());
             labelObject.transform.SetParent(buttonObject.transform, false);
             RectTransform labelRect = labelObject.GetComponent<RectTransform>();
             labelRect.anchorMin = Vector2.zero;
@@ -475,7 +419,7 @@ namespace pitTeam.Patches
                 return;
             }
 
-            TMP_InputField inputField = NicknameFieldInputField?.GetValue(nicknameField) as TMP_InputField;
+            TMP_InputField inputField = NicknameFieldInputAccessor.GetValue(nicknameField) as TMP_InputField;
             string normalized = value?.Trim() ?? string.Empty;
             string current = OriginalNicknameLabel?.text?.Trim() ?? string.Empty;
             if (string.IsNullOrWhiteSpace(normalized))

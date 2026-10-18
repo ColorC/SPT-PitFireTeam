@@ -108,7 +108,7 @@ namespace pitTeam.BigBrain
         }
 
         public override void DecisionChanged(
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? prevDecision,
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> prevDecision,
             AICoreActionResult<BotLogicDecision, CoreActionResultParams> nextDecision)
         {
             if (IsRegroupReason(nextDecision.Reason))
@@ -135,16 +135,16 @@ namespace pitTeam.BigBrain
                 return medicalDecision;
             }
 
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? dogFight = CombatCommon.TryGetDogFightDecision();
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> dogFight = CombatCommon.TryGetDogFightDecision();
             if (dogFight != null)
             {
-                return dogFight.Value;
+                return dogFight;
             }
 
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? healDecision = CombatCommon.TryGetNeedHealDecision();
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> healDecision = CombatCommon.TryGetNeedHealDecision();
             if (healDecision != null)
             {
-                return healDecision.Value;
+                return healDecision;
             }
 
 
@@ -225,7 +225,7 @@ namespace pitTeam.BigBrain
 
                 if (Time.time < arrivedSettleUntil)
                 {
-                    return default;
+                    return FollowerCombatCommon.Continue();
                 }
 
                 complete = true;
@@ -320,7 +320,7 @@ namespace pitTeam.BigBrain
                     return new AICoreActionEnd("regroupMarksmanSupportOpportunity", true);
                 }
 
-                return default;
+                return FollowerCombatCommon.Continue();
             }
 
             if (currentDecision.Reason != null && currentDecision.Reason.StartsWith("regroup.run", System.StringComparison.Ordinal))
@@ -343,7 +343,7 @@ namespace pitTeam.BigBrain
                     return new AICoreActionEnd("regroupMarksmanSupportOpportunity", true);
                 }
 
-                return default;
+                return FollowerCombatCommon.Continue();
             }
 
             return CombatCommon.ShallEndCurrentDecision(currentDecision);
@@ -644,13 +644,13 @@ namespace pitTeam.BigBrain
         {
             decision = default;
             // Reuse the shared heal decision tree, but let regroup remain the owning objective.
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? healDecision = CombatCommon.TryGetNeedHealDecision();
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> healDecision = CombatCommon.TryGetNeedHealDecision();
             if (healDecision == null)
             {
                 return false;
             }
 
-            decision = healDecision.Value;
+            decision = healDecision;
             return true;
         }
 
@@ -1075,7 +1075,7 @@ namespace pitTeam.BigBrain
         private bool TryGetBossCombatEvents(out CombatEvents? combatEvents)
         {
             combatEvents = null;
-            if (BotOwner.BotFollower?.BossToFollow is not pitAIBossPlayer boss)
+            if (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(BotOwner) is not pitAIBossPlayer boss)
             {
                 return false;
             }

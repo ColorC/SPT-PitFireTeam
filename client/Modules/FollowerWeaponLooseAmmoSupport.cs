@@ -110,7 +110,7 @@ namespace pitTeam.Modules
         {
             try
             {
-                return ammo.GetAllParentItems(false)
+                return ammo.GetAllParentItems(false).AsManaged()
                     .Any(parent => parent is Weapon || parent is EFT.InventoryLogic.Magazine);
             }
             catch

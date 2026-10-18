@@ -3,7 +3,7 @@ using EFT.UI;
 using EFT.UI.Chat;
 using pitTeam.Modules;
 using HarmonyLib;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System;
 using System.Reflection;
 using TMPro;
@@ -16,11 +16,11 @@ namespace pitTeam.Patches
     internal class ChatFriendsPanelAddTeammateButtonPatch : ModulePatch
     {
         private const string AddTeammateButtonName = "pitFireTeam_AddTeammateButton";
-        private static readonly FieldInfo FriendsButtonField = AccessTools.Field(typeof(ChatFriendsPanel), "_friendsButton");
-        private static readonly FieldInfo ButtonLabelField = AccessTools.Field(typeof(FriendsListContentButton), "_buttonLabel");
-        private static readonly FieldInfo FriendsInputField = AccessTools.Field(typeof(ChatFriendsPanel), "_friendsInputField");
-        private static readonly FieldInfo FriendsListPanelField = AccessTools.Field(typeof(ChatFriendsPanel), "_chatFriendsListPanel");
-        private static readonly FieldInfo FriendsLabelField = AccessTools.Field(typeof(ChatFriendsListPanel), "_friendsLabel");
+        private static readonly pitTeam.Compat.NativeUiMemberAccessor? FriendsButtonAccessor = pitTeam.Compat.NativeUiMemberAccessor.TryForProperty(typeof(ChatFriendsPanel), "_friendsButton", typeof(FriendsListContentButton), false, false);
+        private static readonly pitTeam.Compat.NativeUiMemberAccessor? ButtonLabelAccessor = pitTeam.Compat.NativeUiMemberAccessor.TryForProperty(typeof(FriendsListContentButton), "_buttonLabel", typeof(CustomTextMeshProUGUI), false, false);
+        private static readonly pitTeam.Compat.NativeUiMemberAccessor? FriendsInputAccessor = pitTeam.Compat.NativeUiMemberAccessor.TryForProperty(typeof(ChatFriendsPanel), "_friendsInputField", typeof(ValidationInputField), false, false);
+        private static readonly pitTeam.Compat.NativeUiMemberAccessor? FriendsListPanelAccessor = pitTeam.Compat.NativeUiMemberAccessor.TryForProperty(typeof(ChatFriendsPanel), "_chatFriendsListPanel", typeof(ChatFriendsListPanel), false, false);
+        private static readonly pitTeam.Compat.NativeUiMemberAccessor? FriendsLabelAccessor = pitTeam.Compat.NativeUiMemberAccessor.TryForProperty(typeof(ChatFriendsListPanel), "_friendsLabel", typeof(TextMeshProUGUI), false, false);
 
         protected override MethodBase GetTargetMethod()
         {
@@ -48,14 +48,15 @@ namespace pitTeam.Patches
                 return;
             }
 
-            FriendsListContentButton templateButton = FriendsButtonField?.GetValue(panel) as FriendsListContentButton;
+            FriendsListContentButton templateButton = FriendsButtonAccessor?.GetValue(panel) as FriendsListContentButton;
             if (templateButton == null)
             {
                 return;
             }
 
-            RectTransform parent = (FriendsInputField?.GetValue(panel) as Component)?.transform.parent as RectTransform
-                ?? panel.transform as RectTransform;
+            Component inputComponent = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<Component>(FriendsInputAccessor?.GetValue(panel) as Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase);
+            RectTransform parent = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(inputComponent?.transform.parent)
+                ?? pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(panel.transform);
             if (parent == null)
             {
                 return;
@@ -67,7 +68,7 @@ namespace pitTeam.Patches
             GameObject buttonObject = CreateButtonObject(templateButton, templateLabel, parent);
             buttonObject.name = AddTeammateButtonName;
 
-            Transform inputTransform = (FriendsInputField?.GetValue(panel) as Component)?.transform;
+            Transform inputTransform = (FriendsInputAccessor?.GetValue(panel) as Component)?.transform;
             if (inputTransform != null)
             {
                 buttonObject.transform.SetSiblingIndex(inputTransform.GetSiblingIndex() + 1);
@@ -76,14 +77,14 @@ namespace pitTeam.Patches
 
         private static TMP_Text ResolveRowLabelTemplate(ChatFriendsPanel panel, FriendsListContentButton templateButton)
         {
-            ChatFriendsListPanel listPanel = FriendsListPanelField?.GetValue(panel) as ChatFriendsListPanel;
-            TMP_Text rowLabel = FriendsLabelField?.GetValue(listPanel) as TMP_Text;
+            ChatFriendsListPanel listPanel = FriendsListPanelAccessor?.GetValue(panel) as ChatFriendsListPanel;
+            TMP_Text rowLabel = FriendsLabelAccessor?.GetValue(listPanel) as TMP_Text;
             if (rowLabel != null)
             {
                 return rowLabel;
             }
 
-            return ButtonLabelField?.GetValue(templateButton) as TMP_Text;
+            return ButtonLabelAccessor?.GetValue(templateButton) as TMP_Text;
         }
 
         private static void RemoveExistingButtons(RectTransform parent)
@@ -102,10 +103,10 @@ namespace pitTeam.Patches
         {
             GameObject buttonObject = new GameObject(
                 AddTeammateButtonName,
-                typeof(RectTransform),
-                typeof(LayoutElement),
-                typeof(Image),
-                typeof(Button));
+                Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(),
+                Il2CppInterop.Runtime.Il2CppType.Of<LayoutElement>(),
+                Il2CppInterop.Runtime.Il2CppType.Of<Image>(),
+                Il2CppInterop.Runtime.Il2CppType.Of<Button>());
             buttonObject.transform.SetParent(parent, false);
 
             RectTransform rectTransform = buttonObject.GetComponent<RectTransform>();
@@ -141,7 +142,7 @@ namespace pitTeam.Patches
                 colors.pressedColor = new Color32(180, 180, 180, 255);
                 colors.selectedColor = Color.white;
                 button.colors = colors;
-                button.onClick.AddListener(new UnityAction(OnAddTeammateClicked));
+                button.onClick.AddListener((System.Action)OnAddTeammateClicked);
             }
 
             CreateButtonLabel(buttonObject.transform, templateLabel);
@@ -153,8 +154,8 @@ namespace pitTeam.Patches
         {
             GameObject labelObject = new GameObject(
                 "Label",
-                typeof(RectTransform),
-                typeof(TextMeshProUGUI));
+                Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(),
+                Il2CppInterop.Runtime.Il2CppType.Of<TextMeshProUGUI>());
             labelObject.transform.SetParent(parent, false);
 
             RectTransform labelRect = labelObject.GetComponent<RectTransform>();

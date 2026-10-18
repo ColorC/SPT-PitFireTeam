@@ -1,7 +1,8 @@
 using EFT.UI.Gestures;
+using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using EFT.UI;
 using HarmonyLib;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -12,7 +13,6 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using GestureAction = EFT.UI.Gestures.GestureBaseItem.PointerClick;
-using GestureMenuItem = EFT.UI.Gestures.GesturesMenu.CG_CreatePhraseGroup;
 
 namespace pitTeam.Patches
 {
@@ -40,12 +40,12 @@ namespace pitTeam.Patches
             textLayout.minWidth = Mathf.Max(textLayout.minWidth, textWidth);
             textLayout.preferredWidth = Mathf.Max(textLayout.preferredWidth, textWidth);
 
-            if (quickCommandObject?.transform is RectTransform quickRect)
+            if (pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(quickCommandObject?.transform) is RectTransform quickRect)
             {
                 EnsureMinWidth(quickRect, textWidth + 35f);
             }
 
-            if (textField.transform.parent is RectTransform parentRect)
+            if (pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(textField.transform.parent) is RectTransform parentRect)
             {
                 EnsureMinWidth(parentRect, textWidth);
             }
@@ -65,6 +65,16 @@ namespace pitTeam.Patches
         }
     }
 
+    internal static class GestureMenuNativeMembers
+    {
+        internal static readonly pitTeam.Compat.NativeUiMemberAccessor AudioItems = pitTeam.Compat.NativeUiMemberAccessor.ForProperty(typeof(GesturesMenu), "_audioItems", typeof(Il2CppSystem.Collections.Generic.List<GesturesAudioItem>), false, false);
+        internal static readonly pitTeam.Compat.NativeUiMemberAccessor GestureItemTemplate = pitTeam.Compat.NativeUiMemberAccessor.ForProperty(typeof(GesturesMenu), "_gestureItemTemplate", typeof(GesturesMenuItem), false, false);
+        internal static readonly pitTeam.Compat.NativeUiMemberAccessor AllItems = pitTeam.Compat.NativeUiMemberAccessor.ForProperty(typeof(GesturesMenu), "_allItems", typeof(Il2CppSystem.Collections.Generic.List<GestureBaseItem>), false, false);
+        internal static readonly pitTeam.Compat.NativeUiMemberAccessor AvailablePhrases = pitTeam.Compat.NativeUiMemberAccessor.ForProperty(typeof(GesturesMenu), "_availablePhrases", typeof(Il2CppSystem.Collections.Generic.HashSet<EPhraseTrigger>), false, false);
+        internal static readonly pitTeam.Compat.NativeUiMemberAccessor GestureContainer = pitTeam.Compat.NativeUiMemberAccessor.ForProperty(typeof(GesturesMenu), "_gestureContainer", typeof(BaseTransformSolver), false, false);
+        internal static readonly pitTeam.Compat.NativeUiMemberAccessor GestureItems = pitTeam.Compat.NativeUiMemberAccessor.ForProperty(typeof(GesturesMenu), "_gestureItems", typeof(Il2CppSystem.Collections.Generic.List<GesturesMenuItem>), false, false);
+    }
+
     // Add new prhases to the menu
     internal class GestureMenuPatch : ModulePatch
     {
@@ -75,46 +85,118 @@ namespace pitTeam.Patches
         [PatchPostfix]
         private static void PatchPostfix(GesturesMenu __instance)
         {
-            var list_0 = (List<GesturesAudioItem>)AccessTools.Field(typeof(GesturesMenu), "_audioItems").GetValue(__instance);
-            var list_1 = (List<GestureBaseItem>)AccessTools.Field(typeof(GesturesMenu), "_allItems").GetValue(__instance);
+            if (__instance == null) throw new ArgumentNullException(nameof(__instance));
+            var list_0 = GestureMenuNativeMembers.AudioItems.GetValue(__instance) as Il2CppSystem.Collections.Generic.List<GesturesAudioItem>;
+            var list_1 = GestureMenuNativeMembers.AllItems.GetValue(__instance) as Il2CppSystem.Collections.Generic.List<GestureBaseItem>;
+            if (list_0 == null) throw new InvalidOperationException("GesturesMenu._audioItems property returned null.");
+            if (list_1 == null) throw new InvalidOperationException("GesturesMenu._allItems property returned null.");
 
-            if (!pitFireTeam.hideUnsupportedCommands.Value) list_0.ForEach(item =>
+            if (!pitFireTeam.hideUnsupportedCommands.Value)
             {
-                if (item.gameObject.name == "ENEMY")
+                for (int i = 0; i < list_0.Count; i++)
                 {
-                    List<EPhraseTrigger> enemyPhrases = new List<EPhraseTrigger>
+                    var item = list_0[i];
+                    if (item == null) throw new InvalidOperationException("GesturesMenu._audioItems contains a null native item.");
+                    if (item.gameObject.name == "ENEMY")
                     {
-                        EPhraseTrigger.OnRepeatedContact
-                    };
+                        List<EPhraseTrigger> enemyPhrases = new List<EPhraseTrigger>
+                        {
+                            EPhraseTrigger.OnRepeatedContact
+                        };
 
-                    enemyPhrases.ForEach(phrase =>
+                        enemyPhrases.ForEach(phrase =>
+                        {
+                            GestureBaseItem gestureBaseItem = item.CreateNewPhrase(phrase, false);
+                            gestureBaseItem.OnPointerClicked.Subscribe(new Action<GestureAction>(click => __instance.PointerClickedHandler(click, false)));
+                            list_1.Add(gestureBaseItem);
+                        });
+                    }
+                    else if (item.gameObject.name == "TEAM STATUS")
                     {
-                        GestureMenuItem @class = new GestureMenuItem();
-                        @class.gesturesMenu_0 = __instance;
-                        @class.isSituational = false;
-                        GestureBaseItem gestureBaseItem = item.CreateNewPhrase(phrase, false);
-                        gestureBaseItem.OnPointerClicked.Subscribe(new Action<GestureAction>(@class.method_0));
-                        list_1.Add(gestureBaseItem);
-                    });
+                        List<CustomPhrases> statusPhrases = new List<CustomPhrases> { CustomPhrases.TeamStatus };
+
+                        statusPhrases.ForEach(phrase =>
+                        {
+                            GestureBaseItem gestureBaseItem = item.CreateNewPhrase((EPhraseTrigger)phrase, false);
+                            gestureBaseItem.OnPointerClicked.Subscribe(new Action<GestureAction>(click => __instance.PointerClickedHandler(click, false)));
+                            list_1.Add(gestureBaseItem);
+                        });
+                    }
                 }
+            }
 
-                else if (item.gameObject.name == "TEAM STATUS")
-                {
-                    List<CustomPhrases> statusPhrases = new List<CustomPhrases> { CustomPhrases.TeamStatus };
-
-                    statusPhrases.ForEach(phrase =>
-                    {
-                        GestureMenuItem @class = new GestureMenuItem();
-                        @class.gesturesMenu_0 = __instance;
-                        @class.isSituational = false;
-                        GestureBaseItem gestureBaseItem = item.CreateNewPhrase((EPhraseTrigger)phrase, false);
-                        gestureBaseItem.OnPointerClicked.Subscribe(new Action<GestureAction>(@class.method_0));
-                        list_1.Add(gestureBaseItem);
-                    });
+        }
 
 
-                }
+
+    }
+    internal class CustomGestureCaptionPatch : ModulePatch
+    {
+        private static int _diagnosticCount;
+
+        protected override MethodBase GetTargetMethod()
+        {
+            return AccessTools.Method(typeof(GesturesAudioSubItem), nameof(GesturesAudioSubItem.Show), new[]
+            {
+                typeof(Sprite),
+                typeof(Sprite),
+                typeof(Color),
+                typeof(Color),
+                typeof(GestureCommands)
             });
+        }
+
+        [PatchPostfix]
+        private static void PatchPostfix(GesturesAudioSubItem __instance)
+        {
+            if (__instance == null) return;
+
+            EPhraseTrigger phraseTrigger;
+            try
+            {
+                phraseTrigger = __instance.PhraseTrigger;
+            }
+            catch (Exception exception)
+            {
+                if (System.Threading.Interlocked.Increment(ref _diagnosticCount) <= 4)
+                {
+                    string? errorPointer = null;
+                    try { errorPointer = "0x" + __instance.Pointer.ToInt64().ToString("X"); } catch { errorPointer = "unavailable"; }
+                    pitFireTeam.Log?.LogWarning($"[UI][GestureCaption] status=phrase-trigger-error phraseTrigger=unavailable proxyType={__instance.GetType().FullName} nativePointer={errorPointer} before=<unavailable> after=<unavailable> error={exception.GetType().FullName}: {exception.Message}");
+                }
+                return;
+            }
+
+            int triggerValue = (int)phraseTrigger;
+            string? phraseKey = triggerValue == 10001 ? "TeamStatus" : triggerValue == 10002 ? "ViewBackpack" : null;
+            if (phraseKey == null) return;
+            bool logDiagnostic = System.Threading.Interlocked.Increment(ref _diagnosticCount) <= 4;
+
+            string? nativePointer = null;
+            string? proxyType = null;
+            string? before = null;
+            string? after = null;
+            try
+            {
+                proxyType = __instance.GetType().FullName;
+                nativePointer = "0x" + __instance.Pointer.ToInt64().ToString("X");
+                CustomTextMeshProUGUI textField = __instance._textField;
+                if (textField == null)
+                {
+                    if (logDiagnostic) pitFireTeam.Log?.LogWarning($"[UI][GestureCaption] status=missing-text-field phraseTrigger={triggerValue} proxyType={proxyType} nativePointer={nativePointer} before=<unavailable> after=<unavailable>");
+                    return;
+                }
+
+                before = textField.text;
+                string replacement = pitFireTeam.GetGestureText(phraseKey);
+                textField.text = replacement;
+                after = textField.text;
+                if (logDiagnostic) pitFireTeam.Log?.LogInfo($"[UI][GestureCaption] status=assigned phraseTrigger={triggerValue} phrase={phraseKey} proxyType={proxyType} nativePointer={nativePointer} before={before} after={after}");
+            }
+            catch (Exception exception)
+            {
+                if (logDiagnostic) pitFireTeam.Log?.LogWarning($"[UI][GestureCaption] status=error phraseTrigger={triggerValue} phrase={phraseKey} proxyType={proxyType} nativePointer={nativePointer} before={before} after={after} error={exception.GetType().FullName}: {exception.Message}");
+            }
         }
     }
     // Hide Unsupported Gesture Commands
@@ -122,18 +204,17 @@ namespace pitTeam.Patches
     {
         protected override MethodBase GetTargetMethod()
         {
-            return AccessTools.Method(typeof(GesturesMenu), "CreatePhraseGroup");
+            return AccessTools.Method(typeof(GesturesMenu), "CreatePhraseGroup", new[] { typeof(string), typeof(GesturesAudioItem), typeof(Il2CppStructArray<EPhraseTrigger>) });
         }
         [PatchPrefix]
-        private static bool PatchPrefix(GesturesMenu __instance, string localizationKey, GesturesAudioItem groupTemplate, ref EPhraseTrigger[] phrases)
+        private static bool PatchPrefix(GesturesMenu __instance, string localizationKey, GesturesAudioItem groupTemplate, ref Il2CppStructArray<EPhraseTrigger> phrases)
         {
             if (pitFireTeam.hideUnsupportedCommands.Value)
             {
                 // modify phrases here
                 if (localizationKey == "COMMAND")
                 {
-                    phrases =
-                    [
+                    phrases = new Il2CppStructArray<EPhraseTrigger>(new EPhraseTrigger[] {
                         EPhraseTrigger.Suppress,
                         EPhraseTrigger.Regroup,
                         EPhraseTrigger.HoldPosition,
@@ -145,46 +226,45 @@ namespace pitTeam.Patches
                         EPhraseTrigger.Stop,
                         //EPhraseTrigger.Silence,
                         EPhraseTrigger.OnYourOwn
-                    ];
+                    });
                 }
                 else if (localizationKey == "HELP")
                 {
-                    phrases =
-                    [
+                    phrases = new Il2CppStructArray<EPhraseTrigger>(new EPhraseTrigger[] {
                         EPhraseTrigger.NeedHelp,
                         EPhraseTrigger.NeedSniper
-                    ];
+                    });
                 }
                 else if (localizationKey == "CONTACT")
                 {
-                    phrases = [
+                    phrases = new Il2CppStructArray<EPhraseTrigger>(new EPhraseTrigger[] {
                         EPhraseTrigger.RightFlank,
                         EPhraseTrigger.InTheFront,
                         EPhraseTrigger.OnSix,
                         EPhraseTrigger.LeftFlank
-                    ];
+                    });
                 }
                 else if (localizationKey == "ENEMY")
                 {
-                    phrases = [
+                    phrases = new Il2CppStructArray<EPhraseTrigger>(new EPhraseTrigger[] {
                         EPhraseTrigger.OnRepeatedContact
-                    ];
+                    });
                 }
                 else if (localizationKey == "TEAM STATUS")
                 {
-                    phrases = [
+                    phrases = new Il2CppStructArray<EPhraseTrigger>(new EPhraseTrigger[] {
                         (EPhraseTrigger)CustomPhrases.TeamStatus
-                    ];
+                    });
                 }
                 else if (localizationKey == "SITUATIONAL")
                 {
-                    phrases = [
+                    phrases = new Il2CppStructArray<EPhraseTrigger>(new EPhraseTrigger[] {
                         EPhraseTrigger.LootKey,
                         EPhraseTrigger.LootMoney,
                         EPhraseTrigger.LootWeapon,
                         EPhraseTrigger.LootGeneric,
                         EPhraseTrigger.OpenDoor
-                    ];
+                    });
                 }
                 else if (localizationKey == "HEALTH STATUS" || localizationKey == "REACTION")
                 {
@@ -210,11 +290,16 @@ namespace pitTeam.Patches
         [PatchPostfix]
         private static void PatchPostfix(GesturesMenu __instance)
         {
+            if (__instance == null) throw new ArgumentNullException(nameof(__instance));
             EInteraction gesture = (EInteraction)CustomGestures.OverThere;
-            GesturesMenuItem gestureItemTemplate = (GesturesMenuItem)AccessTools.Field(typeof(GesturesMenu), "_gestureItemTemplate").GetValue(__instance);
-            BaseTransformSolver gestureContainer = (BaseTransformSolver)AccessTools.Field(typeof(GesturesMenu), "_gestureContainer").GetValue(__instance);
-            List<GesturesMenuItem> gestureItems = (List<GesturesMenuItem>)AccessTools.Field(typeof(GesturesMenu), "_gestureItems").GetValue(__instance);
-            List<GestureBaseItem> list_2 = (List<GestureBaseItem>)AccessTools.Field(typeof(GesturesMenu), "_allItems").GetValue(__instance);
+            var gestureItemTemplate = GestureMenuNativeMembers.GestureItemTemplate.GetValue(__instance) as GesturesMenuItem;
+            var gestureContainer = GestureMenuNativeMembers.GestureContainer.GetValue(__instance) as BaseTransformSolver;
+            var gestureItems = GestureMenuNativeMembers.GestureItems.GetValue(__instance) as Il2CppSystem.Collections.Generic.List<GesturesMenuItem>;
+            var list_2 = GestureMenuNativeMembers.AllItems.GetValue(__instance) as Il2CppSystem.Collections.Generic.List<GestureBaseItem>;
+            if (gestureItemTemplate == null) throw new InvalidOperationException("GesturesMenu._gestureItemTemplate property returned null.");
+            if (gestureContainer == null) throw new InvalidOperationException("GesturesMenu._gestureContainer property returned null.");
+            if (gestureItems == null) throw new InvalidOperationException("GesturesMenu._gestureItems property returned null.");
+            if (list_2 == null) throw new InvalidOperationException("GesturesMenu._allItems property returned null.");
 
             GesturesMenuItem gesturesMenuItem = global::UnityEngine.Object.Instantiate<GesturesMenuItem>(gestureItemTemplate, gestureContainer.transform);
             gestureContainer.SetChild(gesturesMenuItem.transform);
@@ -230,7 +315,7 @@ namespace pitTeam.Patches
             gesturesMenuItem.gameObject.SetActive(true);
             gestureItems.Add(gesturesMenuItem);
             list_2.Add(gesturesMenuItem);
-            gesturesMenuItem.OnPointerClicked.Subscribe(new Action<GestureBaseItem.PointerClick>(__instance.CG_CreateGesture));
+            gesturesMenuItem.OnPointerClicked.Subscribe(new Action<GestureBaseItem.PointerClick>(__instance._CreateGesture_b__44_0));
         }
 
         private static Sprite LoadOverThereSprite()
@@ -282,8 +367,10 @@ namespace pitTeam.Patches
         [PatchPostfix]
         private static void PatchPostfix(GesturesMenu __instance)
         {
+            if (__instance == null) throw new ArgumentNullException(nameof(__instance));
             GestureMenuUnsupportedCommandVisibility.Track(__instance);
-            var hashSet_1 = (HashSet<EPhraseTrigger>)AccessTools.Field(typeof(GesturesMenu), "_availablePhrases").GetValue(__instance);
+            var hashSet_1 = GestureMenuNativeMembers.AvailablePhrases.GetValue(__instance) as Il2CppSystem.Collections.Generic.HashSet<EPhraseTrigger>;
+            if (hashSet_1 == null) throw new InvalidOperationException("GesturesMenu._availablePhrases property returned null.");
             hashSet_1.Add((EPhraseTrigger)CustomPhrases.TeamStatus);
             hashSet_1.Add((EPhraseTrigger)CustomPhrases.ViewBackpack);
         }
@@ -291,8 +378,6 @@ namespace pitTeam.Patches
 
     internal static class GestureMenuUnsupportedCommandVisibility
     {
-        private static readonly FieldInfo AudioGroupsField = AccessTools.Field(typeof(GesturesMenu), "_audioItems");
-        private static readonly FieldInfo AllItemsField = AccessTools.Field(typeof(GesturesMenu), "_allItems");
         private static readonly List<WeakReference<GesturesMenu>> TrackedMenus = new List<WeakReference<GesturesMenu>>();
 
         public static void Track(GesturesMenu menu)
@@ -364,32 +449,35 @@ namespace pitTeam.Patches
 
         private static void ClearPhraseGroups(GesturesMenu menu)
         {
-            if (AudioGroupsField.GetValue(menu) is List<GesturesAudioItem> audioGroups)
+            if (menu == null) throw new ArgumentNullException(nameof(menu));
+            var audioGroups = GestureMenuNativeMembers.AudioItems.GetValue(menu) as Il2CppSystem.Collections.Generic.List<GesturesAudioItem>;
+            var allItems = GestureMenuNativeMembers.AllItems.GetValue(menu) as Il2CppSystem.Collections.Generic.List<GestureBaseItem>;
+            if (audioGroups == null) throw new InvalidOperationException("GesturesMenu._audioItems property returned null while clearing phrase groups.");
+            if (allItems == null) throw new InvalidOperationException("GesturesMenu._allItems property returned null while clearing phrase groups.");
+
+            for (int index = audioGroups.Count - 1; index >= 0; index--)
             {
-                for (int index = audioGroups.Count - 1; index >= 0; index--)
+                GesturesAudioItem group = audioGroups[index];
+                if (group != null)
                 {
-                    GesturesAudioItem group = audioGroups[index];
-                    if (group != null)
-                    {
-                        group.gameObject.SetActive(false);
-                        UnityEngine.Object.Destroy(group.gameObject);
-                    }
+                    group.gameObject.SetActive(false);
+                    UnityEngine.Object.Destroy(group.gameObject);
                 }
-
-                audioGroups.Clear();
             }
+            audioGroups.Clear();
 
-            if (AllItemsField.GetValue(menu) is List<GestureBaseItem> allItems)
+            for (int index = allItems.Count - 1; index >= 0; index--)
             {
-                allItems.RemoveAll(item => item == null || item is GesturesAudioSubItem);
+                GestureBaseItem item = allItems[index];
+                if (item == null || item is GesturesAudioSubItem) allItems.RemoveAt(index);
             }
         }
     }
 
     internal class ViewBackpackQuickPanelTextPatch : ModulePatch
     {
-        private static readonly FieldInfo TextField = AccessTools.Field(typeof(GesturesQuickPanel), "_textField");
-        private static readonly FieldInfo QuickCommandObjectField = AccessTools.Field(typeof(GesturesQuickPanel), "_quickCommandObject");
+        private static readonly pitTeam.Compat.NativeUiMemberAccessor? TextAccessor = pitTeam.Compat.NativeUiMemberAccessor.TryForProperty(typeof(GesturesQuickPanel), "_textField", typeof(CustomTextMeshProUGUI), false, false);
+        private static readonly pitTeam.Compat.NativeUiMemberAccessor? QuickCommandObjectAccessor = pitTeam.Compat.NativeUiMemberAccessor.TryForProperty(typeof(GesturesQuickPanel), "_quickCommandObject", typeof(GameObject), false, false);
 
         protected override MethodBase GetTargetMethod()
         {
@@ -404,10 +492,10 @@ namespace pitTeam.Patches
                 return;
             }
 
-            if (TextField.GetValue(__instance) is CustomTextMeshProUGUI textField)
+            if (TextAccessor?.GetValue(__instance) is CustomTextMeshProUGUI textField)
             {
                 textField.text = CustomGestureText.ViewBackpackTextUpper();
-                CustomGestureText.FitViewBackpackQuickText(textField, QuickCommandObjectField.GetValue(__instance) as GameObject);
+                CustomGestureText.FitViewBackpackQuickText(textField, QuickCommandObjectAccessor?.GetValue(__instance) as GameObject);
             }
         }
     }
@@ -520,7 +608,7 @@ namespace pitTeam.Patches
         }
     }
 
-    // patch to return friendly name for the new phrases
+
     internal class EPhraseTriggerPatch : ModulePatch
     {
         protected override MethodBase GetTargetMethod()

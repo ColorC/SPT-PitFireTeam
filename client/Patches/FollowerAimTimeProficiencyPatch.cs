@@ -2,7 +2,7 @@ using EFT;
 using HarmonyLib;
 using pitTeam.Components;
 using pitTeam.Modules;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System;
 using System.Reflection;
 using UnityEngine;

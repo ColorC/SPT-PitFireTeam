@@ -2,7 +2,7 @@ using pitTeam.Modules;
 using pitTeam.Components;
 using HarmonyLib;
 using EFT;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -287,7 +287,7 @@ namespace pitTeam.Patches
                 // cooldown while preserving EFT's squad-level phrase reservation.
                 botTalk.DropNextSayPeriod();
                 groupTalk?.PhraseSad(owner, phrase);
-                botTalk.Say(phrase, true, additionalMask);
+                botTalk.Say(phrase, true, additionalMask.ToNativeNullable());
                 state.LastEnemyProfileId = enemyId;
                 ClearPending(state);
             }
@@ -392,12 +392,12 @@ namespace pitTeam.Patches
     {
         protected override MethodBase GetTargetMethod()
         {
-            Type[] parameterTypes = new Type[] { typeof(EPhraseTrigger), typeof(ETagStatus?), typeof(bool) };
+            Type[] parameterTypes = new Type[] { typeof(EPhraseTrigger), typeof(Il2CppSystem.Nullable<ETagStatus>), typeof(bool) };
             return AccessTools.Method(typeof(BotTalk), "TrySay", parameterTypes);
         }
 
         [PatchPrefix]
-        private static bool PatchPrefix(BotTalk __instance, ref EPhraseTrigger type, ETagStatus? additionaMask, bool withGroupDelay)
+        private static bool PatchPrefix(BotTalk __instance, ref EPhraseTrigger type, Il2CppSystem.Nullable<ETagStatus> additionaMask, bool withGroupDelay)
         {
             type = FollowerReloadPhraseRemap.Remap(__instance._owner, type);
             if (FollowerForcedPhraseGate.ShouldBlock(__instance._owner, type))
@@ -414,7 +414,7 @@ namespace pitTeam.Patches
 
             if (FollowerContactPhraseGate.IsContactPhrase(type) && BossPlayers.IsFollower(__instance._owner))
             {
-                if (!FollowerContactPhraseGate.ShouldAllowOrSchedule(__instance._owner, type, additionaMask))
+                if (!FollowerContactPhraseGate.ShouldAllowOrSchedule(__instance._owner, type, additionaMask.ToManagedNullable()))
                 {
                     return false;
                 }
@@ -438,7 +438,8 @@ namespace pitTeam.Patches
                 typeof(float),
                 typeof(ETagStatus),
                 typeof(int),
-                typeof(bool)
+                typeof(bool),
+                typeof(ETagFilter)
             };
             return AccessTools.Method(typeof(Player), nameof(Player.Say), parameterTypes);
         }
@@ -471,7 +472,7 @@ namespace pitTeam.Patches
         }
 
         [PatchPrefix]
-        private static bool PatchPrefix(BotTalk __instance, ref EPhraseTrigger type, bool sayImmediately = false, ETagStatus? additionalMask = null)
+        private static bool PatchPrefix(BotTalk __instance, ref EPhraseTrigger type, bool sayImmediately = false, Il2CppSystem.Nullable<ETagStatus> additionalMask = default)
         {
             type = FollowerReloadPhraseRemap.Remap(__instance._owner, type);
             if (FollowerForcedPhraseGate.ShouldBlock(__instance._owner, type))
@@ -488,7 +489,7 @@ namespace pitTeam.Patches
 
             if (FollowerContactPhraseGate.IsContactPhrase(type) && BossPlayers.IsFollower(__instance._owner))
             {
-                if (!FollowerContactPhraseGate.ShouldAllowOrSchedule(__instance._owner, type, additionalMask))
+                if (!FollowerContactPhraseGate.ShouldAllowOrSchedule(__instance._owner, type, additionalMask.ToManagedNullable()))
                 {
                     return false;
                 }

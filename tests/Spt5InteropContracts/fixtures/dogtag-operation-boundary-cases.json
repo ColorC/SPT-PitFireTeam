@@ -1,0 +1,70 @@
+{
+    "source":  "client/Patches/TeammateCorpseDogtagPatch.cs",
+    "evidence":  "policy cases; native object execution not performed",
+    "operations":  [
+                       {
+                           "case":  "teammate-corpse-dogtag-move-simulate",
+                           "operation":  "Move",
+                           "isTeammateCorpse":  true,
+                           "isDogtag":  true,
+                           "simulate":  true,
+                           "expectedPrefix":  "block-with-ItemManuallyLockedError"
+                       },
+                       {
+                           "case":  "teammate-corpse-dogtag-move-actual",
+                           "operation":  "Move",
+                           "isTeammateCorpse":  true,
+                           "isDogtag":  true,
+                           "simulate":  false,
+                           "expectedPrefix":  "block-with-ItemManuallyLockedError"
+                       },
+                       {
+                           "case":  "teammate-corpse-dogtag-remove-simulate",
+                           "operation":  "Remove",
+                           "isTeammateCorpse":  true,
+                           "isDogtag":  true,
+                           "simulate":  true,
+                           "expectedPrefix":  "block-with-ItemManuallyLockedError"
+                       },
+                       {
+                           "case":  "teammate-corpse-dogtag-remove-actual",
+                           "operation":  "Remove",
+                           "isTeammateCorpse":  true,
+                           "isDogtag":  true,
+                           "simulate":  false,
+                           "expectedPrefix":  "block-with-ItemManuallyLockedError"
+                       },
+                       {
+                           "case":  "other-corpse-dogtag-move-simulate",
+                           "operation":  "Move",
+                           "isTeammateCorpse":  false,
+                           "isDogtag":  true,
+                           "simulate":  true,
+                           "expectedPrefix":  "continue-original"
+                       },
+                       {
+                           "case":  "other-corpse-dogtag-remove-actual",
+                           "operation":  "Remove",
+                           "isTeammateCorpse":  false,
+                           "isDogtag":  true,
+                           "simulate":  false,
+                           "expectedPrefix":  "continue-original"
+                       },
+                       {
+                           "case":  "teammate-corpse-nondogtag-move-actual",
+                           "operation":  "Move",
+                           "isTeammateCorpse":  true,
+                           "isDogtag":  false,
+                           "simulate":  false,
+                           "expectedPrefix":  "continue-original"
+                       },
+                       {
+                           "case":  "teammate-corpse-nondogtag-remove-simulate",
+                           "operation":  "Remove",
+                           "isTeammateCorpse":  true,
+                           "isDogtag":  false,
+                           "simulate":  true,
+                           "expectedPrefix":  "continue-original"
+                       }
+                   ]
+}

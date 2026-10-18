@@ -500,11 +500,11 @@ namespace pitTeam.BigBrain.Actions
             }
 
             if (BotOwner.GoToPoint(targetPoint, true, -1f, false, false) == NavMeshPathStatus.PathComplete &&
-                BotOwner.Mover.TargetPoint is Vector3 curPathLastPoint &&
-                (targetPoint - curPathLastPoint).magnitude < 2f)
+                BotOwner.Mover.TargetPoint.HasValue &&
+                (targetPoint - BotOwner.Mover.TargetPoint.Value).magnitude < 2f)
             {
-                CommitAdvancePoint(curPathLastPoint);
-                shouldSprint = !Utils.Utils.IsWithinDistance(curPathLastPoint, BotOwner.GetPlayer.Transform.position, 20f);
+                CommitAdvancePoint(BotOwner.Mover.TargetPoint.Value);
+                shouldSprint = !Utils.Utils.IsWithinDistance(BotOwner.Mover.TargetPoint.Value, BotOwner.GetPlayer.Transform.position, 20f);
                 return true;
             }
 
@@ -519,7 +519,7 @@ namespace pitTeam.BigBrain.Actions
             List<CustomNavigationPoint> closePoints = Covers.GetCoverPoints(BotOwner, targetPoint, 20f, searchTypeOverride: searchType);
             if (closePoints.Count > 0)
             {
-                customNavigationPoint = closePoints.RandomElement();
+                customNavigationPoint = closePoints.Count > 0 ? closePoints[UnityEngine.Random.Range(0, closePoints.Count)] : null;
             }
 
             if (customNavigationPoint == null)

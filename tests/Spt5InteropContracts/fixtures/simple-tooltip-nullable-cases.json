@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "provenance": {
+    "path": "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261015bh-exit-LogOutput.log",
+    "observedLine": 84,
+    "context": "Il2CppInterop NullReferenceException at Il2CppObjectBaseToPtrNotNull -> EFT.UI.SimpleTooltip.Show -> SquadControlMenuUi.TooltipHoverController.OnPointerEnter line 619",
+    "nativeFailureReproduced": true
+  },
+  "cases": [
+    {
+      "id": "bh-real-managed-null-maxwidth",
+      "maxWidthExpression": "null",
+      "expectedSafe": false,
+      "observedFailure": {
+        "exceptionType": "System.NullReferenceException",
+        "frames": [
+          "Il2CppInterop.Runtime.IL2CPP.Il2CppObjectBaseToPtrNotNull",
+          "EFT.UI.SimpleTooltip.Show(String text, Nullable`1 offset, Single delay, Nullable`1 maxWidth, Boolean locked)",
+          "pitTeam.Components.SquadControlMenuUi.TooltipHoverController.OnPointerEnter"
+        ]
+      }
+    },
+    {
+      "id": "explicit-empty-native-nullable",
+      "maxWidthExpression": "((float?)null).ToNativeNullable()",
+      "expectedSafe": true
+    }
+  ]
+}

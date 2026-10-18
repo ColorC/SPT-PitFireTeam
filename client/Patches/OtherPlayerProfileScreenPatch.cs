@@ -10,14 +10,17 @@ using EFT.UI;
 using EFT.UI.DragAndDrop;
 using EFT.UI.Screens;
 using EFT.UI.Settings;
+using pitTeam.Compat;
 using pitTeam.Modules;
 using pitTeam.Utils;
 using HarmonyLib;
 using Newtonsoft.Json;
-using SPT.Common.Http;
-using SPT.Common.Utils;
-using SPT.Reflection.Patching;
+using SPTushonka.Common.Http;
+using SPTushonka.Common.Utils;
+using SPTushonka.Reflection.Patching;
 using System;
+using Il2CppInterop.Runtime.Attributes;
+using Il2CppInterop.Runtime.Injection;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -68,8 +71,26 @@ namespace pitTeam.Patches
         public List<string> OwnedBodyCustomizationIds { get; set; }
         public List<string> OwnedFeetCustomizationIds { get; set; }
         public FriendlyTeammateProfileRecoveryNotice RecoveryNotice { get; set; }
+        public FollowerHealthSnapshot FollowerHealth { get; set; }
     }
 
+    internal sealed class FollowerHealthSnapshot
+    {
+        public string ProfileId { get; set; }
+        public int? Aid { get; set; }
+        public Dictionary<string, FollowerHealthValue> BodyParts { get; set; }
+        public FollowerHealthValue Energy { get; set; }
+        public FollowerHealthValue Hydration { get; set; }
+        public FollowerHealthValue Temperature { get; set; }
+        public FollowerHealthValue Poison { get; set; }
+    }
+
+    internal sealed class FollowerHealthValue
+    {
+        public double? Current { get; set; }
+        public double? Minimum { get; set; }
+        public double? Maximum { get; set; }
+    }
     internal class FriendlyTeammateProfileRecoveryNotice
     {
         public bool Recovered { get; set; }
@@ -115,6 +136,7 @@ namespace pitTeam.Patches
 
     internal sealed class ProfileOverlayHeaderDragHandle : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
     {
+        public ProfileOverlayHeaderDragHandle(IntPtr pointer) : base(pointer) { }
         public RectTransform Target;
 
         private bool _dragging;
@@ -144,9 +166,11 @@ namespace pitTeam.Patches
 
     internal sealed class ProfileTooltipHoverController : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
     {
+        public ProfileTooltipHoverController(IntPtr pointer) : base(pointer) { }
         private string tooltipText;
         private Vector2 tooltipOffset = new Vector2(5f, 7f);
 
+        [HideFromIl2Cpp]
         public void Configure(string text, Vector2? offset = null)
         {
             tooltipText = text ?? string.Empty;
@@ -161,7 +185,7 @@ namespace pitTeam.Patches
             }
 
             ItemUiContext instance = ItemUiContext.Instance;
-            instance?.Tooltip?.Show(tooltipText, tooltipOffset, 0f, null);
+            instance?.Tooltip?.Show(tooltipText, new Il2CppSystem.Nullable<Vector2>(tooltipOffset), 0f, ((float?)null).ToNativeNullable());
         }
 
         public void OnPointerExit(PointerEventData eventData)
@@ -199,103 +223,6 @@ namespace pitTeam.Patches
 
     internal partial class OtherPlayerProfileScreenPatch : ModulePatch
     {
-        private sealed class ProfileSkillsHealthController : IHealthController
-        {
-            private readonly Profile.HealthInfo _health;
-            private readonly EFT.HealthInfoAdapter _snapshot;
-
-            public ProfileSkillsHealthController(Profile.HealthInfo health)
-            {
-                _health = health ?? throw new ArgumentNullException(nameof(health));
-                _snapshot = new EFT.HealthInfoAdapter(health);
-            }
-
-            public event Action<EFT.HealthSystem.IHealthEffect> EffectAddedEvent { add { } remove { } }
-            public event Action<EFT.HealthSystem.IHealthEffect> EffectStartedEvent { add { } remove { } }
-            public event Action<EFT.HealthSystem.IHealthEffect> EffectUpdatedEvent { add { } remove { } }
-            public event Action<EFT.HealthSystem.IHealthEffect> EffectResidualEvent { add { } remove { } }
-            public event Action<EFT.HealthSystem.IHealthEffect> EffectRemovedEvent { add { } remove { } }
-            public event Action<EFT.HealthSystem.IHealthEffect> EffectStatusUpdateEvent { add { } remove { } }
-            public event Action<EBodyPart, float, EFT.Ballistics.DamageInfo> ApplyDamageEvent { add { } remove { } }
-            public event Action<EBodyPart, float, EFT.Ballistics.DamageInfo> HealthChangedEvent { add { } remove { } }
-            public event Action<float> EnergyChangedEvent { add { } remove { } }
-            public event Action<float> HydrationChangedEvent { add { } remove { } }
-            public event Action<float> TemperatureChangedEvent { add { } remove { } }
-            public event Action<EBodyPart, EDamageType> BodyPartDestroyedEvent { add { } remove { } }
-            public event Action<EBodyPart, ValueStruct> BodyPartRestoredEvent { add { } remove { } }
-            public event Action<EDamageType> DiedEvent { add { } remove { } }
-            public event Action<EFT.HealthSystem.IHealthEffect> HealerDoneEvent { add { } remove { } }
-            public event Action<Vector3, float, float> BurnEyesEvent { add { } remove { } }
-            public event Action<EFT.HealthSystem.IStimulatorBuff> StimulatorBuffEvent { add { } remove { } }
-            public event Action<EFT.HealthSystem.IStimulatorBuff> StimulatorBuffActivationEvent { add { } remove { } }
-
-            public float FallSafeHeight { set { } }
-            public bool IsAlive => GetBodyPartHealth(EBodyPart.Common).Current > 0f;
-            public float HealthRate => 0f;
-            public float EnergyRate => 0f;
-            public float HydrationRate => 0f;
-            public float TemperatureRate => 0f;
-            public float DamageCoeff => 1f;
-            public float StaminaCoeff => 1f;
-            public int UpdateTime => _health.UpdateTime ?? 0;
-            public HealthEffects BodyPartEffects => default;
-            public float CarryingWeightAbsoluteModifier => 0f;
-            public float CarryingWeightRelativeModifier => 1f;
-            public ValueStruct Hydration => _snapshot.Hydration;
-            public ValueStruct Energy => _snapshot.Energy;
-            public ValueStruct Temperature => _snapshot.Temperature;
-            public ValueStruct Poison => _snapshot.Poison;
-
-            public bool IsBodyPartBroken(EBodyPart bodyPart) => false;
-            public bool IsBodyPartDestroyed(EBodyPart bodyPart) => GetBodyPartHealth(bodyPart).Current <= 0f;
-            public void GetBodyPartsInCriticalCondition(float threshold, out int all, out int vital)
-            {
-                all = 0;
-                vital = 0;
-            }
-
-            public void SetEncumbered(bool encumbered) { }
-            public void SetOverEncumbered(bool encumbered) { }
-            public void AddFatigue() { }
-            public void AddImmunityNotificationEffect() { }
-            public TEffect FindExistingEffect<TEffect>(EBodyPart bodyPart = EBodyPart.Common) where TEffect : EFT.HealthSystem.IHealthEffect => default;
-            public TEffect FindActiveEffect<TEffect>(EBodyPart bodyPart = EBodyPart.Common) where TEffect : EFT.HealthSystem.IHealthEffect => default;
-            public IEnumerable<TEffect> FindActiveEffects<TEffect>(EBodyPart bodyPart = EBodyPart.Common) where TEffect : EFT.HealthSystem.IHealthEffect => Enumerable.Empty<TEffect>();
-            public IEnumerable<EFT.HealthSystem.IHealthEffect> GetAllActiveEffects(EBodyPart bodyPart = EBodyPart.Common) => Enumerable.Empty<EFT.HealthSystem.IHealthEffect>();
-            public IEnumerable<EFT.HealthSystem.IHealthEffect> GetAllEffects(EBodyPart bodyPart = EBodyPart.Common) => Enumerable.Empty<EFT.HealthSystem.IHealthEffect>();
-            public IEnumerable<EFT.HealthSystem.IHealthEffect> GetAllResidualEffects(EBodyPart bodyPart = EBodyPart.Common) => Enumerable.Empty<EFT.HealthSystem.IHealthEffect>();
-            public EFT.NetworkPackets.OneAndList<EBodyPart> BodyPartsPriority(Item item, bool continuousHealEnabled) => default;
-            public bool IsItemForHealing(Item item) => false;
-            public IResult HasPartsToApply(Item item) => null;
-            public bool CanApplyItem(Item item, EBodyPart bodyPart) => false;
-            public bool ApplyItem(Item item, EFT.NetworkPackets.OneAndList<EBodyPart> bodyPart, float? amount = null) => false;
-            public bool ApplyItem(Item item, EBodyPart bodyPart, float? amount = null) => false;
-            public void CancelApplyingItem() { }
-            public void ManualUpdate(float deltaTime) { }
-            public void PropagateAllEffects() { }
-            public string[] ActiveBuffsNames() => Array.Empty<string>();
-            public void DisableMetabolism() { }
-
-            public ValueStruct GetBodyPartHealth(EBodyPart bodyPart, bool rounded = false)
-            {
-                if (bodyPart == EBodyPart.Common)
-                {
-                    return _snapshot.GetBodyPartHealth(bodyPart, rounded);
-                }
-
-                if (_health.BodyParts != null && _health.BodyParts.TryGetValue(bodyPart, out Profile.HealthInfo.BodyPartInfo part) && part?.Health != null)
-                {
-                    return new ValueStruct
-                    {
-                        Current = part.Health.Current,
-                        Maximum = part.Health.Maximum
-                    };
-                }
-
-                return default;
-            }
-        }
-
         private const string OptionsRoute = "/singleplayer/pitfireteam/teammate/profile/options";
         private const string SuitRoute = "/singleplayer/pitfireteam/teammate/profile/suit";
         private const string RenameRoute = "/singleplayer/pitfireteam/teammate/profile/rename";
@@ -307,53 +234,45 @@ namespace pitTeam.Patches
         private const string DefaultLoadoutId = "000000000000000000000000";
         private const string DefaultLoadoutName = "Default";
 
-        private static readonly FieldInfo PlayerModelWindowField = AccessTools.Field(typeof(OtherPlayerProfileScreen), "_playerModelWithStatsWindow");
-        private static readonly FieldInfo ClothingPanelField = AccessTools.Field(typeof(InventoryPlayerModelWithStatsWindow), "_clothingPanel");
-        private static readonly FieldInfo NicknameLabelField = AccessTools.Field(typeof(InventoryPlayerModelWithStatsWindow), "_nicknameLabel");
-        private static readonly FieldInfo NicknameFieldInputField = AccessTools.Field(typeof(NicknameField), "_inputField");
-        private static readonly FieldInfo NicknameFieldStatusLabelField = AccessTools.Field(typeof(NicknameField), "_statusLabel");
-        private static readonly FieldInfo NicknameFieldUsedSymbolsField = AccessTools.Field(typeof(NicknameField), "_usedSymbolsCount");
-        private static readonly FieldInfo BackButtonField = AccessTools.Field(typeof(OtherPlayerProfileScreen), "_backButton");
-        private static readonly FieldInfo HideoutButtonField = AccessTools.Field(typeof(OtherPlayerProfileScreen), "_hideoutButton");
-        private static readonly MethodInfo HideoutButtonHandlerMethod = AccessTools.Method(typeof(OtherPlayerProfileScreen), nameof(OtherPlayerProfileScreen.LoadHideout));
-        private static readonly FieldInfo SettingsScreenGameTabField = AccessTools.Field(typeof(SettingsScreen), "_gameSettingsScreen");
-        private static readonly FieldInfo GameSettingsSliderTemplateField = AccessTools.Field(typeof(GameSettingsTab), "_fov");
-        private static readonly FieldInfo NumberSliderValueInputField = AccessTools.Field(typeof(NumberSlider), "_valueInput");
+        internal static readonly NativeUiMemberAccessor PlayerModelWindowAccessor = NativeUiMemberAccessor.ForProperty(typeof(OtherPlayerProfileScreen), "_playerModelWithStatsWindow", typeof(InventoryPlayerModelWithStatsWindow), false, false);
+        private static readonly NativeUiMemberAccessor ClothingPanelAccessor = NativeUiMemberAccessor.ForProperty(typeof(InventoryPlayerModelWithStatsWindow), "_clothingPanel", typeof(InventoryClothingSelectionPanel), false, false);
+        private static readonly NativeUiMemberAccessor NicknameLabelAccessor = NativeUiMemberAccessor.ForProperty(typeof(InventoryPlayerModelWithStatsWindow), "_nicknameLabel", typeof(CustomTextMeshProUGUI), false, false);
+        private static readonly NativeUiMemberAccessor NicknameFieldInputAccessor = NativeUiMemberAccessor.ForProperty(typeof(NicknameField), "_inputField", typeof(TMP_InputField), false, false);
+        private static readonly NativeUiMemberAccessor NicknameFieldStatusLabelAccessor = NativeUiMemberAccessor.ForProperty(typeof(NicknameField), "_statusLabel", typeof(TMP_Text), false, false);
+        private static readonly NativeUiMemberAccessor NicknameFieldUsedSymbolsAccessor = NativeUiMemberAccessor.ForProperty(typeof(NicknameField), "_usedSymbolsCount", typeof(LocalizedText), false, false);
+        private static readonly NativeUiMemberAccessor BackButtonField = NativeUiMemberAccessor.ForProperty(typeof(OtherPlayerProfileScreen), "_backButton", typeof(DefaultUIButton), false, false);
+        private static readonly NativeUiMemberAccessor HideoutButtonAccessor = NativeUiMemberAccessor.ForProperty(typeof(OtherPlayerProfileScreen), "_hideoutButton", typeof(DefaultUiButtonNewStyle), false, false);
+        private static readonly NativeUiMemberAccessor SettingsScreenGameTabField = NativeUiMemberAccessor.ForProperty(typeof(SettingsScreen), "_gameSettingsScreen", typeof(GameSettingsTab), false, false);
+        private static readonly NativeUiMemberAccessor GameSettingsSliderTemplateAccessor = NativeUiMemberAccessor.ForProperty(typeof(GameSettingsTab), "_floatSliderTemplate", typeof(SettingFloatSlider), false, false);
+        private static readonly NativeUiMemberAccessor NumberSliderValueInputField = NativeUiMemberAccessor.ForProperty(typeof(NumberSlider), "_valueInput", typeof(TMP_InputField), false, false);
         private static RectTransform CachedSettingsSliderContainerTemplate { get; set; }
-        private static readonly FieldInfo ReportPanelField = AccessTools.Field(typeof(OtherPlayerProfileScreen), "_reportPanel");
-        private static readonly FieldInfo OverallStatsPanelField = AccessTools.Field(typeof(OtherPlayerProfileScreen), "_overallStatsPanel");
-        private static readonly FieldInfo AchievementsProgressBlockField = AccessTools.Field(typeof(OtherPlayerProfileScreen), "_achievementsProgressBlock");
-        private static readonly FieldInfo AchievementsBlockPlaceholderField = AccessTools.Field(typeof(OtherPlayerProfileScreen), "_achievementsBlockPlaceholder");
-        private static readonly FieldInfo WeaponsBlockPlaceholderField = AccessTools.Field(typeof(OtherPlayerProfileScreen), "_weaponsBlockPlaceholder");
-        private static readonly FieldInfo NonWeaponItemsBlockPlaceholderField = AccessTools.Field(typeof(OtherPlayerProfileScreen), "_nonWeaponItemsBlockPlaceholder");
-        private static readonly FieldInfo WeaponsGridLayoutGroupField = AccessTools.Field(typeof(OtherPlayerProfileScreen), "_weaponsGridLayoutGroup");
-        private static readonly FieldInfo NonWeaponItemsGridLayoutGroupField = AccessTools.Field(typeof(OtherPlayerProfileScreen), "_nonWeaponItemsGridLayoutGroup");
-        private static readonly FieldInfo SkillsScreenListTabField = AccessTools.Field(typeof(SkillsScreen), "_listTab");
-        private static readonly FieldInfo SkillsScreenThumbsTabField = AccessTools.Field(typeof(SkillsScreen), "_thumbsTab");
-        private static readonly FieldInfo SkillsScreenTabsControllerField = AccessTools.Field(typeof(SkillsScreen), "_skillViewTabGroup");
+        private static readonly NativeUiMemberAccessor ReportPanelAccessor = NativeUiMemberAccessor.ForProperty(typeof(OtherPlayerProfileScreen), "_reportPanel", typeof(ReportPanel), false, false);
+        private static readonly NativeUiMemberAccessor OverallStatsPanelAccessor = NativeUiMemberAccessor.ForProperty(typeof(OtherPlayerProfileScreen), "_overallStatsPanel", typeof(OverallStatsPanel), false, false);
+        private static readonly NativeUiMemberAccessor AchievementsProgressBlockAccessor = NativeUiMemberAccessor.ForProperty(typeof(OtherPlayerProfileScreen), "_achievementsProgressBlock", typeof(GameObject), false, false);
+        private static readonly NativeUiMemberAccessor AchievementsBlockPlaceholderAccessor = NativeUiMemberAccessor.ForProperty(typeof(OtherPlayerProfileScreen), "_achievementsBlockPlaceholder", typeof(GameObject), false, false);
+        private static readonly NativeUiMemberAccessor WeaponsBlockPlaceholderAccessor = NativeUiMemberAccessor.ForProperty(typeof(OtherPlayerProfileScreen), "_weaponsBlockPlaceholder", typeof(GameObject), false, false);
+        private static readonly NativeUiMemberAccessor NonWeaponItemsBlockPlaceholderAccessor = NativeUiMemberAccessor.ForProperty(typeof(OtherPlayerProfileScreen), "_nonWeaponItemsBlockPlaceholder", typeof(GameObject), false, false);
+        private static readonly NativeUiMemberAccessor WeaponsGridLayoutGroupAccessor = NativeUiMemberAccessor.ForProperty(typeof(OtherPlayerProfileScreen), "_weaponsGridLayoutGroup", typeof(GridLayoutGroup), false, false);
+        private static readonly NativeUiMemberAccessor NonWeaponItemsGridLayoutGroupAccessor = NativeUiMemberAccessor.ForProperty(typeof(OtherPlayerProfileScreen), "_nonWeaponItemsGridLayoutGroup", typeof(GridLayoutGroup), false, false);
+        private static readonly NativeUiMemberAccessor SkillsScreenListTabAccessor = NativeUiMemberAccessor.ForProperty(typeof(SkillsScreen), "_listTab", typeof(Tab), false, false);
+        private static readonly NativeUiMemberAccessor SkillsScreenThumbsTabAccessor = NativeUiMemberAccessor.ForProperty(typeof(SkillsScreen), "_thumbsTab", typeof(Tab), false, false);
+        private static readonly NativeUiMemberAccessor SkillsScreenTabsControllerAccessor = NativeUiMemberAccessor.ForProperty(typeof(SkillsScreen), "_skillViewTabGroup", typeof(TabGroup), false, false);
         private static readonly MethodInfo SkillsScreenShowMethod = AccessTools.Method(typeof(SkillsScreen), "Show");
-        private static readonly FieldInfo SkillsAndMasteringSkillsScreenField = AccessTools.Field(typeof(SkillsAndMasteringScreen), "_skillsScreen");
-        private static readonly FieldInfo InventorySkillsAndMasteringScreenField = AccessTools.Field(typeof(InventoryScreen), "_skillsAndMasteringScreen");
-        private static readonly FieldInfo SkillManagerSkillsField = AccessTools.Field(typeof(SkillManager), nameof(SkillManager.Skills));
-        private static readonly FieldInfo SkillManagerDisplayListField = AccessTools.Field(typeof(SkillManager), nameof(SkillManager.DisplayList));
-        private static readonly FieldInfo UiField = AccessTools.Field(typeof(OtherPlayerProfileScreen), "UI");
-        private static readonly FieldInfo UpperDropdownField = AccessTools.Field(typeof(InventoryClothingSelectionPanel), "_upperButtonDropDown");
-        private static readonly FieldInfo LowerDropdownField = AccessTools.Field(typeof(InventoryClothingSelectionPanel), "_lowerButtonDropDown");
-        private static readonly FieldInfo TransferItemsScreenStashPanelField = AccessTools.Field(typeof(TransferItemsScreen), "_stashPanel");
-        private static readonly FieldInfo InventoryScreenItemsPanelField = AccessTools.Field(typeof(InventoryScreen), "_itemsPanel");
-        private static readonly FieldInfo ItemsPanelComplexStashPanelField = AccessTools.Field(typeof(ItemsPanel), "_complexStashPanel");
-        private static readonly FieldInfo ComplexStashPanelLootPanelField = AccessTools.Field(typeof(ComplexStashPanel), "_lootPanel");
-        private static readonly FieldInfo ComplexStashPanelContainersPanelField = AccessTools.Field(typeof(ComplexStashPanel), "_containersPanel");
-        private static readonly FieldInfo ComplexStashPanelEquipmentPanelSourceField = AccessTools.Field(typeof(ComplexStashPanel), "_equipmentPanelSource");
-        private static readonly FieldInfo ComplexStashPanelComplexPanelField = AccessTools.Field(typeof(ComplexStashPanel), "_complexPanel");
-        private static readonly FieldInfo ComplexStashPanelContainerNamePanelField = AccessTools.Field(typeof(ComplexStashPanel), "_containerNamePanel");
-        private static readonly FieldInfo ContainersPanelSlotViewsContainerField = AccessTools.Field(typeof(ContainersPanel), "_slotViewsContainer");
-        private static readonly FieldInfo ContainersPanelDictionaryField = AccessTools.Field(typeof(ContainersPanel), "_slotViews");
-        private static readonly FieldInfo ContainersPanelDogtagSlotViewField = AccessTools.Field(typeof(ContainersPanel), "_dogtagSlotView");
+        private static readonly NativeUiMemberAccessor SkillsAndMasteringSkillsScreenAccessor = NativeUiMemberAccessor.ForProperty(typeof(SkillsAndMasteringScreen), "_skillsScreen", typeof(SkillsScreen), false, false);
+        private static readonly NativeUiMemberAccessor InventorySkillsAndMasteringScreenAccessor = NativeUiMemberAccessor.ForProperty(typeof(InventoryScreen), "_skillsAndMasteringScreen", typeof(SkillsAndMasteringScreen), false, false);
+        private static readonly NativeUiMemberAccessor SkillManagerSkillsAccessor = NativeUiMemberAccessor.ForProperty(typeof(SkillManager), nameof(SkillManager.Skills), typeof(Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<EFT.Skill>), false, true);
+        private static readonly NativeUiMemberAccessor SkillManagerDisplayListAccessor = NativeUiMemberAccessor.ForProperty(typeof(SkillManager), nameof(SkillManager.DisplayList), typeof(Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<EFT.Skill>), false, true);
+        private static readonly NativeUiMemberAccessor UiAccessor = NativeUiMemberAccessor.ForProperty(typeof(OtherPlayerProfileScreen), "UI", typeof(EFT.UI.UIParent), false, false);
+        private static readonly NativeUiMemberAccessor UpperSelectorAccessor = NativeUiMemberAccessor.ForProperty(typeof(InventoryClothingSelectionPanel), "_upperSelector", typeof(InventoryCustomizationSelector), false, false);
+        private static readonly NativeUiMemberAccessor LowerSelectorAccessor = NativeUiMemberAccessor.ForProperty(typeof(InventoryClothingSelectionPanel), "_lowerSelector", typeof(InventoryCustomizationSelector), false, false);
+        private static readonly NativeUiMemberAccessor TransferItemsScreenStashPanelAccessor = NativeUiMemberAccessor.ForProperty(typeof(TransferItemsScreen), "_stashPanel", typeof(SimpleStashPanel), false, false);
+        private static readonly NativeUiMemberAccessor InventoryScreenItemsPanelAccessor = NativeUiMemberAccessor.ForProperty(typeof(InventoryScreen), "_itemsPanel", typeof(ItemsPanel), false, false);
+        private static readonly NativeUiMemberAccessor ItemsPanelComplexStashPanelAccessor = NativeUiMemberAccessor.ForProperty(typeof(ItemsPanel), "_complexStashPanel", typeof(ComplexStashPanel), false, false);
+        private static readonly NativeUiMemberAccessor ComplexStashPanelContainersPanelAccessor = NativeUiMemberAccessor.ForProperty(typeof(ComplexStashPanel), "_containersPanel", typeof(ContainersPanel), false, false);
+        private static readonly NativeUiMemberAccessor ContainersPanelDictionaryAccessor = NativeUiMemberAccessor.ForProperty(typeof(ContainersPanel), "_slotViews", typeof(Il2CppSystem.Collections.Generic.Dictionary<EquipmentSlot, SlotView>), false, false);
         private static readonly string PluginDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? string.Empty;
         private static readonly string GearIconPath = Path.Combine(PluginDirectory, "gear.png");
         private static readonly string BrainIconPath = Path.Combine(PluginDirectory, "brain.png");
-        private static readonly Vector2 SkillsScreenOffset = new Vector2(-38f, -100f);
         private static readonly Vector2 FactionBadgeFollowerOffset = new Vector2(0f, -60f);
         private static readonly EquipmentSlot[] LoadoutEditorContainerSlots =
         {
@@ -393,6 +312,9 @@ namespace pitTeam.Patches
         public static EFT.IEftSession ActiveProfileSession { get; set; }
         public static InventoryPlayerModelWithStatsWindow ActiveProfilePlayerModelWindow { get; set; }
         public static Transform LoadoutSelector { get; set; }
+        public static RectTransform ProfileActionsContainer { get; set; }
+        public static GameObject ProfileOptionsOverlayRoot { get; set; }
+        public static DefaultUIButton LoadoutTacticButton { get; set; }
         public static DefaultUIButton EditLoadoutButton { get; set; }
         public static Transform EditLoadoutButtonRoot { get; set; }
         public static GameObject LoadoutEditorOverlayRoot { get; set; }
@@ -424,14 +346,13 @@ namespace pitTeam.Patches
         public static Vector2? OriginalNicknameAnchoredPosition { get; set; }
         public static RectTransform FactionBadgeIconsContainer { get; set; }
         public static Vector2? OriginalFactionBadgeAnchoredPosition { get; set; }
-        public static string OriginalHideoutButtonText { get; set; }
-        public static int? OriginalHideoutButtonFontSize { get; set; }
         public static GameObject OriginalHideoutButtonPanel { get; set; }
         public static bool? OriginalHideoutButtonPanelActive { get; set; }
         public static List<MongoID> CustomDropdownIds { get; } = new List<MongoID>();
         private static List<GameObject> HiddenRenameButtonDecorations { get; } = new List<GameObject>();
-        private static Dictionary<GameObject, bool> HiddenRightSideRoots { get; } = new Dictionary<GameObject, bool>();
-        private static Dictionary<RectTransform, Vector2> ProfileScaleOriginalPositions { get; } = new Dictionary<RectTransform, Vector2>();
+        private sealed class HiddenRightSideRootState { public GameObject root; public bool active; }
+        private static Dictionary<long, HiddenRightSideRootState> HiddenRightSideRoots { get; } = new Dictionary<long, HiddenRightSideRootState>();
+        private static Dictionary<long, Vector2> ProfileScaleOriginalPositions { get; } = new Dictionary<long, Vector2>();
         private static Coroutine PendingAggressionPersistCoroutine { get; set; }
         private static int PendingAggressionPersistRevision { get; set; }
         internal static Action PendingBackOverrideAction { get; set; }
@@ -447,14 +368,27 @@ namespace pitTeam.Patches
             }
 
             EFT.InventoryLogic.ItemContext current = context;
-            while (current != null)
+            var visitedNativePointers = new System.Collections.Generic.HashSet<long>();
+            for (int depth = 0; current != null && depth < 64; depth++)
             {
-                if (ReferenceEquals(current, LoadoutEditorEquipmentContext))
+                long pointer = current.Pointer.ToInt64();
+                if (pointer == 0 || !visitedNativePointers.Add(pointer))
+                {
+                    return false;
+                }
+
+                if (pitTeam.Compat.Il2CppBoundary.SameNativeObject(current, LoadoutEditorEquipmentContext))
                 {
                     return true;
                 }
 
-                current = current.Source;
+                EFT.InventoryLogic.ItemContext source = current.Source;
+                if (source != null && pitTeam.Compat.Il2CppBoundary.SameNativeObject(current, source))
+                {
+                    return false;
+                }
+
+                current = source;
             }
 
             return false;
@@ -478,7 +412,7 @@ namespace pitTeam.Patches
                 LoadoutEditorEquipmentItemsById,
                 LoadoutEditorProfile.Inventory.Equipment,
                 out Item indexedItem)
-                && ReferenceEquals(indexedItem, item);
+                && pitTeam.Compat.Il2CppBoundary.SameNativeObject(indexedItem, item);
         }
 
         internal static bool TryGetLoadoutEditorEquipmentItem(string itemId, out Item item)
@@ -558,7 +492,7 @@ namespace pitTeam.Patches
                 LoadoutEditorStashItemsById,
                 LoadoutEditorProfile?.Inventory?.Stash,
                 out Item indexedItem)
-                && ReferenceEquals(indexedItem, item);
+                && pitTeam.Compat.Il2CppBoundary.SameNativeObject(indexedItem, item);
         }
 
         internal static bool IsLoadoutEditorItem(Item item)
@@ -709,7 +643,7 @@ namespace pitTeam.Patches
                 return false;
             }
 
-            if (ReferenceEquals(item, root) || string.Equals(item.Id, root.Id, StringComparison.OrdinalIgnoreCase))
+            if (pitTeam.Compat.Il2CppBoundary.SameNativeObject(item, root) || string.Equals(item.Id, root.Id, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
@@ -721,7 +655,7 @@ namespace pitTeam.Patches
                     continue;
                 }
 
-                if (ReferenceEquals(parent, root) || string.Equals(parent.Id, root.Id, StringComparison.OrdinalIgnoreCase))
+                if (pitTeam.Compat.Il2CppBoundary.SameNativeObject(parent, root) || string.Equals(parent.Id, root.Id, StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
@@ -835,16 +769,17 @@ namespace pitTeam.Patches
             }
         }
 
-        private static readonly Dictionary<EMenuType, EStateSwitcher> DisabledSettingsTaskBarButton =
-            new Dictionary<EMenuType, EStateSwitcher>
-            {
-                { EMenuType.Settings, EStateSwitcher.Disabled }
-            };
-        private static readonly Dictionary<EMenuType, EStateSwitcher> EnabledSettingsTaskBarButton =
-            new Dictionary<EMenuType, EStateSwitcher>
-            {
-                { EMenuType.Settings, EStateSwitcher.Enabled }
-            };
+        private static Il2CppSystem.Collections.Generic.Dictionary<EMenuType, EStateSwitcher> CreateSettingsTaskBarButton(EStateSwitcher state)
+        {
+            var buttons = new Il2CppSystem.Collections.Generic.Dictionary<EMenuType, EStateSwitcher>();
+            buttons.Add(EMenuType.Settings, state);
+            return buttons;
+        }
+
+        private static readonly Il2CppSystem.Collections.Generic.Dictionary<EMenuType, EStateSwitcher> DisabledSettingsTaskBarButton =
+            CreateSettingsTaskBarButton(EStateSwitcher.Disabled);
+        private static readonly Il2CppSystem.Collections.Generic.Dictionary<EMenuType, EStateSwitcher> EnabledSettingsTaskBarButton =
+            CreateSettingsTaskBarButton(EStateSwitcher.Enabled);
 
         private static void MarkSquadRosterDirty(string accountId = null)
         {
@@ -929,19 +864,32 @@ namespace pitTeam.Patches
             return AccessTools.Method(
                 typeof(OtherPlayerProfileScreen),
                 "Show",
-                new Type[] { typeof(ResultProfile), typeof(InventoryController), typeof(EItemViewType), typeof(EFT.IEftSession) });
+                new Type[] { typeof(ResultProfile), typeof(InventoryController), typeof(EItemViewType), typeof(EFT.IEftSession), typeof(bool) });
+        }
+
+        [PatchPrefix]
+        private static void PrepareProfileText(OtherPlayerProfileScreen __instance, ResultProfile profile)
+        {
+            RestoreShortStatsLabelStyles();
+            if (PendingBackOverrideAction != null || Modules.SquadSideSelectionFlow.SquadModeActive
+                || (ViewedProfile != null && ViewedProfile.AccountId == profile?.AccountId))
+                PrepareLocalizedTemplates(__instance.transform);
         }
 
         [PatchPostfix]
         private static void PatchPostfix(OtherPlayerProfileScreen __instance, ResultProfile profile, InventoryController inventoryController, EItemViewType viewType, EFT.IEftSession session)
         {
+            Il2CppBoundary.EnsureInjectedComponentRegistered<ProfileOverlayHeaderDragHandle>();
+            Il2CppBoundary.EnsureInjectedComponentRegistered<ProfileTooltipHoverController>();
             ConfigureBackOverride(__instance);
             ApplyProfileScaleCompensation(__instance);
 
             InventoryPlayerModelWithStatsWindow playerModelWindow =
-                PlayerModelWindowField?.GetValue(__instance) as InventoryPlayerModelWithStatsWindow;
+                PlayerModelWindowAccessor.GetValue(__instance) as InventoryPlayerModelWithStatsWindow;
             if (playerModelWindow == null)
             {
+                if (ActiveBackOverrideAction != null)
+                    NotificationManager.DisplayWarningNotification(GetSocialUiText("ProfileControlsUnavailable"), ENotificationDurationType.Default);
                 return;
             }
 
@@ -961,25 +909,29 @@ namespace pitTeam.Patches
             {
                 HideProfileActions(__instance);
                 ClearProfileRightSideContent(__instance);
-                DisplaySkillsPanel(__instance, profile, session);
+                DisplaySkillsPanel(__instance, profile, inventoryController, session, TryLoadProfileOptions(profile.AccountId));
                 return;
             }
 
             FriendlyTeammateProfileOptions options = TryLoadProfileOptions(profile.AccountId);
             if (options == null)
             {
+                if (ActiveBackOverrideAction != null)
+                    NotificationManager.DisplayWarningNotification(GetSocialUiText("ProfileControlsUnavailable"), ENotificationDurationType.Default);
                 return;
             }
 
             if (options.Loadouts == null || options.Loadouts.Count == 0)
             {
                 pitFireTeam.Log.LogWarning($"[UI] Teammate profile patch aborted: no loadout options returned for '{profile.AccountId}'.");
+                NotificationManager.DisplayWarningNotification(GetSocialUiText("ProfileControlsUnavailable"), ENotificationDurationType.Default);
                 return;
             }
 
             if (!TryGetClothingPanel(__instance, playerModelWindow, out RectTransform clothingPanel, out InventoryClothingSelectionPanel clothingSelectionPanel, out Transform parent))
             {
                 pitFireTeam.Log.LogWarning("[UI] Teammate profile patch aborted: clothing panel not found on profile screen.");
+                NotificationManager.DisplayWarningNotification(GetSocialUiText("ProfileControlsUnavailable"), ENotificationDurationType.Default);
                 return;
             }
 
@@ -991,8 +943,9 @@ namespace pitTeam.Patches
             RememberActiveBackendInventoryController(session, inventoryController);
             ActiveProfileSession = session;
             ActiveProfilePlayerModelWindow = playerModelWindow;
-            playerModelWindow.OnCustomizationChanged -= PlayerModelWithStatsWindow_OnCustomizationChanged;
-            playerModelWindow.OnCustomizationChanged += PlayerModelWithStatsWindow_OnCustomizationChanged;
+            RefreshTeammateShortStats(profile, playerModelWindow);
+            playerModelWindow.OnCustomizationChanged -= ProfileCustomizationChangedHandler;
+            playerModelWindow.OnCustomizationChanged += ProfileCustomizationChangedHandler;
 
             HideProfileActions(__instance);
             ClearProfileRightSideContent(__instance);
@@ -1000,9 +953,19 @@ namespace pitTeam.Patches
             MoveFactionBadgeForFollowerProfile(__instance, playerModelWindow);
 
             clothingPanel.gameObject.SetActive(true);
-            DisplayClothingOptions(profile.PlayerVisualRepresentation, playerModelWindow, inventoryController, clothingSelectionPanel, options);
+            try
+            {
+                DisplayClothingOptions(session.Profile.Info.GameVersion, profile.PlayerVisualRepresentation, playerModelWindow, inventoryController, clothingSelectionPanel, options);
+            }
+            catch (Exception ex)
+            {
+                clothingPanel.gameObject.SetActive(false);
+                Modules.Logger.LogError($"[UI] Failed to initialize clothes for teammate '{profile.AccountId}'.");
+                Modules.Logger.LogError(ex);
+                NotificationManager.DisplayWarningNotification(GetSocialUiText("ProfileClothingUnavailable"), ENotificationDurationType.Default);
+            }
 
-            EFT.UI.UIParent ui = UiField?.GetValue(__instance) as EFT.UI.UIParent;
+            EFT.UI.UIParent ui = UiAccessor.GetValue(__instance) as EFT.UI.UIParent;
             if (ui == null)
             {
                 return;
@@ -1017,40 +980,142 @@ namespace pitTeam.Patches
             ResetProficiencyUi();
             StopPendingAggressionPersist();
 
-            RectTransform clone = GameObject.Instantiate(clothingPanel, parent, true);
-            clone.name = "pitFireTeam_LoadoutSelector";
-            clone.anchoredPosition = clothingPanel.anchoredPosition + GetProfileControlRowOffset(clothingPanel, 1);
-
-            InventoryClothingSelectionPanel loadoutPanel = clone.GetComponent<InventoryClothingSelectionPanel>();
-            if (loadoutPanel == null)
-            {
-                GameObject.Destroy(clone.gameObject);
-                return;
-            }
-
-            ui.AddDisposable(loadoutPanel);
-            LoadoutSelector = clone;
             try
             {
-                ConfigureLoadoutPanel(loadoutPanel, clothingSelectionPanel);
-                DisplayLoadoutOptions(__instance, profile, inventoryController, session, loadoutPanel, playerModelWindow, options, replaceLoadoutDropdown: false);
-                ApplyLoadoutPanelLayout(loadoutPanel, clothingSelectionPanel);
-                if (pitFireTeam.IsFollowerLoadoutRealTransferMode())
+                Transform rightSide = __instance.transform.Find("RightSide")
+                    ?? FindChildRecursive(__instance.transform, "RightSide");
+                if (rightSide == null)
                 {
-                    ReplaceLoadoutDropdownWithEditButton(__instance, profile, loadoutPanel);
+                    pitFireTeam.Log.LogWarning("[UI] Profile actions skipped: RightSide was not found.");
+                    return;
                 }
 
-                CreateProficiencyButton(__instance, clone, parent, profile, options);
-                CreateEditLoadoutButton(__instance, clone, parent, profile, 2);
-                CreateEditNameButton(__instance, clone, parent, profile, 3);
-                DisplaySkillsPanel(__instance, profile, session);
+                RectTransform actionRoot = CreateProfileActionsContainer(__instance, rightSide);
+                if (actionRoot == null)
+                {
+                    pitFireTeam.Log.LogWarning("[UI] Profile actions skipped: action container could not be created.");
+                    return;
+                }
+
+                DisplayLoadoutOptions(__instance, profile, inventoryController, session, actionRoot, playerModelWindow, options);
+                CreateEditLoadoutButton(__instance, actionRoot, rightSide, profile, 0);
+                CreateProficiencyButton(__instance, actionRoot, rightSide, profile, options);
+                CreateEditNameButton(__instance, actionRoot, rightSide, profile, 3);
+                DisplaySkillsPanel(__instance, profile, inventoryController, session, options);
                 ShowProfileRecoveryOverlay(__instance, options.RecoveryNotice);
             }
             catch (Exception ex)
             {
                 Modules.Logger.LogError("[UI] Failed to apply teammate profile elements.");
                 Modules.Logger.LogError(ex);
+                NotificationManager.DisplayWarningNotification(GetSocialUiText("ProfileControlsUnavailable"), ENotificationDurationType.Default);
             }
+        }
+
+
+        private static RectTransform CreateProfileActionsContainer(OtherPlayerProfileScreen screen, Transform parent)
+        {
+            if (screen == null || parent == null)
+            {
+                return null;
+            }
+
+            CloseProfileOptionsOverlay();
+            if (ProfileActionsContainer != null)
+            {
+                GameObject.Destroy(ProfileActionsContainer.gameObject);
+                ProfileActionsContainer = null;
+            }
+
+            GameObject host = new GameObject(
+                "pitFireTeam_ProfileActions",
+                Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>());
+            host.transform.SetParent(parent, false);
+            RectTransform rect = host.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0f, 1f);
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(0.5f, 1f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = new Vector2(0f, 112f);
+            rect.localScale = Vector3.one;
+            rect.SetAsFirstSibling();
+            host.SetActive(true);
+            ProfileActionsContainer = rect;
+            return rect;
+        }
+
+        private static DefaultUIButton CreateProfileActionButton(
+            OtherPlayerProfileScreen screen,
+            RectTransform parent,
+            string objectName,
+            string caption,
+            int slot,
+            Action onClick)
+        {
+            if (screen == null || parent == null || slot < 0 || slot > 4 || onClick == null)
+            {
+                return null;
+            }
+
+            DefaultUIButton template = BackButtonField?.GetValue(screen) as DefaultUIButton;
+            if (template == null)
+            {
+                pitFireTeam.Log.LogWarning("[UI] Profile action skipped: stock button template was not found.");
+                return null;
+            }
+
+            DefaultUIButton button = GameObject.Instantiate(template, parent, false);
+            if (button == null)
+            {
+                pitFireTeam.Log.LogWarning("[UI] Profile action skipped: stock button clone failed.");
+                return null;
+            }
+
+            button.name = objectName;
+            button.gameObject.SetActive(true);
+            button.Interactable = true;
+            button.SetRawText(caption, 16);
+            HideProfileButtonIconContainer(button);
+            HideHideoutButtonDecorations(button);
+            button.OnClick.RemoveAllListeners();
+            button.OnClick.AddListener((System.Action)onClick);
+
+            ConfigureCompactProfileActionButton(button, slot);
+            return button;
+        }
+
+        private static void CloseProfileOptionsOverlay()
+        {
+            if (ProfileOptionsOverlayRoot != null)
+            {
+                GameObject.Destroy(ProfileOptionsOverlayRoot);
+                ProfileOptionsOverlayRoot = null;
+            }
+        }
+
+
+        internal static void ClearProfileActionUi()
+        {
+            ClearScenarioGuardUniformLabel();
+            RestoreShortStatsLabelStyles();
+            CloseProfileOptionsOverlay();
+            if (ProfileActionsContainer != null)
+            {
+                GameObject.Destroy(ProfileActionsContainer.gameObject);
+                ProfileActionsContainer = null;
+            }
+
+            if (LoadoutSelector != null)
+            {
+                GameObject.Destroy(LoadoutSelector.gameObject);
+                LoadoutSelector = null;
+            }
+
+            EditLoadoutButton = null;
+            EditLoadoutButtonRoot = null;
+            LoadoutTacticButton = null;
+            NicknameRenameButton = null;
+            NicknameRenameButtonRoot = null;
         }
 
         private static bool IsMarksmanTactic(string tactic)
@@ -1064,7 +1129,7 @@ namespace pitTeam.Patches
             ActiveProfileAggression = isMarksman ? 30f : 50f;
             if (ProficiencyAggressionSlider != null)
             {
-                ProficiencyAggressionSlider.UpdateValue(ActiveProfileAggression, false, 0f, 100f);
+                ProficiencyAggressionSlider.UpdateValue(ActiveProfileAggression, false, new Il2CppSystem.Nullable<float>(0f), new Il2CppSystem.Nullable<float>(100f));
             }
         }
 
@@ -1098,14 +1163,14 @@ namespace pitTeam.Patches
 
             ProficiencyAggressionSlider = slider;
 
-            RectTransform sliderRoot = slider.transform as RectTransform;
+            RectTransform sliderRoot = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(slider.transform);
             if (sliderRoot != null)
             {
                 float sliderHeight = sliderRoot.sizeDelta.y > 0f ? sliderRoot.sizeDelta.y : 36f;
                 sliderRoot.anchorMin = new Vector2(0f, 0.5f);
                 sliderRoot.anchorMax = new Vector2(0f, 0.5f);
                 sliderRoot.pivot = new Vector2(0f, 0.5f);
-                sliderRoot.anchoredPosition = new Vector2(243f, 42f);
+                sliderRoot.anchoredPosition = new Vector2(243f, 0f);
                 sliderRoot.sizeDelta = new Vector2(300f, sliderHeight);
                 sliderRoot.localScale = Vector3.one;
             }
@@ -1117,7 +1182,7 @@ namespace pitTeam.Patches
             }
 
             slider.Show(0f, 100f, "0");
-            slider.UpdateValue(Mathf.Round(aggressionValue), false, 0f, 100f);
+            slider.UpdateValue(Mathf.Round(aggressionValue), false, new Il2CppSystem.Nullable<float>(0f), new Il2CppSystem.Nullable<float>(100f));
 
             Slider stockSlider = slider.GetComponentInChildren<Slider>(true);
             TMP_InputField valueInput = NumberSliderValueInputField?.GetValue(slider) as TMP_InputField;
@@ -1143,15 +1208,16 @@ namespace pitTeam.Patches
                 }
             }
 
-            slider.Bind(value =>
+            slider.Bind((System.Action<float>)(value =>
             {
                 int roundedValue = Mathf.RoundToInt(value);
+                if (roundedValue == Mathf.RoundToInt(ActiveProfileAggression)) return;
                 ActiveProfileAggression = roundedValue;
                 if (interactable)
                 {
                     ScheduleAggressionPersist(profile.AccountId, roundedValue);
                 }
-            });
+            }));
         }
 
         private static CustomTextMeshProUGUI CreateAggressionLabel(
@@ -1166,7 +1232,7 @@ namespace pitTeam.Patches
             float fontSize,
             TextAlignmentOptions alignment)
         {
-            GameObject labelObject = new GameObject(name, typeof(RectTransform), typeof(CustomTextMeshProUGUI));
+            GameObject labelObject = new GameObject(name, Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<CustomTextMeshProUGUI>());
             labelObject.transform.SetParent(parent, false);
 
             RectTransform rect = labelObject.GetComponent<RectTransform>();
@@ -1214,21 +1280,22 @@ namespace pitTeam.Patches
             }
 
             Transform sliderRoot = gameSettingsTab.transform.Find("Image/Scroll View/Viewport/Other Settings/Scrolls/FOV");
-            if (sliderRoot is RectTransform sliderRect)
+            if (pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(sliderRoot) is RectTransform sliderRect)
             {
                 CachedSettingsSliderContainerTemplate = sliderRect;
                 return CachedSettingsSliderContainerTemplate;
             }
 
             NumberSlider fallbackSlider = ResolveSettingsSliderTemplate();
-            CachedSettingsSliderContainerTemplate = fallbackSlider?.transform as RectTransform;
+            CachedSettingsSliderContainerTemplate = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(fallbackSlider?.transform);
             return CachedSettingsSliderContainerTemplate;
         }
 
         private static NumberSlider ResolveSettingsSliderTemplate()
         {
             GameSettingsTab gameSettingsTab = ResolveGameSettingsTabTemplate();
-            return GameSettingsSliderTemplateField?.GetValue(gameSettingsTab) as NumberSlider;
+            SettingFloatSlider template = GameSettingsSliderTemplateAccessor.GetValue(gameSettingsTab) as SettingFloatSlider;
+            return template?.Slider;
         }
 
         private static NumberSlider CloneStockNumberSlider(RectTransform parent)
@@ -1405,6 +1472,7 @@ namespace pitTeam.Patches
             {
                 Modules.Logger.LogError("[UI] Failed to persist teammate aggression change.");
                 Modules.Logger.LogError(ex);
+                ShowProfileSaveFailure();
             }
         }
 
@@ -1441,97 +1509,39 @@ namespace pitTeam.Patches
             return tactic;
         }
 
-        private static void CreateEditLoadoutButton(OtherPlayerProfileScreen screen, RectTransform loadoutSelector, Transform parent, ResultProfile profile, int rowOffset = 1)
+        private static void CreateEditLoadoutButton(OtherPlayerProfileScreen screen, RectTransform actionContainer, Transform parent, ResultProfile profile, int slot = 0)
         {
-            if (screen == null || loadoutSelector == null || parent == null || profile == null)
+            if (EditLoadoutButtonRoot != null)
+            {
+                GameObject.Destroy(EditLoadoutButtonRoot.gameObject);
+                EditLoadoutButtonRoot = null;
+            }
+
+            EditLoadoutButton = null;
+            if (screen == null || actionContainer == null || parent == null || profile == null)
             {
                 return;
             }
 
-            if (EditLoadoutButton != null)
-            {
-                if (EditLoadoutButtonRoot != null)
-                {
-                    GameObject.Destroy(EditLoadoutButtonRoot.gameObject);
-                    EditLoadoutButtonRoot = null;
-                }
-
-                EditLoadoutButton = null;
-            }
-
-            RectTransform rowClone = GameObject.Instantiate(loadoutSelector, parent, true);
-            rowClone.name = "pitFireTeam_LoadoutEdit";
-            rowClone.anchoredPosition = loadoutSelector.anchoredPosition + GetProfileControlRowOffset(loadoutSelector, Mathf.Max(1, rowOffset));
-            rowClone.gameObject.SetActive(true);
-
-            Transform upperRoot = rowClone.Find("Upper");
-            if (upperRoot != null)
-            {
-                upperRoot.gameObject.SetActive(false);
-            }
-
-            Transform lowerRoot = rowClone.Find("Lower");
-            if (lowerRoot != null)
-            {
-                lowerRoot.gameObject.SetActive(false);
-            }
-
-            DefaultUIButton buttonTemplate = HideoutButtonField?.GetValue(screen) as DefaultUIButton;
-            if (buttonTemplate == null)
-            {
-                GameObject.Destroy(rowClone.gameObject);
-                pitFireTeam.Log.LogWarning("[UI] Edit Loadout button aborted: hideout button template not found.");
-                return;
-            }
-
-            DefaultUIButton button = GameObject.Instantiate(buttonTemplate, rowClone, false);
-            if (button == null)
-            {
-                GameObject.Destroy(rowClone.gameObject);
-                pitFireTeam.Log.LogWarning("[UI] Edit Loadout button aborted: cloned hideout button not found.");
-                return;
-            }
-
-            button.name = "pitFireTeam_EditLoadoutButton";
-            button.gameObject.SetActive(true);
-            button.Interactable = true;
             bool realTransferMode = pitFireTeam.IsFollowerLoadoutRealTransferMode();
-            button.SetRawText(
-                realTransferMode
-                    ? GetSocialUiText("BuyGearLoadout")
-                    : GetSocialUiText("EditLoadout"),
-                18);
-            HideProfileButtonIconContainer(button);
-            button.OnClick.RemoveAllListeners();
-            button.OnClick.AddListener(() =>
-            {
-                if (realTransferMode)
+            DefaultUIButton button = CreateProfileActionButton(
+                screen,
+                actionContainer,
+                "pitFireTeam_EditLoadoutButton",
+                GetSocialUiText("EditLoadout"),
+                slot,
+                () =>
                 {
-                    TeammateEquipmentBuildsScreenFlow.Open(profile, session: ActiveProfileSession, inventoryController: ActiveProfileInventoryController);
-                    return;
-                }
+                    ShowLoadoutEditorOverlay(screen, profile);
+                });
 
-                ShowLoadoutEditorOverlay(screen, profile);
-            });
-
-            if (button.transform is RectTransform buttonRect && buttonTemplate.transform is RectTransform templateRect)
-            {
-                buttonRect.anchorMin = new Vector2(0.5f, 0.5f);
-                buttonRect.anchorMax = new Vector2(0.5f, 0.5f);
-                buttonRect.pivot = new Vector2(0.5f, 0.5f);
-                buttonRect.anchoredPosition = Vector2.zero;
-                buttonRect.sizeDelta = templateRect.sizeDelta;
-                buttonRect.localScale = Vector3.one;
-            }
-
-            EditLoadoutButtonRoot = rowClone;
             EditLoadoutButton = button;
+            EditLoadoutButtonRoot = button?.transform;
+            if (realTransferMode)
+                CreateProfileActionButton(screen, actionContainer, "pitFireTeam_BuyLoadoutButton", GetSocialUiText("BuyGearLoadout"), 4,
+                    () => TeammateEquipmentBuildsScreenFlow.Open(profile, session: ActiveProfileSession, inventoryController: ActiveProfileInventoryController));
         }
 
-        internal static IHealthController CreateProfileHealthController(Profile.HealthInfo health)
-        {
-            return new ProfileSkillsHealthController(health ?? new Profile.HealthInfo());
-        }
 
         private static Vector2 GetProfileControlRowOffset(RectTransform reference, int rowOffset)
         {
@@ -1547,23 +1557,21 @@ namespace pitTeam.Patches
 
             float compensation = ResolveUiScaleCompensation(screen);
             DefaultUIButton backButton = BackButtonField?.GetValue(screen) as DefaultUIButton;
-            ApplyProfileScaleCompensation(backButton?.transform as RectTransform, compensation);
-            ApplyProfileScaleCompensation(screen.transform.Find("Background") as RectTransform, compensation);
+            var currentPointers = new HashSet<long>();
+            ApplyProfileScaleCompensation(pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(backButton?.transform), compensation, currentPointers);
+            ApplyProfileScaleCompensation(pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(screen.transform.Find("Background")), compensation, currentPointers);
+            foreach (long stalePointer in ProfileScaleOriginalPositions.Keys.Where(pointer => !currentPointers.Contains(pointer)).ToArray()) ProfileScaleOriginalPositions.Remove(stalePointer);
         }
 
-        private static void ApplyProfileScaleCompensation(RectTransform rect, float compensation)
+        private static void ApplyProfileScaleCompensation(RectTransform rect, float compensation, HashSet<long> currentPointers)
         {
-            if (rect == null)
-            {
-                return;
-            }
-
-            if (!ProfileScaleOriginalPositions.TryGetValue(rect, out Vector2 originalPosition))
+            if (rect == null || rect.Pointer == IntPtr.Zero) return;
+            long pointer = rect.Pointer.ToInt64(); currentPointers.Add(pointer);
+            if (!ProfileScaleOriginalPositions.TryGetValue(pointer, out Vector2 originalPosition))
             {
                 originalPosition = rect.anchoredPosition;
-                ProfileScaleOriginalPositions[rect] = originalPosition;
+                ProfileScaleOriginalPositions[pointer] = originalPosition;
             }
-
             rect.anchoredPosition = new Vector2(originalPosition.x, originalPosition.y * compensation);
         }
 
@@ -1647,7 +1655,7 @@ namespace pitTeam.Patches
             clothingSelectionPanel = null;
             parent = null;
 
-            clothingSelectionPanel = ClothingPanelField?.GetValue(playerModelWindow) as InventoryClothingSelectionPanel;
+            clothingSelectionPanel = ClothingPanelAccessor.GetValue(playerModelWindow) as InventoryClothingSelectionPanel;
             if (clothingSelectionPanel == null)
             {
                 Transform playerModelTransform = playerModelWindow.transform;
@@ -1665,16 +1673,21 @@ namespace pitTeam.Patches
                 clothingSelectionPanel = hierarchyPanel?.GetComponent<InventoryClothingSelectionPanel>();
             }
 
-            clothingPanel = clothingSelectionPanel?.transform as RectTransform;
+            string nativeCastStatus = "not-run";
+            try { clothingPanel = Il2CppBoundary.CastNativeOrNull<RectTransform>(clothingSelectionPanel?.transform); nativeCastStatus = clothingPanel == null ? "null" : "matched"; }
+            catch (Exception ex) { nativeCastStatus = "error:" + ex.GetType().FullName; }
             parent = clothingPanel?.parent;
-            return clothingPanel != null && clothingSelectionPanel != null && parent != null;
+            bool success = clothingPanel != null && clothingSelectionPanel != null && parent != null;
+            if (!success) pitFireTeam.Log.LogWarning($"[UI][ClothingPanelBinding] panelNull={clothingSelectionPanel == null}; panelProxy={clothingSelectionPanel?.GetType().FullName ?? "<null>"}; panelPtr={(clothingSelectionPanel == null ? "<null>" : "0x" + clothingSelectionPanel.Pointer.ToInt64().ToString("X"))}; transformProxy={clothingSelectionPanel?.transform?.GetType().FullName ?? "<null>"}; transformPtr={(clothingSelectionPanel == null ? "<null>" : "0x" + clothingSelectionPanel.transform.Pointer.ToInt64().ToString("X"))}; nativeType={DescribeNativeClass(clothingSelectionPanel?.transform)}; clrRect={clothingSelectionPanel?.transform is RectTransform}; nativeCast={nativeCastStatus}; rectPtr={(clothingPanel == null ? "<null>" : "0x" + clothingPanel.Pointer.ToInt64().ToString("X"))}; parentNull={parent == null}");
+            return success;
         }
 
+        internal static string DescribeNativeClass(Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase instance) { if (instance == null) return "<null>"; try { IntPtr c = Il2CppInterop.Runtime.IL2CPP.il2cpp_object_get_class(instance.Pointer); if (c == IntPtr.Zero) return "<no-class>"; string ns = Il2CppInterop.Runtime.IL2CPP.il2cpp_class_get_namespace_(c) ?? ""; string name = Il2CppInterop.Runtime.IL2CPP.il2cpp_class_get_name_(c) ?? "<unknown>"; return string.IsNullOrEmpty(ns) ? name : ns + "." + name; } catch (Exception ex) { return "error:" + ex.GetType().FullName; } }
         private static void ResetTeammateProfileUi(InventoryPlayerModelWithStatsWindow playerModelWindow)
         {
             CloseProfileRecoveryOverlay();
             ResetProficiencyUi();
-            playerModelWindow.OnCustomizationChanged -= PlayerModelWithStatsWindow_OnCustomizationChanged;
+            playerModelWindow.OnCustomizationChanged -= ProfileCustomizationChangedHandler;
             ViewedProfile = null;
             ActiveProfileScreen = null;
             ActiveProfileInventoryController = null;
@@ -1683,6 +1696,7 @@ namespace pitTeam.Patches
             ActiveTeammateLoadoutId = null;
             ActiveTeammateLoadoutName = null;
             RestoreFactionBadgePosition();
+            ClearProfileActionUi();
 
             if (LoadoutSelector != null)
             {
@@ -1754,7 +1768,7 @@ namespace pitTeam.Patches
                 ?? FindChildRecursive(playerModelWindow?.transform, "IconsContainer")
                 ?? FindChildRecursive(screen?.transform, "IconsContainer");
 
-            return iconsContainer as RectTransform;
+            return pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(iconsContainer);
         }
 
         private static Transform FindChildRecursive(Transform root, string childName)
@@ -1782,6 +1796,9 @@ namespace pitTeam.Patches
             return null;
         }
 
+        internal static readonly Il2CppSystem.Action<dropDownItem> ProfileCustomizationChangedHandler =
+            (System.Action<dropDownItem>)PlayerModelWithStatsWindow_OnCustomizationChanged;
+
         public static void PlayerModelWithStatsWindow_OnCustomizationChanged(dropDownItem suit)
         {
             if (ViewedProfile == null)
@@ -1805,7 +1822,13 @@ namespace pitTeam.Patches
             {
                 Modules.Logger.LogError("[UI] Failed to persist teammate suit change.");
                 Modules.Logger.LogError(ex);
+                ShowProfileSaveFailure();
             }
+        }
+
+        private static void ShowProfileSaveFailure()
+        {
+            NotificationManager.DisplayWarningNotification(GetSocialUiText("ProfileChangeSaveFailed"), ENotificationDurationType.Default);
         }
 
     }
@@ -1831,11 +1854,11 @@ namespace pitTeam.Patches
             }
 
             InventoryPlayerModelWithStatsWindow playerModelWindow =
-                AccessTools.Field(typeof(OtherPlayerProfileScreen), "_playerModelWithStatsWindow")?.GetValue(__instance)
+                OtherPlayerProfileScreenPatch.PlayerModelWindowAccessor.GetValue(__instance)
                 as InventoryPlayerModelWithStatsWindow;
             if (playerModelWindow != null)
             {
-                playerModelWindow.OnCustomizationChanged -= OtherPlayerProfileScreenPatch.PlayerModelWithStatsWindow_OnCustomizationChanged;
+                playerModelWindow.OnCustomizationChanged -= OtherPlayerProfileScreenPatch.ProfileCustomizationChangedHandler;
             }
 
             OtherPlayerProfileScreenPatch.CloseLoadoutEditorOverlay();
@@ -1856,7 +1879,7 @@ namespace pitTeam.Patches
             if (OtherPlayerProfileScreenPatch.OriginalNicknameLabel != null)
             {
                 if (OtherPlayerProfileScreenPatch.OriginalNicknameAnchoredPosition != null
-                    && OtherPlayerProfileScreenPatch.OriginalNicknameLabel.transform is RectTransform labelRect)
+                    && pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(OtherPlayerProfileScreenPatch.OriginalNicknameLabel.transform) is RectTransform labelRect)
                 {
                     labelRect.anchoredPosition = OtherPlayerProfileScreenPatch.OriginalNicknameAnchoredPosition.Value;
                 }
@@ -1891,6 +1914,7 @@ namespace pitTeam.Patches
 
             OtherPlayerProfileScreenPatch.RestoreHideoutButtonVisuals(__instance);
             OtherPlayerProfileScreenPatch.RestoreProfileRightSideContent(__instance);
+            OtherPlayerProfileScreenPatch.ClearProfileActionUi();
 
             if (OtherPlayerProfileScreenPatch.LoadoutSelector != null)
             {

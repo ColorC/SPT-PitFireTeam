@@ -2,23 +2,20 @@ using Comfort.Common;
 using EFT;
 using EFT.UI.Matchmaker;
 using EFT.UI;
-using HarmonyLib;
-using SPT.Reflection.Utils;
+using SPTushonka.Reflection.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using UnityEngine;
+using pitTeam.Compat;
+using pitTeam.Patches;
 
 namespace pitTeam.Modules
 {
     internal static class SquadSideSelectionFlow
     {
-        private static readonly FieldInfo AppMenuControllerField =
-            AccessTools.Field(typeof(TarkovApplication), "_menuOperation");
-
-        private static readonly MethodInfo OpenSideSelectionMethod =
-            AccessTools.Method(typeof(EFT.MainMenuShowOperation), "method_44");
+        private static readonly NativeUiMemberAccessor MenuPlayButtonAccessor =
+            NativeUiMemberAccessor.ForProperty(typeof(MenuScreen), "_playButton", typeof(DefaultUIButton), false, false);
 
         private const string AlphaLabelPath = "Preloader UI/BottomPanel/Content/UpperPart/AlphaLabel";
 
@@ -29,6 +26,7 @@ namespace pitTeam.Modules
 
         private static GameObject alphaLabelObject;
         private static bool? alphaLabelWasActive;
+        private static bool restoringProfileRoot;
         private static HashSet<string> openingGroupAccountIds = new HashSet<string>(StringComparer.Ordinal);
 
         public static void Open()
@@ -43,9 +41,20 @@ namespace pitTeam.Modules
                 Deactivate("stale-squad-screen-open");
             }
 
-            if (AppMenuControllerField == null || OpenSideSelectionMethod == null)
+            List<MenuScreen> activeMenuScreens = Resources.FindObjectsOfTypeAll<MenuScreen>()
+                .Where(menu => menu != null && menu.gameObject != null && menu.gameObject.activeInHierarchy)
+                .ToList();
+            if (activeMenuScreens.Count != 1)
             {
-                pitFireTeam.Log.LogWarning("[SquadFlow] EFT.MainMenuShowOperation reflection not available — cannot open side selection screen.");
+                pitFireTeam.Log.LogWarning($"[SquadFlow] Expected one active MenuScreen for the stock Play event; found {activeMenuScreens.Count}.");
+                return;
+            }
+
+            MenuScreen menuScreen = activeMenuScreens[0];
+            DefaultUIButton playButton = MenuPlayButtonAccessor?.GetValue(menuScreen) as DefaultUIButton;
+            if (playButton == null || !playButton.isActiveAndEnabled || !playButton.Interactable || playButton.OnClick == null)
+            {
+                pitFireTeam.Log.LogWarning("[SquadFlow] Active MenuScreen PlayButton or its OnClick event is unavailable.");
                 return;
             }
 
@@ -56,28 +65,20 @@ namespace pitTeam.Modules
                 return;
             }
 
-            object menuController = AppMenuControllerField.GetValue(app);
-            if (menuController == null)
-            {
-                pitFireTeam.Log.LogWarning("[SquadFlow] EFT.MainMenuShowOperation instance is null.");
-                return;
-            }
-
+            CaptureOpeningGroupSnapshot(app);
             SquadModeActive = true;
             IsOpeningSquadModeScreen = true;
-            CaptureOpeningGroupSnapshot(app);
             HideSquadScreenAlphaLabel();
 
             try
             {
-                OpenSideSelectionMethod.Invoke(menuController, null);
+                // Invoke the same native event that opens character selection from the stock Play button.
+                playButton.OnClick.Invoke();
             }
             catch (Exception ex)
             {
-                ShowSquadScreenAlphaLabel();
-                SquadModeActive = false;
-                openingGroupAccountIds.Clear();
-                pitFireTeam.Log.LogError("[SquadFlow] Failed to open MatchMakerSideSelectionScreen.");
+                Deactivate("stock-play-button-event-failed");
+                pitFireTeam.Log.LogError("[SquadFlow] Failed to invoke the active MenuScreen PlayButton event.");
                 pitFireTeam.Log.LogError(ex);
             }
             finally
@@ -86,8 +87,123 @@ namespace pitTeam.Modules
             }
         }
 
+        internal enum ProfileReturnTarget
+        {
+            MainMenuFallback,
+            ExistingSideSelectionScreen,
+            RejectAmbiguous
+        }
+
+        internal static ProfileReturnTarget ResolveProfileReturnTarget(int activeSideSelectionScreenCount)
+        {
+            if (activeSideSelectionScreenCount < 0 || activeSideSelectionScreenCount > 1)
+            {
+                return ProfileReturnTarget.RejectAmbiguous;
+            }
+
+            return activeSideSelectionScreenCount == 1
+                ? ProfileReturnTarget.ExistingSideSelectionScreen
+                : ProfileReturnTarget.MainMenuFallback;
+        }
+
+        public static void ReopenAfterProfile()
+        {
+            List<MatchMakerSideSelectionScreen> activeScreens;
+            try
+            {
+                activeScreens = Resources.FindObjectsOfTypeAll<MatchMakerSideSelectionScreen>()
+                    .Where(screen => screen != null && screen.gameObject != null && screen.gameObject.activeInHierarchy)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                pitFireTeam.Log.LogWarning("[SquadFlow] Could not inspect active side-selection screens after profile close.");
+                pitFireTeam.Log.LogError(ex);
+                return;
+            }
+
+            switch (ResolveProfileReturnTarget(activeScreens.Count))
+            {
+                case ProfileReturnTarget.MainMenuFallback:
+                    ReopenFromMainMenuRoot();
+                    return;
+                case ProfileReturnTarget.RejectAmbiguous:
+                    pitFireTeam.Log.LogWarning($"[SquadFlow] Refusing profile return with {activeScreens.Count} active side-selection screens.");
+                    return;
+            }
+
+            TarkovApplication app = ResolveApp();
+            if (app == null)
+            {
+                pitFireTeam.Log.LogWarning("[SquadFlow] TarkovApplication unavailable while restoring the active side-selection screen.");
+                return;
+            }
+
+            CaptureOpeningGroupSnapshot(app);
+            SquadModeActive = true;
+            IsOpeningSquadModeScreen = false;
+            HideSquadScreenAlphaLabel();
+            BeginPlayerModelViewSuppression();
+            MatchMakerSideSelectionScreenShowPatch.ApplySquadMode(activeScreens[0]);
+        }
+
+        private static void ReopenFromMainMenuRoot()
+        {
+            if (restoringProfileRoot) return;
+            if (Resources.FindObjectsOfTypeAll<MenuScreen>().Any(menu => menu != null && menu.gameObject.activeInHierarchy))
+            {
+                Open();
+                return;
+            }
+
+            // A profile reopened by the gear shop has the builds screen beneath it.
+            // Pop that history through the native manager before invoking the menu Play event.
+            restoringProfileRoot = true;
+            try
+            {
+                EFT.UI.Screens.EftScreenManager.Instance.TryReturnToRootScreen()
+                    .ContinueWith((System.Action<Il2CppSystem.Threading.Tasks.Task<bool>>)(task =>
+                    {
+                        restoringProfileRoot = false;
+                        try
+                        {
+                        if (task.IsFaulted || task.IsCanceled || !task.Result)
+                        {
+                            ReportProfileReturnFailure(task.Exception?.ToString());
+                            return;
+                        }
+                        if (!Resources.FindObjectsOfTypeAll<MenuScreen>().Any(menu => menu != null && menu.gameObject.activeInHierarchy))
+                        {
+                            ReportProfileReturnFailure("Native root transition completed without an active menu.");
+                            return;
+                        }
+                        Open();
+                        }
+                        catch (Exception ex) { ReportProfileReturnFailure(ex.ToString()); }
+                    }), Il2CppSystem.Threading.Tasks.TaskScheduler.FromCurrentSynchronizationContext());
+            }
+            catch (Exception ex)
+            {
+                restoringProfileRoot = false;
+                ReportProfileReturnFailure(ex.ToString());
+            }
+        }
+
+        private static void ReportProfileReturnFailure(string error)
+        {
+            pitFireTeam.Log.LogError("[SquadFlow] Could not return to the main menu root after teammate profile close. " + error);
+            EFT.Communications.NotificationManager.DisplayWarningNotification(
+                pitFireTeam.GetSocialUiText("SquadControlReturnFailed"), EFT.Communications.ENotificationDurationType.Default);
+        }
         public static void OnScreenClosed()
         {
+            IsOpeningSquadModeScreen = false;
+            if (SquadModeActive)
+            {
+                Deactivate("side-selection-screen-closed");
+                return;
+            }
+
             SuppressPlayerModelViewShow = false;
             ShowSquadScreenAlphaLabel();
         }
@@ -202,12 +318,13 @@ namespace pitTeam.Modules
                 return;
             }
 
-            foreach (string accountId in controller.GroupPlayers
-                         .Select(player => player?.AccountId)
-                         .Where(accountId => !string.IsNullOrWhiteSpace(accountId))
-                         .Select(accountId => accountId!))
+            for (int i = 0; i < controller.GroupPlayers.Count; i++)
             {
-                openingGroupAccountIds.Add(accountId);
+                string accountId = controller.GroupPlayers[i]?.AccountId;
+                if (!string.IsNullOrWhiteSpace(accountId))
+                {
+                    openingGroupAccountIds.Add(accountId);
+                }
             }
         }
 

@@ -1,0 +1,197 @@
+{
+    "schema":  "spt5-patch-contract-inventory/v1",
+    "inputAssembly":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\isolated-client-reference\\BepInEx\\interop\\Assembly-CSharp.dll",
+    "nativeFileVersion":  "1.1.5.47242",
+    "sourceRoot":  "D:\\game\\tarkov workshop\\src\\mods\\pitFireTeam",
+    "contractFixture":  "D:\\game\\tarkov workshop\\src\\mods\\pitFireTeam\\tests\\Spt5InteropContracts\\fixtures\\patch-contracts-load14.json",
+    "entries":  [
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.BulletImpactPatch",
+                        "targetType":  "Il2CppSystems.Effects.EffectsCommutator",
+                        "targetMethod":  "PlayHitEffect",
+                        "parameterTypes":  [
+                                               "EFT.Ballistics.Shot",
+                                               "EFT.PlayerHitInfo"
+                                           ],
+                        "returnType":  "System.Void",
+                        "resolution":  "name and parameter types; method unique in actual interop metadata",
+                        "metadataStatus":  "resolved against actual shadow Assembly-CSharp interop metadata; audit required to pass exact signature"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.ChatCreateDialoguePanelRefreshPatch",
+                        "targetType":  "EFT.UI.Chat.ChatCreateDialoguePanel",
+                        "targetMethod":  "Show",
+                        "parameterTypes":  [
+                                               "EFT.SocialNetwork"
+                                           ],
+                        "returnType":  "System.Void",
+                        "resolution":  "name and parameter types; method unique in actual interop metadata",
+                        "metadataStatus":  "resolved against actual shadow Assembly-CSharp interop metadata; audit required to pass exact signature"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.ConditionCounterPatch",
+                        "targetType":  "EFT.Quests.ConditionCounterManager",
+                        "targetMethod":  "Test",
+                        "parameterTypes":  [
+                                               "System.Int32",
+                                               "EFT.Quests.TaskConditionCounter",
+                                               "Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray`1\u003cEFT.Quests.ConditionCheck\u003e"
+                                           ],
+                        "returnType":  "System.Void",
+                        "resolution":  "explicit three parameter overload; corrected handler third parameter to Il2CppReferenceArray",
+                        "metadataStatus":  "resolved against actual shadow Assembly-CSharp interop metadata; audit required to pass exact signature"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.FollowerAimTimeProficiencyPatch",
+                        "targetType":  "BotAimingData",
+                        "targetMethod":  "CalcTimeShoot",
+                        "parameterTypes":  [
+                                               "System.Single",
+                                               "System.Single"
+                                           ],
+                        "returnType":  "System.Single",
+                        "resolution":  "name and parameter types; method unique in actual interop metadata",
+                        "metadataStatus":  "resolved against actual shadow Assembly-CSharp interop metadata; audit required to pass exact signature"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.LoadoutEditorLockedContainerOpenPatch",
+                        "targetType":  "EFT.UI.ItemUiContext",
+                        "targetMethod":  "OpenItem",
+                        "parameterTypes":  [
+                                               "EFT.InventoryLogic.CompoundItem",
+                                               "EFT.InventoryLogic.ItemContext"
+                                           ],
+                        "returnType":  "System.Void",
+                        "resolution":  "name and parameter types; method unique in actual interop metadata",
+                        "metadataStatus":  "resolved against actual shadow Assembly-CSharp interop metadata; audit required to pass exact signature"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.LoadoutEditorLockedDestinationPatch",
+                        "targetType":  "EFT.InventoryLogic.ItemManipulator",
+                        "targetMethod":  "CanTransferTo",
+                        "parameterTypes":  [
+                                               "EFT.InventoryLogic.ItemAddress",
+                                               "EFT.InventoryLogic.ItemController",
+                                               "Diz.LanguageExtensions.Error\u0026"
+                                           ],
+                        "returnType":  "System.Boolean",
+                        "resolution":  "explicit parameter types including Error by-reference",
+                        "metadataStatus":  "resolved against actual shadow Assembly-CSharp interop metadata; audit required to pass exact signature"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.LoadoutEditorLockedItemMovePatch",
+                        "targetType":  "EFT.InventoryLogic.ItemManipulator",
+                        "targetMethod":  "CanModifyItem",
+                        "parameterTypes":  [
+                                               "EFT.InventoryLogic.Item",
+                                               "EFT.InventoryLogic.ItemAddress",
+                                               "EFT.InventoryLogic.ItemController",
+                                               "Diz.LanguageExtensions.Error\u0026"
+                                           ],
+                        "returnType":  "System.Boolean",
+                        "resolution":  "explicit parameter types including Error by-reference",
+                        "metadataStatus":  "resolved against actual shadow Assembly-CSharp interop metadata; audit required to pass exact signature"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.SelectSpawnPointPatch",
+                        "targetType":  "EFT.Game.Spawning.SpawnSystem",
+                        "targetMethod":  "EFT.Game.Spawning.ISpawnSystem.SelectSpawnPoint",
+                        "parameterTypes":  [
+                                               "EFT.Game.Spawning.ESpawnCategory",
+                                               "EFT.EPlayerSide",
+                                               "System.String",
+                                               "System.String",
+                                               "EFT.IPlayer",
+                                               "System.String",
+                                               "System.String"
+                                           ],
+                        "returnType":  "EFT.Game.Spawning.ISpawnPoint",
+                        "resolution":  "class interface-map implementation; explicit interface-qualified metadata method name",
+                        "metadataStatus":  "resolved against actual shadow Assembly-CSharp interop metadata; audit required to pass exact signature"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.TeammateBackpackSimpleStashLabelPatch",
+                        "targetType":  "EFT.UI.SimpleStashPanel",
+                        "targetMethod":  "Show",
+                        "parameterTypes":  [
+                                               "EFT.InventoryLogic.CompoundItem",
+                                               "EFT.InventoryLogic.InventoryController",
+                                               "EFT.InventoryLogic.ItemContext",
+                                               "EFT.InventoryLogic.SortingTable",
+                                               "EFT.UI.SimpleStashPanel/EStashSearchAvailability",
+                                               "EFT.InventoryLogic.InventoryController",
+                                               "EFT.UI.ItemsPanel/EItemsTab"
+                                           ],
+                        "returnType":  "System.Void",
+                        "resolution":  "name and exact seven parameter types; method unique in actual interop metadata",
+                        "metadataStatus":  "resolved against actual shadow Assembly-CSharp interop metadata; audit required to pass exact signature"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.TeammateCorpseContainersPanelSearchPatch",
+                        "targetType":  "EFT.UI.ContainersPanel",
+                        "targetMethod":  "Show",
+                        "parameterTypes":  [
+                                               "EFT.InventoryLogic.ItemContext",
+                                               "EFT.InventoryLogic.InventoryEquipment",
+                                               "EFT.InventoryLogic.InventoryController",
+                                               "EFT.SkillManager",
+                                               "EFT.UI.Insurance.InsuranceCompany",
+                                               "System.Boolean"
+                                           ],
+                        "returnType":  "System.Void",
+                        "resolution":  "name and exact six parameter types; method unique in actual interop metadata",
+                        "metadataStatus":  "resolved against actual shadow Assembly-CSharp interop metadata; audit required to pass exact signature"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.TeammateCorpseDogtagRemovePatch",
+                        "targetType":  "EFT.InventoryLogic.ItemManipulator",
+                        "targetMethod":  "Remove",
+                        "parameterTypes":  [
+                                               "EFT.InventoryLogic.Item",
+                                               "EFT.InventoryLogic.ItemController",
+                                               "System.Boolean"
+                                           ],
+                        "returnType":  "Diz.LanguageExtensions.OperationResult`1\u003cEFT.InventoryLogic.RemoveResult\u003e",
+                        "resolution":  "explicit three parameter overload; Remove has two overloads",
+                        "metadataStatus":  "resolved against actual shadow Assembly-CSharp interop metadata; audit required to pass exact signature"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.TeammateCorpseEquipmentTabSearchPatch",
+                        "targetType":  "EFT.UI.EquipmentTab",
+                        "targetMethod":  "Show",
+                        "parameterTypes":  [
+                                               "EFT.InventoryLogic.ItemContext",
+                                               "EFT.InventoryLogic.InventoryEquipment",
+                                               "EFT.InventoryLogic.InventoryController",
+                                               "EFT.SkillManager",
+                                               "EFT.UI.Insurance.InsuranceCompany",
+                                               "System.Boolean"
+                                           ],
+                        "returnType":  "System.Void",
+                        "resolution":  "name and exact six parameter types; method unique in actual interop metadata",
+                        "metadataStatus":  "resolved against actual shadow Assembly-CSharp interop metadata; audit required to pass exact signature"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.TeammateEquipmentBuildsInspectButtonsPatch",
+                        "targetType":  "EFT.UI.ItemSpecificationPanel",
+                        "targetMethod":  "InitInteractionButtonsPanel",
+                        "parameterTypes":  [
+                                               "EFT.UI.ContextInteractions`1\u003cEFT.InventoryLogic.EItemInfoButton\u003e"
+                                           ],
+                        "returnType":  "System.Void",
+                        "resolution":  "name and parameter type; method unique in actual interop metadata",
+                        "metadataStatus":  "resolved against actual shadow Assembly-CSharp interop metadata; audit required to pass exact signature"
+                    },
+                    {
+                        "patchClassFullName":  "pitTeam.Patches.UnlootableComponentPatch",
+                        "targetType":  "EFT.InventoryLogic.UnlootableComponent",
+                        "targetMethod":  "IsUnlootableFrom",
+                        "parameterTypes":  [
+                                               "EFT.InventoryLogic.IContainer"
+                                           ],
+                        "returnType":  "System.Boolean",
+                        "resolution":  "explicit native IContainer parameter; corrected handler parameter to same interop type",
+                        "metadataStatus":  "resolved against actual shadow Assembly-CSharp interop metadata; audit required to pass exact signature"
+                    }
+                ]
+}

@@ -4,7 +4,7 @@ using EFT;
 using EFT.UI.DragAndDrop;
 using Diz.LanguageExtensions;
 using HarmonyLib;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System.Collections.Generic;
 using System.Reflection;
 
@@ -17,17 +17,17 @@ namespace pitTeam.Patches
     {
         protected override MethodBase GetTargetMethod()
         {
-            return AccessTools.Method(typeof(UnlootableComponent), "IsUnlootableFrom");
+            return AccessTools.Method(typeof(UnlootableComponent), "IsUnlootableFrom", new[] { typeof(EFT.InventoryLogic.IContainer) });
         }
 
         [PatchPrefix]
-        public static bool PatchPrefix(UnlootableComponent __instance, ref bool __result, EFT.UI.DragAndDrop.IContainerView container)
+        public static bool PatchPrefix(UnlootableComponent __instance, ref bool __result, EFT.InventoryLogic.IContainer container)
         {
             bool isBotEquipment = false;
 
-            Modules.InteractableObjects.GetStoredEquipment().ExecuteForEach((id, items) =>
+            foreach (var entry in Modules.InteractableObjects.GetStoredEquipment())
             {
-                foreach (var itemId in items)
+                foreach (var itemId in entry.Value)
                 {
                     if (itemId == __instance.Item.Id)
                     {
@@ -35,7 +35,11 @@ namespace pitTeam.Patches
                         break;
                     }
                 }
-            });
+                if (isBotEquipment)
+                {
+                    break;
+                }
+            }
 
             if (isBotEquipment)
             {
@@ -96,7 +100,7 @@ namespace pitTeam.Patches
         }
 
         [PatchPrefix]
-        public static bool PatchPrefix(ItemSpecificationPanel __instance, ref KeyValuePair<EModLockedState, ModSlotViewTP> __result, Slot slot)
+        public static bool PatchPrefix(ItemSpecificationPanel __instance, ref Il2CppSystem.Collections.Generic.KeyValuePair<EModLockedState, ModSlotViewTP> __result, Slot slot)
         {
             string itemName = (slot.ContainedItem != null) ? slot.ContainedItem.Name.Localized(null) : string.Empty;
             string id = (slot.ContainedItem != null) ? slot.ContainedItem.Id : null;

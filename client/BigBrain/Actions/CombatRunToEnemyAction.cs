@@ -605,10 +605,10 @@ namespace pitTeam.BigBrain.Actions
             }
 
             if (BotOwner.GoToPoint(targetPoint, true, -1f, false, false) == NavMeshPathStatus.PathComplete &&
-                BotOwner.Mover.TargetPoint is Vector3 curPathLastPoint &&
-                (targetPoint - curPathLastPoint).magnitude < 2f)
+                BotOwner.Mover.TargetPoint.HasValue &&
+                (targetPoint - BotOwner.Mover.TargetPoint.Value).magnitude < 2f)
             {
-                CommitRunPoint(curPathLastPoint);
+                CommitRunPoint(BotOwner.Mover.TargetPoint.Value);
                 return true;
             }
 
@@ -623,7 +623,7 @@ namespace pitTeam.BigBrain.Actions
             List<CustomNavigationPoint> closePoints = Covers.GetCoverPoints(BotOwner, targetPoint, 20f, searchTypeOverride: searchType);
             if (closePoints.Count > 0)
             {
-                fallbackPoint = closePoints.RandomElement();
+                fallbackPoint = closePoints.Count > 0 ? closePoints[UnityEngine.Random.Range(0, closePoints.Count)] : null;
             }
 
             if (fallbackPoint == null)
@@ -847,7 +847,7 @@ namespace pitTeam.BigBrain.Actions
                 GetReason(data),
                 mode,
                 gate,
-                BotOwner.Mover?.TargetPoint);
+                BotOwner.Mover != null && BotOwner.Mover.TargetPoint.HasValue ? (Vector3?)BotOwner.Mover.TargetPoint.Value : null);
         }
 
         private static Vector3 Flatten(Vector3 value)

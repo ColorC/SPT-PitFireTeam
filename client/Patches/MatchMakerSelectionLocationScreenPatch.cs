@@ -1,7 +1,7 @@
 using EFT;
 using EFT.UI.Matchmaker;
 using HarmonyLib;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System.Reflection;
 
 namespace pitTeam.Patches

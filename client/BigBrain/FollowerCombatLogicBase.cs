@@ -58,10 +58,10 @@ namespace pitTeam.BigBrain
         {
             combatCommon.BeginCoverEvaluationCycle();
             combatCommon.RepairGoalEnemyMemory();
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? healDecision = combatCommon.TryGetNeedHealDecision();
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> healDecision = combatCommon.TryGetNeedHealDecision();
             if (healDecision != null)
             {
-                return healDecision.Value;
+                return healDecision;
             }
 
             return new AICoreActionResult<BotLogicDecision, CoreActionResultParams>(BotLogicDecision.holdPosition, "medicalHold");
@@ -311,7 +311,7 @@ namespace pitTeam.BigBrain
         }
 
         public virtual void DecisionChanged(
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? prevDecision,
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> prevDecision,
             AICoreActionResult<BotLogicDecision, CoreActionResultParams> nextDecision)
         {
             // Same ownership rule as end logic: the active objective owns even shared-reason actions.

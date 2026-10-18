@@ -1,0 +1,22 @@
+{
+  "cases": [
+    {
+      "id": "w-ping-initialization-failure-then-normal-callback-retry",
+      "evidence": "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261014w-probe\\probe-w-normal-world01.json",
+      "observed": { "normalCallbacks": 2, "controllerExists": true, "registrationCalls": 2, "successes": 0, "errors": 1, "duplicates": 1, "firstErrorStage": "PingTeamates.Enable/ClassInjector.ConvertMethodInfo" },
+      "expected": "Failed pair is not completed; completed initialization stages are retained; a later normal callback resumes at the failed stage."
+    },
+    {
+      "id": "successful-registration-then-duplicate",
+      "expected": "Completed pair is detected before work and does not repeat boss registration, spawnedPlayers append, or prefetch."
+    },
+    {
+      "id": "reentrant-callback",
+      "expected": "In-flight pair is detected and returned without completing the pair or duplicating side effects."
+    },
+    {
+      "id": "cleanup-reset",
+      "expected": "Exact lifecycle reset clears completed, in-flight, and per-pair progress state."
+    }
+  ]
+}

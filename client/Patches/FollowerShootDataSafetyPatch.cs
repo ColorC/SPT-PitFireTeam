@@ -3,7 +3,7 @@ using HarmonyLib;
 using pitTeam.BigBrain;
 using pitTeam.Modules;
 using pitTeam.Utils;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System;
 using System.Reflection;
 

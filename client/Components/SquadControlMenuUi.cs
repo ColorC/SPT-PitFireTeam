@@ -14,9 +14,12 @@ using HarmonyLib;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using PlayerIcons;
-using SPT.Common.Http;
+using SPTushonka.Common.Http;
 using TMPro;
 using System;
+using Il2CppInterop.Runtime.Attributes;
+using Il2CppInterop.Runtime.InteropTypes;
+using Il2CppInterop.Runtime.Injection;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -33,6 +36,7 @@ namespace pitTeam.Components
 {
     internal partial class SquadControlMenuUi : MonoBehaviour
     {
+        public SquadControlMenuUi(IntPtr pointer) : base(pointer) { }
         private const string SquadButtonName = "pitFireTeam_SquadControlButton";
         private const string ScreenRootName = "pitFireTeam_SquadControlScreen";
         private const float RosterTileWidth = 190f;
@@ -54,22 +58,21 @@ namespace pitTeam.Components
         private const float SettingsSpacing = 12f;
         private const float SettingsControlRightInset = 52f;
         private const float SettingsShortcutRightInset = 128f;
-        private const float SettingsSliderVerticalOffset = 36f;
         private const float SettingsNumericInputWidthMultiplier = 1.4f;
         private const float SettingsLootPriceInputMinWidth = 156f;
         private const float SettingsLootPriceInputLeftOffset = 40f;
         private const float SettingsLootPriceInputBorderHeight = 1f;
         private const float RaidOverlayBackButtonYOffset = 50f;
 
-        private static readonly FieldInfo HeaderLabelField = AccessTools.Field(typeof(DefaultUIButton), "_headerLabel");
-        private static readonly FieldInfo TraderCardsContainerField = AccessTools.Field(typeof(TraderScreensGroup), "_traderCardsContainer");
-        private static readonly FieldInfo TradingPlayerPanelIconField = AccessTools.Field(typeof(TradingPlayerPanel), "_playerIconImage");
-        private static readonly FieldInfo SettingsScreenGameTabField = AccessTools.Field(typeof(SettingsScreen), "_gameSettingsScreen");
-        private static readonly FieldInfo GameSettingsToggleTemplateField = AccessTools.Field(typeof(GameSettingsTab), "_enableBlockInvites");
-        private static readonly FieldInfo GameSettingsSliderTemplateField = AccessTools.Field(typeof(GameSettingsTab), "_fov");
-        private static readonly FieldInfo NumberSliderValueInputField = AccessTools.Field(typeof(NumberSlider), "_valueInput");
-        private static readonly FieldInfo RagfairAllOffersToggleField = AccessTools.Field(typeof(RagfairScreen), "_allOffersToggle");
-        private static readonly FieldInfo AnimatedToggleCanvasGroupField = AccessTools.Field(typeof(UIAnimatedToggleSpawner), "_canvasGroup");
+        private static readonly NativeUiMemberAccessor HeaderLabelField = NativeUiMemberAccessor.ForProperty(typeof(DefaultUIButton), "_headerLabel", typeof(TextMeshProUGUI), false, false);
+        private static readonly NativeUiMemberAccessor TraderCardsContainerField = NativeUiMemberAccessor.ForProperty(typeof(TraderScreensGroup), "_traderCardsContainer", typeof(Transform), false, false);
+        private static readonly NativeUiMemberAccessor TradingPlayerPanelIconField = NativeUiMemberAccessor.ForProperty(typeof(TradingPlayerPanel), "_playerIconImage", typeof(PlayerIconImage), false, false);
+        private static readonly NativeUiMemberAccessor SettingsScreenGameTabField = NativeUiMemberAccessor.ForProperty(typeof(SettingsScreen), "_gameSettingsScreen", typeof(GameSettingsTab), false, false);
+        private static readonly NativeUiMemberAccessor GameSettingsToggleTemplateAccessor = NativeUiMemberAccessor.ForProperty(typeof(GameSettingsTab), "_toggleTemplate", typeof(SettingToggle), false, false);
+        private static readonly NativeUiMemberAccessor GameSettingsSliderTemplateAccessor = NativeUiMemberAccessor.ForProperty(typeof(GameSettingsTab), "_floatSliderTemplate", typeof(SettingFloatSlider), false, false);
+        private static readonly NativeUiMemberAccessor NumberSliderValueInputField = NativeUiMemberAccessor.ForProperty(typeof(NumberSlider), "_valueInput", typeof(TMP_InputField), false, false);
+        private static readonly NativeUiMemberAccessor RagfairAllOffersToggleField = NativeUiMemberAccessor.ForProperty(typeof(RagfairScreen), "_allOffersToggle", typeof(UIAnimatedToggleSpawner), false, false);
+        private static readonly NativeUiMemberAccessor AnimatedToggleCanvasGroupField = NativeUiMemberAccessor.ForProperty(typeof(UIAnimatedToggleSpawner), "_canvasGroup", typeof(CanvasGroup), false, true);
         private static readonly ShortcutKeyCandidate[] ShortcutKeyCandidates =
         {
             new ShortcutKeyCandidate(KeyCode.Mouse0),
@@ -181,11 +184,11 @@ namespace pitTeam.Components
                 KeyCode = keyCode;
             }
         }
-        private static readonly FieldInfo PlayersInviteWindowContextMenuField = AccessTools.Field(typeof(PlayersInviteWindow), "_contextMenu");
-        private static readonly FieldInfo SimpleContextMenuButtonsContainerField = AccessTools.Field(typeof(SimpleContextMenu), "_interactionButtonsContainer");
-        private static readonly FieldInfo InteractionButtonsContainerTemplateField = AccessTools.Field(typeof(InteractionButtonsContainer), "_buttonTemplate");
-        private static readonly FieldInfo InteractionButtonsContainerButtonsRootField = AccessTools.Field(typeof(InteractionButtonsContainer), "_buttonsContainer");
-        private static readonly FieldInfo MatchmakerBackButtonField = AccessTools.Field(typeof(MatchMakerSideSelectionScreen), "_backButton");
+        private static readonly NativeUiMemberAccessor PlayersInviteWindowContextMenuField = NativeUiMemberAccessor.ForProperty(typeof(PlayersInviteWindow), "_contextMenu", typeof(SimpleContextMenu), false, false);
+        private static readonly NativeUiMemberAccessor SimpleContextMenuButtonsContainerField = NativeUiMemberAccessor.ForProperty(typeof(SimpleContextMenu), "_interactionButtonsContainer", typeof(InteractionButtonsContainer), false, false);
+        private static readonly NativeUiMemberAccessor InteractionButtonsContainerTemplateField = NativeUiMemberAccessor.ForProperty(typeof(InteractionButtonsContainer), "_buttonTemplate", typeof(SimpleContextMenuButton), false, false);
+        private static readonly NativeUiMemberAccessor InteractionButtonsContainerButtonsRootField = NativeUiMemberAccessor.ForProperty(typeof(InteractionButtonsContainer), "_buttonsContainer", typeof(RectTransform), false, false);
+        private static readonly NativeUiMemberAccessor MatchmakerBackButtonField = NativeUiMemberAccessor.ForProperty(typeof(MatchMakerSideSelectionScreen), "_backButton", typeof(DefaultUIButton), false, false);
         private static readonly string PluginDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? string.Empty;
         private const string TeammatesRoute = "/singleplayer/pitfireteam/teammates";
         private static Sprite squadIconSprite;
@@ -239,7 +242,20 @@ namespace pitTeam.Components
         private int activeShortcutCaptureStartFrame;
         private Coroutine shortcutCaptureCoroutine;
         private readonly HashSet<KeyCode> shortcutCaptureSuppressedKeys = new HashSet<KeyCode>();
-        private readonly Dictionary<RectTransform, Vector2> originalButtonPositions = new Dictionary<RectTransform, Vector2>();
+        private readonly Dictionary<long, OriginalButtonPosition> originalButtonPositions = new Dictionary<long, OriginalButtonPosition>();
+        private IntPtr originalButtonPositionParentPointer;
+
+        private sealed class OriginalButtonPosition
+        {
+            public RectTransform Transform { get; }
+            public Vector2 Position { get; }
+
+            public OriginalButtonPosition(RectTransform transform, Vector2 position)
+            {
+                Transform = transform;
+                Position = position;
+            }
+        }
         private readonly Dictionary<string, GameObject> portraitLoadingIndicators = new Dictionary<string, GameObject>(StringComparer.Ordinal);
         private readonly HashSet<string> autoJoinRequestsInFlight = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> groupRequestsInFlight = new HashSet<string>(StringComparer.Ordinal);
@@ -317,6 +333,7 @@ namespace pitTeam.Components
 
         private sealed class RosterTileHoverController : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler
         {
+            public RosterTileHoverController(IntPtr pointer) : base(pointer) { }
             private Image background;
             private TextMeshProUGUI nameLabel;
             private Color normalColor;
@@ -395,6 +412,7 @@ namespace pitTeam.Components
 
         internal sealed class TabHoverController : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler
         {
+            public TabHoverController(IntPtr pointer) : base(pointer) { }
             private RectTransform rectTransform;
             private Vector3 normalScale = Vector3.one;
             private Vector3 hoverScale = new Vector3(1.025f, 1.025f, 1f);
@@ -443,6 +461,7 @@ namespace pitTeam.Components
 
         internal sealed class LoadoutModeToggleHoverController : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler, IPointerClickHandler
         {
+            public LoadoutModeToggleHoverController(IntPtr pointer) : base(pointer) { }
             private RectTransform rectTransform;
             private Image hoverBackground;
             private Vector3 normalScale = Vector3.one;
@@ -450,7 +469,11 @@ namespace pitTeam.Components
             private Vector3 pressedScale = Vector3.one;
             private bool isHovered;
 
-            public Action<PointerEventData> OnClick { get; set; }
+            public Action<PointerEventData> OnClick
+            {
+                [HideFromIl2Cpp] get;
+                [HideFromIl2Cpp] set;
+            }
 
             public void Configure(RectTransform target, Image background)
             {
@@ -516,26 +539,46 @@ namespace pitTeam.Components
             }
         }
 
+        private static void RegisterInjectedTypes()
+        {
+            Il2CppBoundary.EnsureInjectedComponentRegistered<SquadControlMenuUi>();
+            Il2CppBoundary.EnsureInjectedComponentRegistered<RosterTileHoverController>();
+            Il2CppBoundary.EnsureInjectedComponentRegistered<TabHoverController>();
+            Il2CppBoundary.EnsureInjectedComponentRegistered<LoadoutModeToggleHoverController>();
+            Il2CppBoundary.EnsureInjectedComponentRegistered<PortraitContextClickController>();
+            Il2CppBoundary.EnsureInjectedComponentRegistered<TooltipHoverController>();
+            Il2CppBoundary.EnsureInjectedComponentRegistered<ProfileTooltipHoverController>();
+        }
+
         public static SquadControlMenuUi GetOrCreate(MenuScreen menuScreen)
         {
-            SquadControlMenuUi ui = menuScreen.GetComponent<SquadControlMenuUi>();
+            RegisterInjectedTypes();
+            SquadControlMenuUi ui = menuScreen.GetComponentViaIl2CppType<SquadControlMenuUi>();
             if (ui == null)
             {
-                ui = menuScreen.gameObject.AddComponent<SquadControlMenuUi>();
+                ui = menuScreen.gameObject.AddComponentViaIl2CppType<SquadControlMenuUi>();
             }
 
             return ui;
         }
 
-        internal static void ReturnFromProfileToSquadControl()
-        {
-            SquadSideSelectionFlow.Open();
+        internal static void ReturnFromProfileToSquadControl() {
+            SquadSideSelectionFlow.ReopenAfterProfile();
         }
 
         private sealed class PortraitContextClickController : MonoBehaviour, IPointerClickHandler
         {
-            public Action<PointerEventData> OnLeftClick { get; set; }
-            public Action<PointerEventData> OnRightClick { get; set; }
+            public PortraitContextClickController(IntPtr pointer) : base(pointer) { }
+            public Action<PointerEventData> OnLeftClick
+            {
+                [HideFromIl2Cpp] get;
+                [HideFromIl2Cpp] set;
+            }
+            public Action<PointerEventData> OnRightClick
+            {
+                [HideFromIl2Cpp] get;
+                [HideFromIl2Cpp] set;
+            }
 
             public void OnPointerClick(PointerEventData eventData)
             {
@@ -552,9 +595,11 @@ namespace pitTeam.Components
 
         private sealed class TooltipHoverController : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
         {
+            public TooltipHoverController(IntPtr pointer) : base(pointer) { }
             private string tooltipText;
             private Vector2 tooltipOffset = new Vector2(5f, 7f);
 
+            [HideFromIl2Cpp]
             public void Configure(string text, Vector2? offset = null)
             {
                 tooltipText = text ?? string.Empty;
@@ -569,7 +614,7 @@ namespace pitTeam.Components
                 }
 
                 ItemUiContext instance = ItemUiContext.Instance;
-                instance?.Tooltip?.Show(tooltipText, tooltipOffset, 0f, null);
+                instance?.Tooltip?.Show(tooltipText, ((Vector2?)tooltipOffset).ToNativeNullable(), 0f, ((float?)null).ToNativeNullable());
             }
 
             public void OnPointerExit(PointerEventData eventData)
@@ -664,6 +709,7 @@ namespace pitTeam.Components
             PollShortcutCapture();
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private IEnumerator ShortcutCaptureCoroutine()
         {
             yield return null;
@@ -950,9 +996,9 @@ namespace pitTeam.Components
                 squadButton.transform.SetSiblingIndex(playerButton.transform.GetSiblingIndex() + 1);
             }
 
-            RectTransform playerRect = playerButton.transform as RectTransform;
-            RectTransform tradeRect = tradeButton != null ? tradeButton.transform as RectTransform : null;
-            RectTransform squadRect = squadButton.transform as RectTransform;
+            RectTransform playerRect = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(playerButton.transform);
+            RectTransform tradeRect = tradeButton != null ? pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(tradeButton.transform) : null;
+            RectTransform squadRect = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(squadButton.transform);
 
             if (playerRect != null && squadRect != null)
             {
@@ -977,7 +1023,7 @@ namespace pitTeam.Components
             squadButton.SetRawText(GetSocialUiText("SquadControlButton"), playerButton.HeaderSize);
             squadButton.SetIcon(LoadSquadIcon());
             squadButton.OnClick.RemoveAllListeners();
-            squadButton.OnClick.AddListener(Modules.SquadSideSelectionFlow.Open);
+            squadButton.OnClick.AddListener((System.Action)Modules.SquadSideSelectionFlow.Open);
         }
 
         private void EnsureRaidSettingsButton()
@@ -1007,8 +1053,8 @@ namespace pitTeam.Components
                 raidSettingsButton.name = "pitFireTeam_RaidSettingsButton";
             }
 
-            if (hideScreenButton.transform is RectTransform resumeRect
-                && raidSettingsButton.transform is RectTransform raidRect)
+            if (pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(hideScreenButton.transform) is RectTransform resumeRect
+                && pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(raidSettingsButton.transform) is RectTransform raidRect)
             {
                 raidRect.anchorMin = resumeRect.anchorMin;
                 raidRect.anchorMax = resumeRect.anchorMax;
@@ -1022,12 +1068,13 @@ namespace pitTeam.Components
             raidSettingsButton.SetRawText(GetSocialUiText("SquadControlRaidSettingsButton"), hideScreenButton.HeaderSize);
             raidSettingsButton.SetIcon(null);
             raidSettingsButton.OnClick.RemoveAllListeners();
-            raidSettingsButton.OnClick.AddListener(ShowRaidSettingsOverlay);
+            raidSettingsButton.OnClick.AddListener((System.Action)ShowRaidSettingsOverlay);
         }
 
         internal static SquadControlMenuUi FindInstance()
         {
-            return Resources.FindObjectsOfTypeAll<SquadControlMenuUi>().FirstOrDefault(ui => ui != null);
+            RegisterInjectedTypes();
+            return Il2CppBoundary.FindObjectsOfTypeAllViaIl2CppType<SquadControlMenuUi>().FirstOrDefault(ui => ui != null);
         }
 
         internal void InjectPanelsIntoScreen(Transform newParent)
@@ -1089,6 +1136,7 @@ namespace pitTeam.Components
             }
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private IEnumerator RebuildAfterTransitionCoroutine(bool roster, bool settings)
         {
             // Wait for the matchmaker screen open animation to finish before doing any heavy work.
@@ -1135,7 +1183,7 @@ namespace pitTeam.Components
                 return;
             }
 
-            screenRoot = new GameObject(ScreenRootName, typeof(RectTransform), typeof(Image));
+            screenRoot = new GameObject(ScreenRootName, Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             screenRoot.transform.SetParent(menuScreen.transform, false);
 
             RectTransform rootRect = screenRoot.GetComponent<RectTransform>();
@@ -1217,7 +1265,7 @@ namespace pitTeam.Components
             clone.gameObject.SetActive(true);
             clone.Interactable = true;
 
-            if (template.transform is RectTransform templateRect && clone.transform is RectTransform cloneRect)
+            if (pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(template.transform) is RectTransform templateRect && pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(clone.transform) is RectTransform cloneRect)
             {
                 cloneRect.anchorMin = new Vector2(0.5f, 0f);
                 cloneRect.anchorMax = new Vector2(0.5f, 0f);
@@ -1251,20 +1299,37 @@ namespace pitTeam.Components
 
         private bool TryCreateStockTraderChrome(RectTransform rootRect)
         {
-            TraderScreensGroup templateGroup = ResolveTraderScreensGroupTemplate();
-            if (templateGroup == null)
+            RectTransform cardsContainerTemplate = null;
+            try
             {
+                cardsContainerTemplate = Resources.FindObjectsOfTypeAll<TraderScreensGroup>()
+                    .Where(group => group != null && group.Pointer != IntPtr.Zero)
+                    .Select(group =>
+                    {
+                        Il2CppObjectBase nativeTemplate = TraderCardsContainerField?.GetValue(group) as Il2CppObjectBase;
+                        return nativeTemplate == null || nativeTemplate.Pointer == IntPtr.Zero ? null : pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(nativeTemplate);
+                    })
+                    .FirstOrDefault(container => container != null && container.Pointer != IntPtr.Zero);
+            }
+            catch (Exception ex)
+            {
+                pitFireTeam.Log.LogError("[UI] Native trader cards-container Transform to RectTransform cast failed.");
+                pitFireTeam.Log.LogError(ex);
                 return false;
             }
-
-            Transform cardsContainerTemplate = TraderCardsContainerField?.GetValue(templateGroup) as Transform;
-
             if (cardsContainerTemplate == null)
             {
+                pitFireTeam.Log.LogWarning("[UI] No live RectTransform trader cards-container template is available.");
                 return false;
             }
 
-            stockCardsContainer = Instantiate(cardsContainerTemplate as RectTransform, rootRect, false);
+            stockCardsContainer = Instantiate(cardsContainerTemplate, rootRect, false);
+            if (stockCardsContainer == null || stockCardsContainer.Pointer == IntPtr.Zero)
+            {
+                stockCardsContainer = null;
+                pitFireTeam.Log.LogError("[UI] Trader cards-container template clone returned a null native RectTransform.");
+                return false;
+            }
             stockCardsContainer.name = "pitFireTeam_SquadControlCardsContainer";
             float rosterShellHeight = CalculateRosterShellHeight();
             currentRosterShellHeight = rosterShellHeight;
@@ -1280,7 +1345,7 @@ namespace pitTeam.Components
                 Destroy(stockCardsContainer.GetChild(i).gameObject);
             }
 
-            rosterPanel = new GameObject("pitFireTeam_SquadControlRosterPanel", typeof(RectTransform));
+            rosterPanel = new GameObject("pitFireTeam_SquadControlRosterPanel", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>());
             rosterPanel.transform.SetParent(rootRect, false);
             RectTransform rosterRect = rosterPanel.GetComponent<RectTransform>();
             rosterPanelRect = rosterRect;
@@ -1346,7 +1411,7 @@ namespace pitTeam.Components
                 standaloneCloseButton.SetRawText(GetSocialUiText("SquadControlBack"), standaloneCloseButton.HeaderSize);
                 standaloneCloseButton.SetIcon(null);
                 standaloneCloseButton.OnClick.RemoveAllListeners();
-                standaloneCloseButton.OnClick.AddListener(HideRaidSettingsOverlay);
+                standaloneCloseButton.OnClick.AddListener((System.Action)HideRaidSettingsOverlay);
                 standaloneCloseButton.Interactable = true;
                 standaloneCloseButton.transform.SetAsLastSibling();
                 standaloneCloseButton.gameObject.SetActive(true);
@@ -1386,7 +1451,7 @@ namespace pitTeam.Components
 
         private GameObject CreateFallbackContentPanel(string name, string label)
         {
-            GameObject panel = new GameObject(name, typeof(RectTransform), typeof(Image));
+            GameObject panel = new GameObject(name, Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             panel.transform.SetParent(screenRoot.transform, false);
 
             RectTransform panelRect = panel.GetComponent<RectTransform>();
@@ -1415,7 +1480,7 @@ namespace pitTeam.Components
 
         private GameObject CreateText(string name, string text, float fontSize, TextAlignmentOptions alignment)
         {
-            GameObject textObject = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
+            GameObject textObject = new GameObject(name, Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<TextMeshProUGUI>());
             TextMeshProUGUI textLabel = textObject.GetComponent<TextMeshProUGUI>();
             TextMeshProUGUI templateLabel = ResolveTemplateLabel();
             if (templateLabel != null)

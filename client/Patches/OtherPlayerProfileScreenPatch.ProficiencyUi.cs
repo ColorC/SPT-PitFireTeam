@@ -1,7 +1,7 @@
 using EFT.UI;
 using EFT.UI.Settings;
 using pitTeam.Modules;
-using SPT.Common.Http;
+using SPTushonka.Common.Http;
 using System;
 using TMPro;
 using UnityEngine;
@@ -30,14 +30,14 @@ namespace pitTeam.Patches
 
         private static void CreateProficiencyButton(
             OtherPlayerProfileScreen screen,
-            RectTransform loadoutSelector,
+            RectTransform actionContainer,
             Transform parent,
             ResultProfile profile,
             FriendlyTeammateProfileOptions options)
         {
             ResetProficiencyUi();
 
-            if (screen == null || loadoutSelector == null || parent == null || profile == null || options == null)
+            if (screen == null || actionContainer == null || parent == null || profile == null || options == null)
             {
                 return;
             }
@@ -48,42 +48,16 @@ namespace pitTeam.Patches
                 : options.CurrentTactic;
             ActiveProfileProficiency = (options.Proficiency ?? new FollowerProficiencyModifierValues()).Clone();
 
-            RectTransform rowClone = GameObject.Instantiate(loadoutSelector, parent, true);
-            rowClone.name = "pitFireTeam_ProficiencyButtonRow";
-            rowClone.anchoredPosition = loadoutSelector.anchoredPosition + GetProfileControlRowOffset(loadoutSelector, 1);
-            rowClone.gameObject.SetActive(true);
+            DefaultUIButton button = CreateProfileActionButton(
+                screen,
+                actionContainer,
+                "pitFireTeam_AdjustProficiencyButton",
+                GetSocialUiText("ProfileAdjustProficiency").ToUpperInvariant(),
+                2,
+                () => ShowProficiencyOverlay(screen, profile));
+            ConfigureCompactProfileActionButton(button, 2);
 
-            SetProfileSelectorSectionActive(rowClone, "Upper", false);
-            SetProfileSelectorSectionActive(rowClone, "Lower", false);
-
-            DefaultUIButton buttonTemplate = HideoutButtonField?.GetValue(screen) as DefaultUIButton;
-            if (buttonTemplate == null)
-            {
-                GameObject.Destroy(rowClone.gameObject);
-                pitFireTeam.Log.LogWarning("[UI] Proficiency button aborted: hideout button template not found.");
-                return;
-            }
-
-            DefaultUIButton button = GameObject.Instantiate(buttonTemplate, rowClone, false);
-            button.name = "pitFireTeam_AdjustProficiencyButton";
-            button.gameObject.SetActive(true);
-            button.Interactable = true;
-            button.SetRawText(GetSocialUiText("ProfileAdjustProficiency").ToUpperInvariant(), 18);
-            HideProfileButtonIconContainer(button);
-            button.OnClick.RemoveAllListeners();
-            button.OnClick.AddListener(() => ShowProficiencyOverlay(screen, profile));
-
-            if (button.transform is RectTransform buttonRect && buttonTemplate.transform is RectTransform templateRect)
-            {
-                buttonRect.anchorMin = new Vector2(0.5f, 0.5f);
-                buttonRect.anchorMax = new Vector2(0.5f, 0.5f);
-                buttonRect.pivot = new Vector2(0.5f, 0.5f);
-                buttonRect.anchoredPosition = Vector2.zero;
-                buttonRect.sizeDelta = templateRect.sizeDelta;
-                buttonRect.localScale = Vector3.one;
-            }
-
-            ProficiencyButtonRoot = rowClone;
+            ProficiencyButtonRoot = button?.transform;
             ProficiencyButton = button;
         }
 
@@ -96,7 +70,7 @@ namespace pitTeam.Patches
                 return;
             }
 
-            GameObject overlayRoot = new GameObject("pitFireTeam_ProficiencyOverlay", typeof(RectTransform), typeof(Image));
+            GameObject overlayRoot = new GameObject("pitFireTeam_ProficiencyOverlay", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             overlayRoot.transform.SetParent(screen.transform, false);
             RectTransform overlayRect = overlayRoot.GetComponent<RectTransform>();
             overlayRect.anchorMin = Vector2.zero;
@@ -110,7 +84,7 @@ namespace pitTeam.Patches
             backdrop.color = new Color(0f, 0f, 0f, 0.55f);
             backdrop.raycastTarget = true;
 
-            GameObject panel = new GameObject("pitFireTeam_ProficiencyPanel", typeof(RectTransform), typeof(Image));
+            GameObject panel = new GameObject("pitFireTeam_ProficiencyPanel", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             panel.transform.SetParent(overlayRoot.transform, false);
             RectTransform panelRect = panel.GetComponent<RectTransform>();
             panelRect.anchorMin = new Vector2(0.5f, 0.5f);
@@ -124,7 +98,7 @@ namespace pitTeam.Patches
             panelImage.color = new Color(0f, 0f, 0f, 0.86f);
             panelImage.raycastTarget = true;
 
-            GameObject header = new GameObject("pitFireTeam_ProficiencyHeader", typeof(RectTransform), typeof(Image));
+            GameObject header = new GameObject("pitFireTeam_ProficiencyHeader", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             header.transform.SetParent(panel.transform, false);
             RectTransform headerRect = header.GetComponent<RectTransform>();
             headerRect.anchorMin = new Vector2(0f, 1f);
@@ -139,7 +113,7 @@ namespace pitTeam.Patches
             AddLoadoutEditorHeaderDivider(header.transform, "TopDivider", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -1f), Vector2.zero);
             AddLoadoutEditorHeaderDivider(header.transform, "BottomDivider", Vector2.zero, new Vector2(1f, 0f), Vector2.zero, new Vector2(0f, 1f));
 
-            ProfileOverlayHeaderDragHandle dragHandle = header.AddComponent<ProfileOverlayHeaderDragHandle>();
+            ProfileOverlayHeaderDragHandle dragHandle = header.AddComponentViaIl2CppType<ProfileOverlayHeaderDragHandle>();
             dragHandle.Target = panelRect;
 
             CreateOverlayText(
@@ -153,7 +127,7 @@ namespace pitTeam.Patches
                 new Color(0.87f, 0.87f, 0.84f, 1f));
 
             Button closeButton = CreateWindowCloseButton(header.transform);
-            if (closeButton.transform is RectTransform closeRect)
+            if (pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(closeButton.transform) is RectTransform closeRect)
             {
                 closeRect.anchorMin = new Vector2(1f, 0.5f);
                 closeRect.anchorMax = new Vector2(1f, 0.5f);
@@ -161,7 +135,7 @@ namespace pitTeam.Patches
                 closeRect.anchoredPosition = new Vector2(-6f, 0f);
             }
 
-            closeButton.onClick.AddListener(CloseProficiencyOverlay);
+            closeButton.onClick.AddListener((System.Action)CloseProficiencyOverlay);
 
             RectTransform aggressionRow = CreateProficiencySliderRow(
                 panel.transform,
@@ -194,7 +168,7 @@ namespace pitTeam.Patches
                 ActiveProfileProficiency.SetReactionPercent,
                 profile.AccountId);
 
-            DefaultUIButton buttonTemplate = HideoutButtonField?.GetValue(screen) as DefaultUIButton;
+            DefaultUIButton buttonTemplate = BackButtonField?.GetValue(screen) as DefaultUIButton;
             if (buttonTemplate != null)
             {
                 DefaultUIButton resetButton = CreateOverlayButton(
@@ -206,8 +180,8 @@ namespace pitTeam.Patches
                 resetButton.SetRawText(GetSocialUiText("ProfileResetProficiency").ToUpperInvariant(), 22);
                 HideProfileButtonIconContainer(resetButton);
                 resetButton.OnClick.RemoveAllListeners();
-                resetButton.OnClick.AddListener(() => ResetProficiencyValues(profile));
-                if (resetButton.transform is RectTransform resetRect)
+                resetButton.OnClick.AddListener((System.Action)(() => ResetProficiencyValues(profile)));
+                if (pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(resetButton.transform) is RectTransform resetRect)
                 {
                     resetRect.anchorMin = new Vector2(0.5f, 0f);
                     resetRect.anchorMax = new Vector2(0.5f, 0f);
@@ -229,7 +203,7 @@ namespace pitTeam.Patches
 
         private static RectTransform CreateProficiencySliderRow(Transform parent, string name, float anchoredY)
         {
-            GameObject rowObject = new GameObject(name, typeof(RectTransform));
+            GameObject rowObject = new GameObject(name, Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>());
             rowObject.transform.SetParent(parent, false);
 
             RectTransform rowRect = rowObject.GetComponent<RectTransform>();
@@ -271,14 +245,14 @@ namespace pitTeam.Patches
             }
 
             slider.name = $"{rowName}_Slider";
-            RectTransform sliderRoot = slider.transform as RectTransform;
+            RectTransform sliderRoot = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(slider.transform);
             if (sliderRoot != null)
             {
                 float sliderHeight = sliderRoot.sizeDelta.y > 0f ? sliderRoot.sizeDelta.y : 36f;
                 sliderRoot.anchorMin = new Vector2(0f, 0.5f);
                 sliderRoot.anchorMax = new Vector2(0f, 0.5f);
                 sliderRoot.pivot = new Vector2(0f, 0.5f);
-                sliderRoot.anchoredPosition = new Vector2(243f, 42f);
+                sliderRoot.anchoredPosition = new Vector2(243f, 0f);
                 sliderRoot.sizeDelta = new Vector2(300f, sliderHeight);
                 sliderRoot.localScale = Vector3.one;
             }
@@ -296,8 +270,8 @@ namespace pitTeam.Patches
             slider.UpdateValue(
                 FollowerProficiencyModifierValues.NormalizePercent(currentValue),
                 false,
-                FollowerProficiencyModifierValues.MinimumPercent,
-                FollowerProficiencyModifierValues.MaximumPercent);
+                new Il2CppSystem.Nullable<float>(FollowerProficiencyModifierValues.MinimumPercent),
+                new Il2CppSystem.Nullable<float>(FollowerProficiencyModifierValues.MaximumPercent));
 
             Slider stockSlider = slider.GetComponentInChildren<Slider>(true);
             if (stockSlider != null)
@@ -314,12 +288,15 @@ namespace pitTeam.Patches
             }
 
             slider.enabled = true;
-            slider.Bind(value =>
+            float lastValue = Mathf.Round(FollowerProficiencyModifierValues.NormalizePercent(currentValue));
+            slider.Bind((System.Action<float>)(value =>
             {
                 float roundedValue = Mathf.Round(value);
+                if (Mathf.Approximately(roundedValue, lastValue)) return;
+                lastValue = roundedValue;
                 updateValue?.Invoke(roundedValue);
                 ScheduleProficiencyPersist(accountId, ActiveProfileProficiency);
-            });
+            }));
             return slider;
         }
 
@@ -353,8 +330,8 @@ namespace pitTeam.Patches
             slider.UpdateValue(
                 FollowerProficiencyModifierValues.NormalizePercent(value),
                 false,
-                FollowerProficiencyModifierValues.MinimumPercent,
-                FollowerProficiencyModifierValues.MaximumPercent);
+                new Il2CppSystem.Nullable<float>(FollowerProficiencyModifierValues.MinimumPercent),
+                new Il2CppSystem.Nullable<float>(FollowerProficiencyModifierValues.MaximumPercent));
         }
 
         private static void ScheduleProficiencyPersist(
@@ -410,6 +387,7 @@ namespace pitTeam.Patches
             {
                 Modules.Logger.LogError("[UI] Failed to persist teammate proficiency change.");
                 Modules.Logger.LogError(ex);
+                ShowProfileSaveFailure();
             }
         }
 

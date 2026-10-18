@@ -229,17 +229,14 @@ namespace pitTeam.Utils
                 string enemyId = enemy.ProfileId;
                 nearbyGroupMembers = GetNearbyLivingGroupMemberCount(enemy, position, radius);
 
-                // Register cleanup exactly once for this enemy. The previous bag check never added
-                // the id and therefore attached another death callback on every uncached call.
                 if (enemy.Person != null && trackedEnemies.TryAdd(enemyId, 0))
                 {
-                    enemy.Person.OnIPlayerDeadOrUnspawn += (IPlayer pl) =>
+                    enemy.Person.add_OnIPlayerDeadOrUnspawn((Il2CppSystem.Action<IPlayer>)(System.Action<IPlayer>)(deadPlayer =>
                     {
                         ClearEnemyLocations(enemyId);
                         trackedEnemies.TryRemove(enemyId, out _);
-                    };
+                    }));
                 }
-
                 // Use a 10x10x10 grid for caching
                 Vector3 cacheKey = new Vector3(
                     Mathf.Floor(position.x / 10f) * 10f,
@@ -396,9 +393,9 @@ namespace pitTeam.Utils
 
                 // Some group validation paths can reject specific causes for same-side hostile AI.
                 // Retry with checkAddTODO so BotsGroup can still mark enemy/neutrals/allies correctly.
-                if (groupInfo == null && cause != EBotEnemyCause.checkAddTODO)
+                if (groupInfo == null && cause != EBotEnemyCause.Unknown)
                 {
-                    bot.BotsGroup.AddEnemy(enemy, EBotEnemyCause.checkAddTODO);
+                    bot.BotsGroup.AddEnemy(enemy, EBotEnemyCause.Unknown);
                     bot.BotsGroup.Enemies.TryGetValue(enemy, out groupInfo);
                 }
             }

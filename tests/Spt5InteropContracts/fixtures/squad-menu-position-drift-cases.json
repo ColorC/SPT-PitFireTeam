@@ -1,0 +1,10 @@
+{
+  "provenance": { "receipt": "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261015be-probe\\probe-be-quit-exit-r85-03.json", "runtimePointerComparisonObserved": false },
+  "observedAcrossRuns": { "exitButtonPreviousY": -70.0, "exitButtonCurrentY": -947.1299, "mySquadPreviousY": 411.68, "mySquadCurrentY": 192.03284 },
+  "regressionScenario": { "sameNativeTransformMultipleClrWrappers": true, "repeatedEnsurePasses": 3, "expectedCacheEntriesPerNativePointer": 1, "expectedRestoreBeforeEachShift": true, "expectedCumulativeShift": false },
+  "negativeCases": [
+    { "case": "parent-transform-recreated", "expectedCacheCleared": true },
+    { "case": "zero-parent-pointer", "expectedNoPositionMutation": true },
+    { "case": "destroyed-child-wrapper", "expectedRestoreSkipped": true }
+  ]
+}

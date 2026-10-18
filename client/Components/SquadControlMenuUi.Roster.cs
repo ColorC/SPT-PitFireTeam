@@ -13,7 +13,7 @@ using HarmonyLib;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using PlayerIcons;
-using SPT.Common.Http;
+using SPTushonka.Common.Http;
 using TMPro;
 using System;
 using System.Collections;
@@ -84,6 +84,7 @@ namespace pitTeam.Components
             SyncGroupBadgesFromKnownState();
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private void RefreshRosterTiles(ICollection<string> accountIds)
         {
             if (rosterGridRoot == null || accountIds == null || accountIds.Count == 0)
@@ -130,6 +131,7 @@ namespace pitTeam.Components
             SyncGroupBadgesFromKnownState();
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private bool RefreshRosterTile(SquadRosterEntry entry)
         {
             if (rosterGridRoot == null || entry == null || string.IsNullOrWhiteSpace(entry.AccountId))
@@ -146,7 +148,7 @@ namespace pitTeam.Components
             int siblingIndex = existingTile.GetSiblingIndex();
             Destroy(existingTile.gameObject);
 
-            // Capture the new tile directly — Destroy() is deferred, so Find() by name would
+            // Capture the new tile directly 鈥?Destroy() is deferred, so Find() by name would
             // match the still-alive old tile first, leaving the new tile at the end every time.
             GameObject createdTile = CreateRosterTile(rosterGridRoot, entry, ++rosterBuildVersion);
             if (createdTile == null)
@@ -158,6 +160,7 @@ namespace pitTeam.Components
             return true;
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private IEnumerable<SquadRosterEntry> BuildRosterEntries()
         {
             List<SquadRosterEntry> entries = new List<SquadRosterEntry>();
@@ -236,22 +239,22 @@ namespace pitTeam.Components
             addTeammateButton.SetIcon(null);
             addTeammateButton.Interactable = true;
             addTeammateButton.OnClick.RemoveAllListeners();
-            addTeammateButton.OnClick.AddListener(OnAddTeammateClicked);
+            addTeammateButton.OnClick.AddListener((System.Action)OnAddTeammateClicked);
 
-            RectTransform buttonRect = addTeammateButton.transform as RectTransform;
+            RectTransform buttonRect = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(addTeammateButton.transform);
             if (buttonRect != null)
             {
                 buttonRect.anchorMin = new Vector2(0.5f, 0.5f);
                 buttonRect.anchorMax = new Vector2(0.5f, 0.5f);
                 buttonRect.pivot = new Vector2(0.5f, 0.5f);
-                buttonRect.sizeDelta = new Vector2(320f, playerButton.transform is RectTransform playerRect ? playerRect.sizeDelta.y : 54f);
+                buttonRect.sizeDelta = new Vector2(320f, pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(playerButton.transform) is RectTransform playerRect ? playerRect.sizeDelta.y : 54f);
                 buttonRect.anchoredPosition = Vector2.zero;
             }
         }
 
         private void OnAddTeammateClicked()
         {
-            AddTeammateCreationFlow.Start(SquadSideSelectionFlow.Open);
+            AddTeammateCreationFlow.Start(SquadSideSelectionFlow.ReopenAfterProfile);
         }
 
         private void CreateEmptyRosterLabel(RectTransform rosterRect)
@@ -300,14 +303,15 @@ namespace pitTeam.Components
             UpdateRosterPanelLayout(isEmpty);
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private GameObject CreateRosterTile(RectTransform parent, SquadRosterEntry entry, int buildVersion)
         {
             GameObject tileObject = new GameObject(
                 $"pitFireTeam_RosterTile_{entry.AccountId}",
-                typeof(RectTransform),
-                typeof(Image),
-                typeof(LayoutElement),
-                typeof(Button));
+                Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(),
+                Il2CppInterop.Runtime.Il2CppType.Of<Image>(),
+                Il2CppInterop.Runtime.Il2CppType.Of<LayoutElement>(),
+                Il2CppInterop.Runtime.Il2CppType.Of<Button>());
             tileObject.transform.SetParent(parent, false);
 
             RectTransform tileRect = tileObject.GetComponent<RectTransform>();
@@ -325,7 +329,7 @@ namespace pitTeam.Components
             Color pressedColor = new Color(0.16f, 0.16f, 0.16f, 0.99f);
             tileBackground.color = normalColor;
 
-            GameObject tileOverlayObject = new GameObject("BackgroundOverlay", typeof(RectTransform), typeof(Image));
+            GameObject tileOverlayObject = new GameObject("BackgroundOverlay", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             tileOverlayObject.transform.SetParent(tileRect, false);
             RectTransform tileOverlayRect = tileOverlayObject.GetComponent<RectTransform>();
             tileOverlayRect.anchorMin = new Vector2(0f, 1f);
@@ -352,14 +356,14 @@ namespace pitTeam.Components
             Button button = tileObject.GetComponent<Button>();
             button.transition = Selectable.Transition.None;
             button.targetGraphic = tileBackground;
-            button.onClick.AddListener(() => OpenProfile(entry.AccountId));
+            button.onClick.AddListener((System.Action)(() => OpenProfile(entry.AccountId)));
 
             TextMeshProUGUI nameLabel = CreateRosterNameLabel(tileRect, entry.Nickname);
 
-            RosterTileHoverController hoverController = tileObject.AddComponent<RosterTileHoverController>();
+            RosterTileHoverController hoverController = tileObject.AddComponentViaIl2CppType<RosterTileHoverController>();
             hoverController.Configure(tileBackground, nameLabel, normalColor, hoverColor, pressedColor);
 
-            PortraitContextClickController tileContextController = tileObject.AddComponent<PortraitContextClickController>();
+            PortraitContextClickController tileContextController = tileObject.AddComponentViaIl2CppType<PortraitContextClickController>();
             tileContextController.OnRightClick = eventData => ShowPortraitContextMenu(entry, eventData);
 
             RectTransform portraitHost = CreatePortraitHost(tileRect, entry.Level, out PlayerIconImage iconImage);
@@ -372,9 +376,10 @@ namespace pitTeam.Components
             return tileObject;
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private void CreateRemoveButton(RectTransform tileRect, SquadRosterEntry entry)
         {
-            GameObject buttonObject = new GameObject("pitFireTeam_RemoveButton", typeof(RectTransform), typeof(Image), typeof(Button));
+            GameObject buttonObject = new GameObject("pitFireTeam_RemoveButton", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>(), Il2CppInterop.Runtime.Il2CppType.Of<Button>());
             buttonObject.transform.SetParent(tileRect, false);
 
             RectTransform rect = buttonObject.GetComponent<RectTransform>();
@@ -397,12 +402,12 @@ namespace pitTeam.Components
             colors.selectedColor = Color.white;
             colors.disabledColor = Color.white;
             button.colors = colors;
-            button.onClick.AddListener(() => ShowRemoveConfirmOverlay(entry));
+            button.onClick.AddListener((System.Action)(() => ShowRemoveConfirmOverlay(entry)));
 
-            TooltipHoverController tooltipHover = buttonObject.AddComponent<TooltipHoverController>();
+            TooltipHoverController tooltipHover = buttonObject.AddComponentViaIl2CppType<TooltipHoverController>();
             tooltipHover.Configure(GetSocialUiText("SquadControlDeleteTooltip"));
 
-            GameObject labelObject = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+            GameObject labelObject = new GameObject("Label", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<TextMeshProUGUI>());
             labelObject.transform.SetParent(buttonObject.transform, false);
             RectTransform labelRect = labelObject.GetComponent<RectTransform>();
             Stretch(labelRect);
@@ -424,6 +429,7 @@ namespace pitTeam.Components
             label.raycastTarget = false;
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private void CreateAutoJoinBadge(RectTransform tileRect, SquadRosterEntry entry)
         {
             if (tileRect == null || entry == null)
@@ -437,7 +443,7 @@ namespace pitTeam.Components
                 return;
             }
 
-            GameObject badgeObject = new GameObject("pitFireTeam_AutoJoinBadge", typeof(RectTransform), typeof(Image));
+            GameObject badgeObject = new GameObject("pitFireTeam_AutoJoinBadge", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             badgeObject.transform.SetParent(tileRect, false);
 
             RectTransform rect = badgeObject.GetComponent<RectTransform>();
@@ -454,7 +460,7 @@ namespace pitTeam.Components
             badgeImage.color = new Color(0.92f, 0.92f, 0.9f, 0.95f);
             badgeImage.raycastTarget = true;
 
-            TooltipHoverController tooltipHover = badgeObject.AddComponent<TooltipHoverController>();
+            TooltipHoverController tooltipHover = badgeObject.AddComponentViaIl2CppType<TooltipHoverController>();
             tooltipHover.Configure(GetSocialUiText("SquadControlAutoJoinTooltip"));
 
             badgeObject.SetActive(entry.AutoJoinEnabled);
@@ -493,7 +499,7 @@ namespace pitTeam.Components
                 return;
             }
 
-            GameObject badgeObject = new GameObject("pitFireTeam_GroupBadge", typeof(RectTransform), typeof(Image));
+            GameObject badgeObject = new GameObject("pitFireTeam_GroupBadge", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             badgeObject.transform.SetParent(tileRect, false);
 
             RectTransform rect = badgeObject.GetComponent<RectTransform>();
@@ -510,7 +516,7 @@ namespace pitTeam.Components
             badgeImage.color = new Color(0.92f, 0.92f, 0.9f, 0.95f);
             badgeImage.raycastTarget = true;
 
-            TooltipHoverController tooltipHover = badgeObject.AddComponent<TooltipHoverController>();
+            TooltipHoverController tooltipHover = badgeObject.AddComponentViaIl2CppType<TooltipHoverController>();
             tooltipHover.Configure(GetSocialUiText("SquadControlInGroupTooltip"));
 
             bool startsActive = IsAccountInCurrentGroup(accountId)
@@ -538,6 +544,7 @@ namespace pitTeam.Components
             }
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private void ShowRemoveConfirmOverlay(SquadRosterEntry entry)
         {
             CloseRemoveConfirmOverlay();
@@ -548,7 +555,7 @@ namespace pitTeam.Components
                 return;
             }
 
-            GameObject overlayRoot = new GameObject("pitFireTeam_RemoveOverlay", typeof(RectTransform), typeof(Image));
+            GameObject overlayRoot = new GameObject("pitFireTeam_RemoveOverlay", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             overlayRoot.transform.SetParent(overlayParent, false);
             RectTransform overlayRect = overlayRoot.GetComponent<RectTransform>();
             Stretch(overlayRect);
@@ -558,7 +565,7 @@ namespace pitTeam.Components
             backdrop.color = new Color(0f, 0f, 0f, 0.12f);
             backdrop.raycastTarget = true;
 
-            GameObject panel = new GameObject("pitFireTeam_RemovePanel", typeof(RectTransform), typeof(Image));
+            GameObject panel = new GameObject("pitFireTeam_RemovePanel", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             panel.transform.SetParent(overlayRoot.transform, false);
             RectTransform panelRect = panel.GetComponent<RectTransform>();
             panelRect.anchorMin = new Vector2(0.5f, 0.5f);
@@ -570,7 +577,7 @@ namespace pitTeam.Components
             panelImage.color = new Color(0.02f, 0.02f, 0.02f, 0.98f);
             panelImage.raycastTarget = true;
 
-            GameObject header = new GameObject("pitFireTeam_RemoveHeader", typeof(RectTransform), typeof(Image));
+            GameObject header = new GameObject("pitFireTeam_RemoveHeader", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             header.transform.SetParent(panel.transform, false);
             RectTransform headerRect = header.GetComponent<RectTransform>();
             headerRect.anchorMin = new Vector2(0f, 1f);
@@ -596,7 +603,7 @@ namespace pitTeam.Components
             titleRect.offsetMax = new Vector2(-42f, 0f);
 
             Button closeButton = CreateWindowCloseButton(header.transform, "pitFireTeam_RemoveCloseButton");
-            if (closeButton.transform is RectTransform closeRect)
+            if (pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(closeButton.transform) is RectTransform closeRect)
             {
                 closeRect.anchorMin = new Vector2(1f, 0.5f);
                 closeRect.anchorMax = new Vector2(1f, 0.5f);
@@ -604,7 +611,7 @@ namespace pitTeam.Components
                 closeRect.anchoredPosition = new Vector2(-4f, 0f);
             }
 
-            closeButton.onClick.AddListener(CloseRemoveConfirmOverlay);
+            closeButton.onClick.AddListener((System.Action)CloseRemoveConfirmOverlay);
 
             GameObject bodyObject = CreateText(
                 "pitFireTeam_RemoveBody",
@@ -627,11 +634,12 @@ namespace pitTeam.Components
             DefaultUIButton removeButton = CreateOverlayActionButton(panel.transform, new Vector2(0f, 10f), new Vector2(180f, 36f));
             removeButton.SetRawText(GetSocialUiText("RemoveTeammateConfirm"), 22);
             removeButton.OnClick.RemoveAllListeners();
-            removeButton.OnClick.AddListener(() => RemoveTeammate(entry));
+            removeButton.OnClick.AddListener((System.Action)(() => RemoveTeammate(entry)));
 
             removeConfirmOverlay = overlayRoot;
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private void RemoveTeammate(SquadRosterEntry entry)
         {
             if (entry == null)
@@ -649,12 +657,17 @@ namespace pitTeam.Components
                     return;
                 }
 
-                UpdatableChatMember member = socialNetwork.FriendsList
-                    .FirstOrDefault(candidate =>
-                        candidate != null &&
-                        (!string.IsNullOrWhiteSpace(candidate.AccountId)
-                            ? string.Equals(candidate.AccountId, entry.AccountId, StringComparison.Ordinal)
-                            : string.Equals(candidate.Id, entry.SocialMemberId, StringComparison.Ordinal)));
+                UpdatableChatMember member = null;
+                foreach (UpdatableChatMember candidate in socialNetwork.FriendsList)
+                {
+                    if (candidate != null && (!string.IsNullOrWhiteSpace(candidate.AccountId)
+                        ? string.Equals(candidate.AccountId, entry.AccountId, StringComparison.Ordinal)
+                        : string.Equals(candidate.Id, entry.SocialMemberId, StringComparison.Ordinal)))
+                    {
+                        member = candidate;
+                        break;
+                    }
+                }
 
                 if (member == null)
                 {
@@ -662,7 +675,7 @@ namespace pitTeam.Components
                     return;
                 }
 
-                socialNetwork.RemoveFromFriendsList(member, new Callback(_ =>
+                socialNetwork.RemoveFromFriendsList(member, (Callback)(System.Action<IResult>)(_ =>
                 {
                     CloseRemoveConfirmOverlay();
                     SocialNetworkClassPatch.RefreshFriendsList();
@@ -689,7 +702,7 @@ namespace pitTeam.Components
 
         private RectTransform CreatePortraitHost(RectTransform tileRect, int level, out PlayerIconImage iconImage)
         {
-            RectTransform portraitRoot = new GameObject("PortraitRoot", typeof(RectTransform)).GetComponent<RectTransform>();
+            RectTransform portraitRoot = new GameObject("PortraitRoot", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>()).GetComponent<RectTransform>();
             portraitRoot.SetParent(tileRect, false);
             portraitRoot.anchorMin = new Vector2(0.5f, 1f);
             portraitRoot.anchorMax = new Vector2(0.5f, 1f);
@@ -704,7 +717,7 @@ namespace pitTeam.Components
                 return portraitRoot;
             }
 
-            RectTransform fallbackRoot = new GameObject("PortraitFallback", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+            RectTransform fallbackRoot = new GameObject("PortraitFallback", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>()).GetComponent<RectTransform>();
             fallbackRoot.SetParent(portraitRoot, false);
             Stretch(fallbackRoot);
 
@@ -713,7 +726,7 @@ namespace pitTeam.Components
             preview.preserveAspect = true;
             preview.sprite = LoadSquadIcon();
 
-            GameObject progress = new GameObject("Progress", typeof(RectTransform), typeof(Image));
+            GameObject progress = new GameObject("Progress", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             progress.transform.SetParent(fallbackRoot, false);
             RectTransform progressRect = progress.GetComponent<RectTransform>();
             progressRect.anchorMin = new Vector2(0.5f, 0.5f);
@@ -742,7 +755,7 @@ namespace pitTeam.Components
                 return;
             }
 
-            GameObject borderObject = new GameObject("pitFireTeam_PortraitBorder", typeof(RectTransform), typeof(Image), typeof(Outline));
+            GameObject borderObject = new GameObject("pitFireTeam_PortraitBorder", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>(), Il2CppInterop.Runtime.Il2CppType.Of<Outline>());
             borderObject.transform.SetParent(portraitRoot, false);
             borderObject.transform.SetAsLastSibling();
 
@@ -778,7 +791,7 @@ namespace pitTeam.Components
 
             GameObject clonedRoot = Instantiate(templateRoot.gameObject, parent, false);
             clonedRoot.name = "Portrait";
-            RectTransform clonedRect = clonedRoot.transform as RectTransform;
+            RectTransform clonedRect = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(clonedRoot.transform);
             if (clonedRect != null)
             {
                 Stretch(clonedRect);
@@ -900,7 +913,7 @@ namespace pitTeam.Components
 
         private static void CreatePortraitBackground(Transform clonedRoot)
         {
-            GameObject backgroundObject = new GameObject("pitFireTeam_PortraitBackground", typeof(RectTransform), typeof(Image));
+            GameObject backgroundObject = new GameObject("pitFireTeam_PortraitBackground", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             backgroundObject.transform.SetParent(clonedRoot, false);
             backgroundObject.transform.SetAsFirstSibling();
 
@@ -914,7 +927,7 @@ namespace pitTeam.Components
 
         private void CreatePortraitLevelBadge(Transform clonedRoot, int level)
         {
-            GameObject badgeObject = new GameObject("pitFireTeam_LevelBadge", typeof(RectTransform), typeof(Image));
+            GameObject badgeObject = new GameObject("pitFireTeam_LevelBadge", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             badgeObject.transform.SetParent(clonedRoot, false);
 
             RectTransform badgeRect = badgeObject.GetComponent<RectTransform>();
@@ -928,7 +941,7 @@ namespace pitTeam.Components
             badgeImage.color = new Color(0f, 0f, 0f, 0f);
             badgeImage.raycastTarget = false;
 
-            GameObject labelObject = new GameObject("LevelLabel", typeof(RectTransform), typeof(TextMeshProUGUI));
+            GameObject labelObject = new GameObject("LevelLabel", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<TextMeshProUGUI>());
             labelObject.transform.SetParent(badgeObject.transform, false);
 
             RectTransform labelRect = labelObject.GetComponent<RectTransform>();
@@ -1031,7 +1044,7 @@ namespace pitTeam.Components
 
         private TextMeshProUGUI CreateRosterNameLabel(RectTransform tileRect, string nickname)
         {
-            GameObject textObject = new GameObject("Name", typeof(RectTransform), typeof(TextMeshProUGUI));
+            GameObject textObject = new GameObject("Name", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<TextMeshProUGUI>());
             textObject.transform.SetParent(tileRect, false);
 
             RectTransform textRect = textObject.GetComponent<RectTransform>();
@@ -1058,6 +1071,7 @@ namespace pitTeam.Components
             return label;
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private void AttachPortraitProfileTrigger(RectTransform portraitHost, SquadRosterEntry entry)
         {
             if (portraitHost == null || entry == null)
@@ -1065,7 +1079,7 @@ namespace pitTeam.Components
                 return;
             }
 
-            GameObject triggerObject = new GameObject("pitFireTeam_PortraitProfileTrigger", typeof(RectTransform), typeof(Image));
+            GameObject triggerObject = new GameObject("pitFireTeam_PortraitProfileTrigger", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             triggerObject.transform.SetParent(portraitHost, false);
 
             RectTransform triggerRect = triggerObject.GetComponent<RectTransform>();
@@ -1076,7 +1090,7 @@ namespace pitTeam.Components
             triggerImage.color = new Color(0f, 0f, 0f, 0.001f);
             triggerImage.raycastTarget = true;
 
-            PortraitContextClickController controller = triggerObject.AddComponent<PortraitContextClickController>();
+            PortraitContextClickController controller = triggerObject.AddComponentViaIl2CppType<PortraitContextClickController>();
             controller.OnLeftClick = _ => OpenProfile(entry.AccountId);
             controller.OnRightClick = eventData => ShowPortraitContextMenu(entry, eventData);
         }
@@ -1147,6 +1161,7 @@ namespace pitTeam.Components
             }
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private IEnumerator DrainPortraitQueueCoroutine()
         {
             while (_portraitQueue.Count > 0)
@@ -1159,6 +1174,7 @@ namespace pitTeam.Components
             _portraitQueueCoroutine = null;
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private IEnumerator LoadTeammatePortraitCoroutine(string accountId, PlayerIconImage iconImage, RectTransform portraitRoot, int buildVersion)
         {
             if (string.IsNullOrWhiteSpace(accountId) || iconImage == null || ItemUiContext.Instance?.Session == null)
@@ -1244,14 +1260,14 @@ namespace pitTeam.Components
                 return;
             }
 
-            GameObject scrollRootObject = new GameObject("pitFireTeam_SquadControlRosterScroll", typeof(RectTransform), typeof(ScrollRectNoDrag));
+            GameObject scrollRootObject = new GameObject("pitFireTeam_SquadControlRosterScroll", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<ScrollRectNoDrag>());
             scrollRootObject.transform.SetParent(shellRect, false);
             RectTransform scrollRoot = scrollRootObject.GetComponent<RectTransform>();
             Stretch(scrollRoot);
             scrollRoot.offsetMin = new Vector2(18f, RosterViewportBottomInset);
             scrollRoot.offsetMax = new Vector2(-18f, -RosterViewportTopInset);
 
-            GameObject viewportObject = new GameObject("Viewport", typeof(RectTransform), typeof(Image), typeof(RectMask2D));
+            GameObject viewportObject = new GameObject("Viewport", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>(), Il2CppInterop.Runtime.Il2CppType.Of<RectMask2D>());
             viewportObject.transform.SetParent(scrollRoot, false);
             rosterViewport = viewportObject.GetComponent<RectTransform>();
             rosterViewport.anchorMin = Vector2.zero;
@@ -1265,7 +1281,7 @@ namespace pitTeam.Components
 
             rosterScrollbar = CreateRosterScrollbar(scrollRoot);
 
-            GameObject contentObject = new GameObject("pitFireTeam_SquadControlRosterContent", typeof(RectTransform));
+            GameObject contentObject = new GameObject("pitFireTeam_SquadControlRosterContent", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>());
             contentObject.transform.SetParent(rosterViewport, false);
             rosterContentRoot = contentObject.GetComponent<RectTransform>();
             rosterContentRoot.anchorMin = new Vector2(0f, 1f);
@@ -1274,7 +1290,7 @@ namespace pitTeam.Components
             rosterContentRoot.anchoredPosition = Vector2.zero;
             rosterContentRoot.sizeDelta = new Vector2(0f, 0f);
 
-            GameObject gridObject = new GameObject("pitFireTeam_SquadControlRosterGrid", typeof(RectTransform));
+            GameObject gridObject = new GameObject("pitFireTeam_SquadControlRosterGrid", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>());
             gridObject.transform.SetParent(rosterContentRoot, false);
             rosterGridRoot = gridObject.GetComponent<RectTransform>();
             ConfigureRosterContentContainer(rosterGridRoot);
@@ -1310,7 +1326,7 @@ namespace pitTeam.Components
                 scrollbar = CreateFallbackScrollbar(parent);
             }
 
-            if (scrollbar.transform is RectTransform rect)
+            if (pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(scrollbar.transform) is RectTransform rect)
             {
                 rect.anchorMin = new Vector2(1f, 0f);
                 rect.anchorMax = new Vector2(1f, 1f);
@@ -1359,7 +1375,7 @@ namespace pitTeam.Components
 
         private void UpdateRosterPanelLayout(bool isEmpty)
         {
-            float buttonHeight = addTeammateButton?.transform is RectTransform addButtonSource
+            float buttonHeight = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(addTeammateButton?.transform) is RectTransform addButtonSource
                 ? addButtonSource.sizeDelta.y
                 : 54f;
 
@@ -1370,7 +1386,7 @@ namespace pitTeam.Components
                 stockCardsContainer.anchoredPosition = new Vector2(0f, (shellCenterY + RosterBlockVerticalOffset) * verticalScaleCompensation);
             }
 
-            if (addTeammateButton?.transform is RectTransform addButtonRect)
+            if (pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(addTeammateButton?.transform) is RectTransform addButtonRect)
             {
                 float verticalScaleCompensation = ResolveUiScaleCompensation(rosterPanelRect);
                 float buttonCenterY = isEmpty
@@ -1379,7 +1395,7 @@ namespace pitTeam.Components
                 addButtonRect.anchoredPosition = new Vector2(0f, (buttonCenterY + RosterBlockVerticalOffset) * verticalScaleCompensation);
             }
 
-            if (emptyRosterLabel?.transform is RectTransform emptyLabelRect)
+            if (pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(emptyRosterLabel?.transform) is RectTransform emptyLabelRect)
             {
                 float verticalScaleCompensation = ResolveUiScaleCompensation(rosterPanelRect);
                 float emptyLabelY = EmptyRosterButtonCenterY + EmptyRosterLabelSpacing;
@@ -1426,7 +1442,7 @@ namespace pitTeam.Components
             return Mathf.Clamp(EFT.UI.UICanvasScalerController._scaleFactor / scaler.scaleFactor, 0.5f, 2f);
         }
 
-        // Sequential portrait load queue — one SetPresetIcon per entry, processed in order.
+        // Sequential portrait load queue 鈥?one SetPresetIcon per entry, processed in order.
         private static readonly Queue<(string accountId, PlayerIconImage iconImage, RectTransform portraitRoot, int buildVersion)> _portraitQueue
             = new Queue<(string, PlayerIconImage, RectTransform, int)>();
         private static Coroutine _portraitQueueCoroutine;

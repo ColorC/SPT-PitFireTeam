@@ -8,23 +8,24 @@
     <RootNamespace>pitTeam.Server</RootNamespace>
     <Version>0.10.3</Version>
     <OutputType>Library</OutputType>
-    <SptReferenceRoot Condition="'$(SptReferenceRoot)' == ''">$(MSBuildProjectDirectory)/refs/4.1.0</SptReferenceRoot>
+    <SptReferenceRoot Condition="'$(SptReferenceRoot)' == ''">$(MSBuildProjectDirectory)/refs/5.0.0</SptReferenceRoot>
+    <SptReferenceVersion Condition="'$(SptReferenceVersion)' == ''">5.0.0.0</SptReferenceVersion>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="SPTarkov.Common">
-      <HintPath>$(SptReferenceRoot)/SPTarkov.Common.dll</HintPath>
+      <Private>false</Private><HintPath>$(SptReferenceRoot)/SPTarkov.Common.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="SPTarkov.DI">
-      <HintPath>$(SptReferenceRoot)/SPTarkov.DI.dll</HintPath>
+      <Private>false</Private><HintPath>$(SptReferenceRoot)/SPTarkov.DI.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="SPTarkov.Server.Core">
-      <HintPath>$(SptReferenceRoot)/SPTarkov.Server.Core.dll</HintPath>
+      <Private>false</Private><HintPath>$(SptReferenceRoot)/SPTarkov.Server.Core.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="SemanticVersioning">
-      <HintPath>$(SptReferenceRoot)/SemanticVersioning.dll</HintPath>
+      <Private>false</Private><HintPath>$(SptReferenceRoot)/SemanticVersioning.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
@@ -41,7 +42,7 @@
     </ItemGroup>
     <Error
       Condition="!Exists('%(RequiredSptReference.Identity)')"
-      Text="Required SPT 4.1.0 server reference was not found: %(RequiredSptReference.Identity)"
+      Text="Required SPT server reference was not found: %(RequiredSptReference.Identity)"
     />
     <!-- Compile against the oldest supported SPT patch, not the installed runtime. -->
     <ItemGroup>
@@ -51,8 +52,8 @@
       <Output TaskParameter="Assemblies" ItemName="SptReferenceIdentity" />
     </GetAssemblyIdentity>
     <Error
-      Condition="'%(SptReferenceIdentity.Version)' != '4.1.0.0'"
-      Text="SPT 4.1.x compatibility requires 4.1.0.0 compile references. %(SptReferenceIdentity.Identity) is %(SptReferenceIdentity.Version)."
+      Condition="'%(SptReferenceIdentity.Version)' != '$(SptReferenceVersion)'"
+      Text="SPT compatibility requires $(SptReferenceVersion) compile references. %(SptReferenceIdentity.Identity) is %(SptReferenceIdentity.Version)."
     />
   </Target>
 </Project>

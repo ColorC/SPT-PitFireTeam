@@ -1,7 +1,7 @@
 using EFT;
 using EFT.InventoryLogic;
 using Newtonsoft.Json.Linq;
-using SPT.Common.Http;
+using SPTushonka.Common.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -398,7 +398,7 @@ namespace pitTeam.Modules
                 }
 
                 if (root is CompoundItem compound &&
-                    compound.GetAllItems().Any(child => child != null && string.Equals(child.Id, item.Id, StringComparison.Ordinal)))
+                    compound.GetAllItems().AsManaged().Any(child => child != null && string.Equals(child.Id, item.Id, StringComparison.Ordinal)))
                 {
                     return slot;
                 }
@@ -593,7 +593,7 @@ namespace pitTeam.Modules
                     continue;
                 }
 
-                foreach (Item trackedItem in grid.Items
+                foreach (Item trackedItem in grid.Items.AsManaged()
                              .Where(gridItem => IsTrackedLootTree(gridItem, trackedLootIds))
                              .ToList())
                 {

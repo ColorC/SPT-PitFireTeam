@@ -1,12 +1,14 @@
 using EFT.UI.Matchmaker;
+using SPTushonka.Common.Utils;
 using EFT.UI;
 using EFT.InputSystem;
 using EFT.UI.Ragfair;
 using Comfort.Common;
 using pitTeam.Modules;
+using pitTeam.Compat;
 using HarmonyLib;
-using SPT.Reflection.Patching;
-using SPT.Reflection.Utils;
+using SPTushonka.Reflection.Patching;
+using SPTushonka.Reflection.Utils;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -32,33 +34,33 @@ namespace pitTeam.Patches
         private static UIAnimatedToggleSpawner tabsSettingsInstance;
         private static ToggleGroup overlayToggleGroup;
 
-        private static readonly FieldInfo RagfairAllOffersToggleField = AccessTools.Field(typeof(RagfairScreen), "_allOffersToggle");
-        private static readonly FieldInfo RagfairWishListToggleField = AccessTools.Field(typeof(RagfairScreen), "_wishListToggle");
-        private static readonly FieldInfo AnimatedToggleCanvasGroupField = AccessTools.Field(typeof(UIAnimatedToggleSpawner), "_canvasGroup");
-        private static readonly FieldInfo SpawnableToggleHeaderLabelField = AccessTools.Field(typeof(UISpawnableToggle), "_headerLabel");
-        private static readonly FieldInfo SpawnableToggleSizeLabelField = AccessTools.Field(typeof(UISpawnableToggle), "_sizeLabel");
-        private static readonly FieldInfo BackButtonField = AccessTools.Field(typeof(MatchMakerSideSelectionScreen), "_backButton");
-        internal static readonly UnityAction BackExitAction = () =>
+        private static readonly NativeUiMemberAccessor RagfairAllOffersToggleField = NativeUiMemberAccessor.ForProperty(typeof(RagfairScreen), "_allOffersToggle", typeof(UIAnimatedToggleSpawner), false, false);
+        private static readonly NativeUiMemberAccessor RagfairWishListToggleField = NativeUiMemberAccessor.ForProperty(typeof(RagfairScreen), "_wishListToggle", typeof(UIAnimatedToggleSpawner), false, false);
+        private static readonly NativeUiMemberAccessor AnimatedToggleCanvasGroupField = NativeUiMemberAccessor.ForProperty(typeof(UIAnimatedToggleSpawner), "_canvasGroup", typeof(CanvasGroup), false, true);
+        private static readonly NativeUiMemberAccessor SpawnableToggleHeaderLabelField = NativeUiMemberAccessor.ForProperty(typeof(UISpawnableToggle), "_headerLabel", typeof(TextMeshProUGUI), false, false);
+        private static readonly NativeUiMemberAccessor SpawnableToggleSizeLabelField = NativeUiMemberAccessor.ForProperty(typeof(UISpawnableToggle), "_sizeLabel", typeof(TextMeshProUGUI), false, false);
+        private static readonly NativeUiMemberAccessor BackButtonField = NativeUiMemberAccessor.ForProperty(typeof(MatchMakerSideSelectionScreen), "_backButton", typeof(DefaultUIButton), false, false);
+        internal static readonly UnityAction BackExitAction = (System.Action)(() =>
         {
             SquadSideSelectionFlow.Deactivate("side-selection-back");
             EFT.UI.Screens.EftScreenManager.Instance.TryReturnToRootScreen().HandleExceptions();
-        };
+        });
 
-        // Serialized fields to hide via reflection (elements not covered by named containers below)
-        private static readonly string[] NativeHideFields =
+        // Current SPT 5.0 metadata exposes these native members as properties.
+        internal static readonly NativeUiMemberAccessor[] NativeHideProperties =
         {
-            "_nextButton",
-            "_savageBlockMessage",
-            "_sideDescriptionText",
-            "_savageBlocker",
-            "_lowHealthWarning",
-            "_notFullHealthWarning",
-            "_randomButton",
-            "_healthPanel",
-            "_randomIcon",
-            "_subCaption",
-            "_pmcModelView",
-            "_savageModelView",
+            NativeUiMemberAccessor.ForProperty(typeof(MatchMakerSideSelectionScreen), "_nextButton", typeof(DefaultUIButton), false, false),
+            NativeUiMemberAccessor.ForProperty(typeof(MatchMakerSideSelectionScreen), "_savageBlockMessage", typeof(TMP_Text), false, false),
+            NativeUiMemberAccessor.ForProperty(typeof(MatchMakerSideSelectionScreen), "_sideDescriptionText", typeof(TextMeshProUGUI), false, false),
+            NativeUiMemberAccessor.ForProperty(typeof(MatchMakerSideSelectionScreen), "_savageBlocker", typeof(CanvasGroup), false, false),
+            NativeUiMemberAccessor.ForProperty(typeof(MatchMakerSideSelectionScreen), "_lowHealthWarning", typeof(CanvasGroup), false, false),
+            NativeUiMemberAccessor.ForProperty(typeof(MatchMakerSideSelectionScreen), "_notFullHealthWarning", typeof(CanvasGroup), false, false),
+            NativeUiMemberAccessor.ForProperty(typeof(MatchMakerSideSelectionScreen), "_randomButton", typeof(UIAnimatedToggleSpawner), false, false),
+            NativeUiMemberAccessor.ForProperty(typeof(MatchMakerSideSelectionScreen), "_healthPanel", typeof(EFT.UI.Health.InventoryScreenHealthPanel), false, false),
+            NativeUiMemberAccessor.ForProperty(typeof(MatchMakerSideSelectionScreen), "_randomIcon", typeof(Image), false, false),
+            NativeUiMemberAccessor.ForProperty(typeof(MatchMakerSideSelectionScreen).BaseType, "_subCaption", typeof(TextMeshProUGUI), false, false),
+            NativeUiMemberAccessor.ForProperty(typeof(MatchMakerSideSelectionScreen), "_pmcModelView", typeof(PlayerModelView), false, false),
+            NativeUiMemberAccessor.ForProperty(typeof(MatchMakerSideSelectionScreen), "_savageModelView", typeof(PlayerModelView), false, false),
         };
 
         // Direct named children of the screen root to hide entirely
@@ -99,17 +101,25 @@ namespace pitTeam.Patches
                 return;
             }
 
-            // Hide via reflected serialized fields
-            foreach (string fieldName in NativeHideFields)
+            ApplySquadMode(__instance);
+        }
+
+        internal static void ApplySquadMode(MatchMakerSideSelectionScreen __instance)
+        {
+            if (!SquadSideSelectionFlow.SquadModeActive || __instance == null)
             {
-                FieldInfo field = AccessTools.Field(typeof(MatchMakerSideSelectionScreen), fieldName);
-                Component comp = field?.GetValue(__instance) as Component;
+                return;
+            }
+
+            // Hide the metadata-verified native properties.
+            foreach (NativeUiMemberAccessor accessor in NativeHideProperties)
+            {
+                Component comp = accessor?.GetValue(__instance) as Component;
                 if (comp != null)
                 {
                     comp.gameObject.SetActive(false);
                 }
             }
-
             // Hide whole named containers
             foreach (string childName in NativeHideByName)
             {
@@ -185,8 +195,8 @@ namespace pitTeam.Patches
                 yield break;
             }
 
-            // Invisible root — holds the ToggleGroup so Unity can enforce mutual exclusion.
-            tabsOverlayRoot = new GameObject("pitFireTeam_SideSelectionTabsOnly", typeof(RectTransform));
+            // Invisible root 鈥?holds the ToggleGroup so Unity can enforce mutual exclusion.
+            tabsOverlayRoot = new GameObject("pitFireTeam_SideSelectionTabsOnly", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>());
             tabsOverlayRoot.GetComponent<RectTransform>().SetParent(screen.transform, false);
 
             overlayToggleGroup = tabsOverlayRoot.AddComponent<ToggleGroup>();
@@ -231,7 +241,7 @@ namespace pitTeam.Patches
         // Mirrors SquadControlMenuUi.ConfigureAnimatedTab exactly.
         private static void ConfigureTabForOverlay(UIAnimatedToggleSpawner tab, Vector2 anchoredPosition, string label, bool selected, Action onSelected)
         {
-            RectTransform rect = tab.transform as RectTransform;
+            RectTransform rect = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(tab.transform);
             rect.anchorMin = new Vector2(0.5f, 1f);
             rect.anchorMax = new Vector2(0.5f, 1f);
             rect.pivot = new Vector2(0.5f, 1f);
@@ -270,10 +280,10 @@ namespace pitTeam.Patches
                 tab.SpawnedObject.group = overlayToggleGroup;
                 tab.SpawnedObject.interactable = true;
                 tab.SpawnedObject.onValueChanged.RemoveAllListeners();
-                tab.SpawnedObject.onValueChanged.AddListener(isOn =>
+                tab.SpawnedObject.onValueChanged.AddListener((System.Action<bool>)(isOn =>
                 {
                     if (isOn) onSelected();
-                });
+                }));
             }
 
             Components.SquadControlMenuUi.TabHoverController hoverController = tab.gameObject.GetComponent<Components.SquadControlMenuUi.TabHoverController>();
@@ -364,23 +374,6 @@ namespace pitTeam.Patches
     /// </summary>
     internal class MatchMakerSideSelectionScreenClosePatch : ModulePatch
     {
-        // Fields that were hidden
-        private static readonly string[] NativeHideFields =
-        {
-            "_nextButton",
-            "_savageBlockMessage",
-            "_sideDescriptionText",
-            "_savageBlocker",
-            "_lowHealthWarning",
-            "_notFullHealthWarning",
-            "_randomButton",
-            "_healthPanel",
-            "_randomIcon",
-            "_subCaption",
-            "_pmcModelView",
-            "_savageModelView",
-        };
-
         // Named children that were hidden
         private static readonly string[] NativeHideByName =
         {
@@ -402,17 +395,15 @@ namespace pitTeam.Patches
         [PatchPostfix]
         private static void PatchPostfix(MatchMakerSideSelectionScreen __instance)
         {
-            // Restore hidden fields
-            foreach (string fieldName in NativeHideFields)
+            // Restore the same metadata-verified native properties hidden by Show.
+            foreach (NativeUiMemberAccessor accessor in MatchMakerSideSelectionScreenShowPatch.NativeHideProperties)
             {
-                FieldInfo field = AccessTools.Field(typeof(MatchMakerSideSelectionScreen), fieldName);
-                Component comp = field?.GetValue(__instance) as Component;
+                Component comp = accessor?.GetValue(__instance) as Component;
                 if (comp != null)
                 {
                     comp.gameObject.SetActive(true);
                 }
             }
-
             // Restore hidden named children
             foreach (string childName in NativeHideByName)
             {
@@ -443,7 +434,7 @@ namespace pitTeam.Patches
     {
         protected override MethodBase GetTargetMethod()
         {
-            return AccessTools.Method(typeof(EFT.MainMenuShowOperation), "method_44");
+            return AccessTools.Method(typeof(EFT.TarkovApplication), nameof(EFT.TarkovApplication.OpenCharacterSelectionFromMenu), Type.EmptyTypes);
         }
 
         [PatchPrefix]
@@ -460,94 +451,36 @@ namespace pitTeam.Patches
 
     internal class PlayerModelViewShowProfilePatch : ModulePatch
     {
-        protected override MethodBase GetTargetMethod()
-        {
-            foreach (MethodInfo method in AccessTools.GetDeclaredMethods(typeof(PlayerModelView)))
-            {
-                if (!string.Equals(method.Name, "Show"))
-                {
-                    continue;
-                }
-
-                ParameterInfo[] parameters = method.GetParameters();
-                if (parameters.Length == 6
-                    && parameters[0].ParameterType.Name == "Profile"
-                    && parameters[1].ParameterType.Name == "InventoryController")
-                {
-                    return method;
-                }
-            }
-
-            return null;
-        }
+        protected override MethodBase GetTargetMethod() { return AccessTools.Method(typeof(PlayerModelView), nameof(PlayerModelView.Show), new[] { typeof(EFT.Profile), typeof(EFT.InventoryLogic.InventoryController), typeof(Il2CppSystem.Action), typeof(float), typeof(Il2CppSystem.Nullable<Vector3>), typeof(bool) }); }
 
         [PatchPrefix]
-        private static bool PatchPrefix(ref Task __result)
+        private static bool PatchPrefix(ref Il2CppSystem.Threading.Tasks.Task __result)
         {
-            if (!SquadSideSelectionFlow.SuppressPlayerModelViewShow
-                && !AddTeammateCreationFlow.SuppressSkippedSideSelectionModelView)
+            if (!SquadSideSelectionFlow.SuppressPlayerModelViewShow)
             {
                 return true;
             }
 
-            __result = Task.CompletedTask;
+            __result = Il2CppTaskBridge.ToNative(System.Threading.Tasks.Task.CompletedTask);
             return false;
         }
     }
 
     internal class MatchMakerGroupPreviewClosePlayerPatch : ModulePatch
     {
-        private static readonly FieldInfo PreviewListField = AccessTools.Field(typeof(MatchMakerGroupPreview), "list_0");
-        private static readonly FieldInfo ComradesPositionsField = AccessTools.Field(typeof(MatchMakerGroupPreview), "_comradesPositions");
 
         protected override MethodBase GetTargetMethod()
         {
-            return AccessTools.Method(typeof(MatchMakerGroupPreview), "method_2");
+            return AccessTools.Method(typeof(MatchMakerGroupPreview), nameof(MatchMakerGroupPreview.CloseView), new[] { typeof(MatchMakerPlayerPreview) });
         }
 
         [PatchPrefix]
-        private static bool PatchPrefix(MatchMakerGroupPreview __instance, int index, ref MatchMakerPlayerPreview __result)
+        private static bool PatchPrefix(MatchMakerGroupPreview __instance, MatchMakerPlayerPreview view)
         {
-            List<MatchMakerPlayerPreview> previews = PreviewListField?.GetValue(__instance) as List<MatchMakerPlayerPreview>;
-            List<ComradeView> positions = ComradesPositionsField?.GetValue(__instance) as List<ComradeView>;
-            if (previews == null || index < 0 || index >= previews.Count)
-            {
-                __result = null;
-                return false;
-            }
-
-            MatchMakerPlayerPreview preview = previews[index];
-            try
-            {
-                if (preview != null)
-                {
-                    preview.Close();
-                }
-            }
-            catch (Exception ex)
-            {
-                pitFireTeam.Log.LogWarning("[UI] Suppressed stale matchmaker preview close failure.");
-                pitFireTeam.Log.LogError(ex);
-            }
-
-            try
-            {
-                if (positions != null && index < positions.Count && positions[index] != null)
-                {
-                    positions[index].TogglePlaceholder(true);
-                }
-            }
-            catch (Exception ex)
-            {
-                pitFireTeam.Log.LogWarning("[UI] Failed to restore matchmaker preview placeholder.");
-                pitFireTeam.Log.LogError(ex);
-            }
-
-            __result = preview;
-            return false;
+            // Native CloseView owns valid preview cleanup; guard stale null entries.
+            return view != null;
         }
     }
-
     internal class PlayerModelViewShowLastStatePatch : ModulePatch
     {
         protected override MethodBase GetTargetMethod()
@@ -559,23 +492,22 @@ namespace pitTeam.Patches
                 {
                     typeof(EFT.PlayerVisualRepresentation),
                     typeof(EFT.InventoryLogic.InventoryController),
-                    typeof(Action),
+                    typeof(Il2CppSystem.Action),
                     typeof(float),
-                    typeof(Vector3?),
+                    typeof(Il2CppSystem.Nullable<Vector3>),
                     typeof(bool)
                 });
         }
 
         [PatchPrefix]
-        private static bool PatchPrefix(ref Task __result)
+        private static bool PatchPrefix(ref Il2CppSystem.Threading.Tasks.Task __result)
         {
-            if (!SquadSideSelectionFlow.SuppressPlayerModelViewShow
-                && !AddTeammateCreationFlow.SuppressSkippedSideSelectionModelView)
+            if (!SquadSideSelectionFlow.SuppressPlayerModelViewShow)
             {
                 return true;
             }
 
-            __result = Task.CompletedTask;
+            __result = Il2CppTaskBridge.ToNative(System.Threading.Tasks.Task.CompletedTask);
             return false;
         }
     }

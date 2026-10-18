@@ -253,7 +253,15 @@ namespace pitTeam.BigBrain.Actions
         {
             try
             {
-                return magazine?.GetAllParentItems(false).Any(parent => parent is Weapon) == true;
+                var parents = magazine?.GetAllParentItems(false);
+                if (parents != null)
+                {
+                    foreach (Item parent in parents)
+                    {
+                        if (parent is Weapon) return true;
+                    }
+                }
+                return false;
             }
             catch
             {

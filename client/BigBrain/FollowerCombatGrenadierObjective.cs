@@ -104,7 +104,7 @@ namespace pitTeam.BigBrain
         }
 
         public override void DecisionChanged(
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? prevDecision,
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> prevDecision,
             AICoreActionResult<BotLogicDecision, CoreActionResultParams> nextDecision)
         {
             CombatCommon.HandleSharedDecisionChanged(nextDecision);
@@ -550,7 +550,7 @@ namespace pitTeam.BigBrain
                         out _);
                 if (continueCommittedPrimaryShot)
                 {
-                    return default;
+                    return FollowerCombatCommon.Continue();
                 }
 
                 launcherPlan = null;
@@ -560,7 +560,7 @@ namespace pitTeam.BigBrain
             // CombatShootFromPlaceAction runs EFT's normal aim-and-trigger worker directly after
             // launcher arc safety succeeds. Do not delegate to EndShootFromPlace here because that
             // outer rifle end gate rejects the same valid arc whenever GoalEnemy.CanShoot is false.
-            return default;
+            return FollowerCombatCommon.Continue();
         }
 
         private AICoreActionEnd EndLauncherMove()
@@ -582,7 +582,7 @@ namespace pitTeam.BigBrain
                 CombatCommon.ClearCommittedMovement();
             }
 
-            return moveEnd.Value ? moveEnd : default;
+            return moveEnd.Value ? moveEnd : FollowerCombatCommon.Continue();
         }
 
         private AICoreActionEnd EndRetryHold()
@@ -593,7 +593,7 @@ namespace pitTeam.BigBrain
             }
 
             CombatCommon.HoldFor(Mathf.Max(0.05f, retryScanUntil - Time.time));
-            return default;
+            return FollowerCombatCommon.Continue();
         }
 
         private AICoreActionResult<BotLogicDecision, CoreActionResultParams> RetryOrFail(string suffix)

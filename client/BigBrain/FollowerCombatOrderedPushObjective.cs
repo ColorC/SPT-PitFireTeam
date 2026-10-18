@@ -56,7 +56,7 @@ namespace pitTeam.BigBrain
         }
 
         public override void DecisionChanged(
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? prevDecision,
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> prevDecision,
             AICoreActionResult<BotLogicDecision, CoreActionResultParams> nextDecision)
         {
             CombatCommon.HandleSharedDecisionChanged(nextDecision);
@@ -101,22 +101,22 @@ namespace pitTeam.BigBrain
                 return reloadRetreatDecision;
             }
 
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? dogFightDecision = CombatCommon.TryGetDogFightDecision();
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> dogFightDecision = CombatCommon.TryGetDogFightDecision();
             if (dogFightDecision != null)
             {
-                return dogFightDecision.Value;
+                return dogFightDecision;
             }
 
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? inFightDecision = CombatCommon.InFightLogic();
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> inFightDecision = CombatCommon.InFightLogic();
             if (inFightDecision != null)
             {
-                return inFightDecision.Value;
+                return inFightDecision;
             }
 
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? healDecision = CombatCommon.TryGetNeedHealDecision();
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> healDecision = CombatCommon.TryGetNeedHealDecision();
             if (healDecision != null)
             {
-                return healDecision.Value;
+                return healDecision;
             }
 
             if (CombatCommon.HasActiveOrPendingHealWork())
@@ -338,23 +338,23 @@ namespace pitTeam.BigBrain
         private AICoreActionEnd EndHealPendingHold(
             AICoreActionResult<BotLogicDecision, CoreActionResultParams> currentDecision)
         {
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? dogFightDecision =
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> dogFightDecision =
                 CombatCommon.TryGetDogFightDecision();
             if (dogFightDecision != null &&
                 CombatCommon.TryPrepareDecisionTransition(
                     currentDecision,
                     "orderedHealPendingImmediateFight",
-                    dogFightDecision.Value))
+                    dogFightDecision))
             {
                 return new AICoreActionEnd("orderedHealPendingImmediateFight", true);
             }
 
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? inFightDecision = CombatCommon.InFightLogic();
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> inFightDecision = CombatCommon.InFightLogic();
             if (inFightDecision != null &&
                 CombatCommon.TryPrepareDecisionTransition(
                     currentDecision,
                     "orderedHealPendingImmediateFight",
-                    inFightDecision.Value))
+                    inFightDecision))
             {
                 return new AICoreActionEnd("orderedHealPendingImmediateFight", true);
             }
@@ -364,13 +364,13 @@ namespace pitTeam.BigBrain
                 return FollowerCombatCommon.Continue();
             }
 
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? healDecision =
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> healDecision =
                 CombatCommon.TryGetNeedHealDecision();
             if (healDecision != null &&
                 CombatCommon.TryPrepareDecisionTransition(
                     currentDecision,
                     "orderedHealRetryReady",
-                    healDecision.Value))
+                    healDecision))
             {
                 return new AICoreActionEnd("orderedHealRetryReady", true);
             }

@@ -4,7 +4,7 @@ using EFT.InventoryLogic;
 using pitTeam.Modules;
 using pitTeam.Utils;
 using HarmonyLib;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System.Reflection;
 using UnityEngine;
 
@@ -12,7 +12,7 @@ namespace pitTeam.Patches
 {
     internal class FollowerGrenadeCooldownPatch : ModulePatch
     {
-        private static readonly FieldInfo BotOwnerField = AccessTools.Field(typeof(BotGrenadeController), "_owner");
+        private static readonly PropertyInfo BotOwnerProperty = AccessTools.Property(typeof(BotGrenadeController).BaseType, "_owner");
 
         protected override MethodBase GetTargetMethod()
         {
@@ -22,7 +22,7 @@ namespace pitTeam.Patches
         [PatchPrefix]
         private static bool PatchPrefix(BotGrenadeController __instance, ref bool __result)
         {
-            BotOwner bot = BotOwnerField?.GetValue(__instance) as BotOwner;
+            BotOwner bot = BotOwnerProperty?.GetValue(__instance) as BotOwner;
             if (bot == null)
             {
                 return true;
@@ -52,7 +52,7 @@ namespace pitTeam.Patches
         [PatchPostfix]
         private static void PatchPostfix(BotGrenadeController __instance)
         {
-            BotOwner bot = BotOwnerField?.GetValue(__instance) as BotOwner;
+            BotOwner bot = BotOwnerProperty?.GetValue(__instance) as BotOwner;
             if (bot == null || !BossPlayers.IsFollower(bot))
             {
                 return;
@@ -68,7 +68,7 @@ namespace pitTeam.Patches
 
     internal class FollowerGrenadeThrowFinishPatch : ModulePatch
     {
-        private static readonly FieldInfo BotOwnerField = AccessTools.Field(typeof(BotGrenadeController), "_owner");
+        private static readonly PropertyInfo BotOwnerProperty = AccessTools.Property(typeof(BotGrenadeController).BaseType, "_owner");
 
         protected override MethodBase GetTargetMethod()
         {
@@ -78,7 +78,7 @@ namespace pitTeam.Patches
         [PatchPostfix]
         private static void PatchPostfix(BotGrenadeController __instance, EFT.InventoryLogic.ThrowWeap grenade)
         {
-            BotOwner bot = BotOwnerField?.GetValue(__instance) as BotOwner;
+            BotOwner bot = BotOwnerProperty?.GetValue(__instance) as BotOwner;
             if (bot == null || !BossPlayers.IsFollower(bot))
             {
                 return;
@@ -92,23 +92,23 @@ namespace pitTeam.Patches
 
     internal class FollowerGrenadeReleasePatch : ModulePatch
     {
-        private static readonly FieldInfo BotOwnerField = AccessTools.Field(typeof(BotGrenadeController), "_owner");
+        private static readonly PropertyInfo BotOwnerProperty = AccessTools.Property(typeof(BotGrenadeController).BaseType, "_owner");
 
         protected override MethodBase GetTargetMethod()
         {
-            return AccessTools.Method(typeof(BotGrenadeController), nameof(BotGrenadeController.CG_method_11));
+            return AccessTools.Method(typeof(BotGrenadeController), "ThrowCallbackSlow");
         }
 
         [PatchPrefix]
-        private static bool PatchPrefix(BotGrenadeController __instance, Result<EFT.IGrenadeController> throwResult)
+        private static bool PatchPrefix(BotGrenadeController __instance, Result<EFT.IGrenadeController> result)
         {
-            BotOwner bot = BotOwnerField?.GetValue(__instance) as BotOwner;
+            BotOwner bot = BotOwnerProperty?.GetValue(__instance) as BotOwner;
             if (bot == null || !BossPlayers.IsFollower(bot))
             {
                 return true;
             }
 
-            if (throwResult.Succeed && throwResult.Value != null)
+            if (result.Succeed && result.Value != null)
             {
                 if (__instance.AIGreanageThrowData != null &&
                     FollowerShotSafety.IsRegularGrenadeTrajectoryUnsafeForThrower(

@@ -50,7 +50,7 @@ namespace pitTeam.BigBrain.Actions
                     continue;
                 }
 
-                if (BotOwner.BotFollower?.BossToFollow is pitAIBossPlayer boss &&
+                if (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(BotOwner) is pitAIBossPlayer boss &&
                     boss.realPlayer != null)
                 {
                     Vector3 playerSpacing = target - boss.realPlayer.Position;

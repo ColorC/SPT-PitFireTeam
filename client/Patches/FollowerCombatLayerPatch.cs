@@ -1,7 +1,7 @@
 using EFT;
 using pitTeam.Components;
 using pitTeam.Modules;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System.Reflection;
 
 namespace pitTeam.Patches

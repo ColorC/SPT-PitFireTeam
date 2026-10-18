@@ -64,7 +64,7 @@ namespace pitTeam.BigBrain.Actions
 
         private void HandleRegroupNearBoss()
         {
-            if (BotOwner.BotFollower.BossToFollow is not pitAIBossPlayer boss || boss.realPlayer == null)
+            if (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(BotOwner) is not pitAIBossPlayer boss || boss.realPlayer == null)
             {
                 ReleaseRegroupReservation();
                 followerData?.ClearCommand("Regroup:missingBoss");
@@ -318,7 +318,7 @@ namespace pitTeam.BigBrain.Actions
 
         private bool IsRegroupTargetCrowded(Vector3 candidate)
         {
-            if (BotOwner.BotFollower.BossToFollow is pitAIBossPlayer boss)
+            if (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(BotOwner) is pitAIBossPlayer boss)
             {
                 if (boss.CombatEvents.HasDestinationClaimConflict(
                         BotOwner,
@@ -356,7 +356,7 @@ namespace pitTeam.BigBrain.Actions
         private bool TryGetBossCombatEvents(out CombatEvents? combatEvents)
         {
             combatEvents = null;
-            if (BotOwner.BotFollower?.BossToFollow is not pitAIBossPlayer boss)
+            if (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(BotOwner) is not pitAIBossPlayer boss)
             {
                 return false;
             }
@@ -367,7 +367,7 @@ namespace pitTeam.BigBrain.Actions
 
         private void HandleComeCloser(Vector3 commandTarget, bool contactApproach)
         {
-            if (BotOwner.BotFollower.BossToFollow is not pitAIBossPlayer boss || boss.realPlayer == null)
+            if (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(BotOwner) is not pitAIBossPlayer boss || boss.realPlayer == null)
             {
                 followerData?.ClearCommand("ComeCloser:missingBoss");
                 return;

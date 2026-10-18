@@ -1,0 +1,175 @@
+{
+  "description": "Synthetic JSON report-shape fixtures. These cases validate classification only and are not runtime evidence.",
+  "cases": [
+    {
+      "name": "f-real-different-arity-same-pointer",
+      "report": {
+        "status": "ok",
+        "target": {
+          "declaringType": "EFT.InventoryLogic.ItemController",
+          "method": "CanMoveDogtag",
+          "returnType": "System.Boolean",
+          "parameterTypes": [
+            "EFT.InventoryLogic.Item"
+          ],
+          "methodInfoNativePointer": "0x100",
+          "wrapperMethodPointer": "0xA"
+        },
+        "enumeration": {
+          "scope": "EFT.InventoryLogic.ItemController only",
+          "aliases": [
+            {
+              "methodName": "CanMoveDogtag",
+              "methodPointer": "0xA",
+              "methodInfoNativePointer": "0x100",
+              "parameterCount": 1
+            },
+            {
+              "methodName": "get_InboundTransfer",
+              "methodPointer": "0xA",
+              "methodInfoNativePointer": "0x101",
+              "parameterCount": 0
+            }
+          ],
+          "errors": []
+        }
+      },
+      "expectedClassification": "shared-incompatible-signatures",
+      "expectedConflictCount": 1
+    },
+    {
+      "name": "same-pointer-same-arity",
+      "report": {
+        "status": "ok",
+        "target": {
+          "declaringType": "EFT.InventoryLogic.ItemController",
+          "method": "CanMoveDogtag",
+          "returnType": "System.Boolean",
+          "parameterTypes": [
+            "EFT.InventoryLogic.Item"
+          ],
+          "methodInfoNativePointer": "0x100",
+          "wrapperMethodPointer": "0xA"
+        },
+        "enumeration": {
+          "scope": "EFT.InventoryLogic.ItemController only",
+          "aliases": [
+            {
+              "methodName": "CanMoveDogtag",
+              "methodPointer": "0xA",
+              "methodInfoNativePointer": "0x100",
+              "parameterCount": 1
+            },
+            {
+              "methodName": "Other",
+              "methodPointer": "0xA",
+              "methodInfoNativePointer": "0x101",
+              "parameterCount": 1
+            }
+          ],
+          "errors": []
+        }
+      },
+      "expectedClassification": "shared-same-arity-signature-unverified",
+      "expectedConflictCount": 0
+    },
+    {
+      "name": "target-only",
+      "report": {
+        "status": "ok",
+        "target": {
+          "declaringType": "EFT.InventoryLogic.ItemController",
+          "method": "CanMoveDogtag",
+          "returnType": "System.Boolean",
+          "parameterTypes": [
+            "EFT.InventoryLogic.Item"
+          ],
+          "methodInfoNativePointer": "0x100",
+          "wrapperMethodPointer": "0xA"
+        },
+        "enumeration": {
+          "scope": "EFT.InventoryLogic.ItemController only",
+          "aliases": [
+            {
+              "methodName": "CanMoveDogtag",
+              "methodPointer": "0xA",
+              "methodInfoNativePointer": "0x100",
+              "parameterCount": 1
+            }
+          ],
+          "errors": []
+        }
+      },
+      "expectedClassification": "target-only",
+      "expectedConflictCount": 0
+    },
+    {
+      "name": "different-pointer-alias",
+      "report": {
+        "status": "ok",
+        "target": {
+          "declaringType": "EFT.InventoryLogic.ItemController",
+          "method": "CanMoveDogtag",
+          "returnType": "System.Boolean",
+          "parameterTypes": [
+            "EFT.InventoryLogic.Item"
+          ],
+          "methodInfoNativePointer": "0x100",
+          "wrapperMethodPointer": "0xA"
+        },
+        "enumeration": {
+          "scope": "EFT.InventoryLogic.ItemController only",
+          "aliases": [
+            {
+              "methodName": "CanMoveDogtag",
+              "methodPointer": "0xA",
+              "methodInfoNativePointer": "0x100",
+              "parameterCount": 1
+            },
+            {
+              "methodName": "Other",
+              "methodPointer": "0xB",
+              "methodInfoNativePointer": "0x101",
+              "parameterCount": 1
+            }
+          ],
+          "errors": []
+        }
+      },
+      "expectedClassification": "separate-pointers",
+      "expectedConflictCount": 0
+    },
+    {
+      "name": "partial-enumeration-errors",
+      "report": {
+        "status": "ok",
+        "target": {
+          "declaringType": "EFT.InventoryLogic.ItemController",
+          "method": "CanMoveDogtag",
+          "returnType": "System.Boolean",
+          "parameterTypes": [
+            "EFT.InventoryLogic.Item"
+          ],
+          "methodInfoNativePointer": "0x100",
+          "wrapperMethodPointer": "0xA"
+        },
+        "enumeration": {
+          "scope": "EFT.InventoryLogic.ItemController only",
+          "aliases": [
+            {
+              "methodName": "CanMoveDogtag",
+              "methodPointer": "0xA",
+              "methodInfoNativePointer": "0x100",
+              "parameterCount": 1
+            }
+          ],
+          "errors": [
+            "enumeration stopped"
+          ]
+        }
+      },
+      "expectedClassification": "partial-evidence",
+      "expectedConflictCount": 0
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+[
+    {
+        "value":  [
+                      "pitTeam.Patches.BulletImpactPatch",
+                      "pitTeam.Patches.ChatCreateDialoguePanelRefreshPatch",
+                      "pitTeam.Patches.ConditionCounterPatch",
+                      "pitTeam.Patches.FollowerAimTimeProficiencyPatch",
+                      "pitTeam.Patches.LoadoutEditorLockedContainerOpenPatch",
+                      "pitTeam.Patches.LoadoutEditorLockedDestinationPatch",
+                      "pitTeam.Patches.LoadoutEditorLockedItemMovePatch",
+                      "pitTeam.Patches.SelectSpawnPointPatch",
+                      "pitTeam.Patches.TeammateBackpackSimpleStashLabelPatch",
+                      "pitTeam.Patches.TeammateCorpseContainersPanelSearchPatch",
+                      "pitTeam.Patches.TeammateCorpseDogtagRemovePatch",
+                      "pitTeam.Patches.TeammateCorpseEquipmentTabSearchPatch",
+                      "pitTeam.Patches.TeammateEquipmentBuildsInspectButtonsPatch",
+                      "pitTeam.Patches.UnlootableComponentPatch"
+                  ],
+        "Count":  14
+    }
+]

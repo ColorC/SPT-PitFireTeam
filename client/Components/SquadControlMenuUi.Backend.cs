@@ -13,7 +13,7 @@ using HarmonyLib;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using PlayerIcons;
-using SPT.Common.Http;
+using SPTushonka.Common.Http;
 using TMPro;
 using System;
 using System.Collections;
@@ -31,6 +31,7 @@ namespace pitTeam.Components
 {
     internal partial class SquadControlMenuUi
     {
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private void InviteTeammateToGroup(SquadRosterEntry entry)
         {
             ClosePortraitContextMenu();
@@ -92,6 +93,7 @@ namespace pitTeam.Components
             pitFireTeam.Instance.StartCoroutine(WaitForInviteResolutionCoroutine(entry.AccountId, entry.Nickname));
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private void RemoveTeammateFromGroup(SquadRosterEntry entry)
         {
             ClosePortraitContextMenu();
@@ -144,6 +146,7 @@ namespace pitTeam.Components
             }
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private IEnumerator WaitForInviteResolutionCoroutine(string accountId, string nickname)
         {
             const float timeoutSeconds = 15f;
@@ -199,6 +202,7 @@ namespace pitTeam.Components
             AddTeammateCreationFlow.ShowToast(string.Format(failureTemplate, nickname ?? string.Empty));
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private IEnumerator WaitForGroupRemovalCoroutine(string accountId, string nickname)
         {
             const float timeoutSeconds = 10f;
@@ -243,8 +247,16 @@ namespace pitTeam.Components
                 return false;
             }
 
-            EFT.GroupPlayer groupPlayer = controller.GroupPlayers?
-                .FirstOrDefault(player => player?.AccountId == accountId);
+            EFT.GroupPlayer groupPlayer = null;
+            for (int i = 0; i < controller.GroupPlayers.Count; i++)
+            {
+                EFT.GroupPlayer candidate = controller.GroupPlayers[i];
+                if (candidate?.AccountId == accountId)
+                {
+                    groupPlayer = candidate;
+                    break;
+                }
+            }
             if (groupPlayer == null)
             {
                 pitFireTeam.Log.LogWarning($"[UI] Could not resolve live group player data for teammate '{accountId}'.");
@@ -273,8 +285,8 @@ namespace pitTeam.Components
             string confirmationTemplate = GetSocialUiText("SquadControlRemoveFromGroupConfirm");
             itemUiContext.ShowMessageWindow(
                 string.Format(confirmationTemplate, nickname ?? string.Empty),
-                () => BeginConfirmedGroupRemoval(contextInteractions, accountId, nickname),
-                () => CancelGroupRemoval(accountId),
+                (System.Action)(() => BeginConfirmedGroupRemoval(contextInteractions, accountId, nickname)),
+                (System.Action)(() => CancelGroupRemoval(accountId)),
                 null,
                 0f,
                 false,
@@ -345,6 +357,7 @@ namespace pitTeam.Components
             AddTeammateCreationFlow.ShowToast(string.Format(failureTemplate, nickname ?? string.Empty));
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private void ToggleTeammateAutoJoin(SquadRosterEntry entry)
         {
             ClosePortraitContextMenu();
@@ -364,12 +377,13 @@ namespace pitTeam.Components
             pitFireTeam.Instance.StartCoroutine(ToggleTeammateAutoJoinCoroutine(entry, nextState));
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private IEnumerator ToggleTeammateAutoJoinCoroutine(SquadRosterEntry entry, bool nextState)
         {
             string accountId = entry?.AccountId ?? string.Empty;
             string nickname = entry?.Nickname ?? string.Empty;
             Task<string> requestTask = null;
-            string requestBody = JsonConvert.SerializeObject(new
+            string requestBody = System.Text.Json.JsonSerializer.Serialize(new
             {
                 aid = accountId,
                 enabled = nextState
@@ -387,7 +401,7 @@ namespace pitTeam.Components
 
             if (requestTask != null)
             {
-                yield return new WaitUntil(() => requestTask.IsCompleted);
+                yield return new WaitUntil((System.Func<bool>)(() => requestTask.IsCompleted));
             }
 
             bool success = false;
@@ -426,7 +440,14 @@ namespace pitTeam.Components
                     TeammateAutoJoinRuntime.MarkSuppressed(accountId);
                     if (!IsAccountInCurrentGroup(accountId))
                     {
-                        MainMenuControllerPatch.GroupPlayers.RemoveFirst(player => player?.AccountId == accountId);
+                        for (int playerIndex = MainMenuControllerPatch.GroupPlayers.Count - 1; playerIndex >= 0; playerIndex--)
+                        {
+                            if (MainMenuControllerPatch.GroupPlayers[playerIndex]?.AccountId == accountId)
+                            {
+                                MainMenuControllerPatch.GroupPlayers.RemoveAt(playerIndex);
+                                break;
+                            }
+                        }
                     }
                 }
 
@@ -484,7 +505,7 @@ namespace pitTeam.Components
             {
                 if (pitFireTeam.application == null)
                 {
-                    pitFireTeam.application = SPT.Reflection.Utils.ClientAppUtils.GetMainApp();
+                    pitFireTeam.application = SPTushonka.Reflection.Utils.ClientAppUtils.GetMainApp();
                 }
 
                 if (pitFireTeam.application == null)
@@ -522,7 +543,8 @@ namespace pitTeam.Components
 
                 if (controller.GroupPlayers != null)
                 {
-                    unsubscribeGroupBadgeLog = controller.GroupPlayers.ItemsChanged.Subscribe(LogGroupBadgeItemsChanged);
+                    Il2CppSystem.Action nativeUnsubscribe = controller.GroupPlayers.ItemsChanged.Subscribe((System.Action)(() => LogGroupBadgeItemsChanged()));
+                    unsubscribeGroupBadgeLog = () => nativeUnsubscribe?.Invoke();
                 }
             }
             catch (Exception ex)
@@ -586,11 +608,15 @@ namespace pitTeam.Components
                     return false;
                 }
 
-                HashSet<string> groupedIds = controller.GroupPlayers
-                    .Select(player => player?.AccountId)
-                    .Where(accountId => !string.IsNullOrWhiteSpace(accountId))
-                    .Select(accountId => accountId!)
-                    .ToHashSet(StringComparer.Ordinal);
+                HashSet<string> groupedIds = new HashSet<string>(StringComparer.Ordinal);
+                for (int i = 0; i < controller.GroupPlayers.Count; i++)
+                {
+                    string groupedAccountId = controller.GroupPlayers[i]?.AccountId;
+                    if (!string.IsNullOrWhiteSpace(groupedAccountId))
+                    {
+                        groupedIds.Add(groupedAccountId);
+                    }
+                }
 
                 ApplyGroupBadgeVisibility(groupedIds);
                 return true;
@@ -625,6 +651,7 @@ namespace pitTeam.Components
             }
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private void ApplyGroupBadgeVisibility(HashSet<string> groupedIds)
         {
             if (rosterGridRoot == null)
@@ -660,8 +687,21 @@ namespace pitTeam.Components
                     return false;
                 }
 
-                return controller.IsInGroup(accountId)
-                    || (controller.GroupPlayers != null && controller.GroupPlayers.Any(player => player?.AccountId == accountId));
+                if (controller.IsInGroup(accountId))
+                {
+                    return true;
+                }
+                if (controller.GroupPlayers != null)
+                {
+                    for (int i = 0; i < controller.GroupPlayers.Count; i++)
+                    {
+                        if (controller.GroupPlayers[i]?.AccountId == accountId)
+                        {
+                            return true;
+                        }
+                    }
+                }
+                return false;
             }
             catch
             {

@@ -3,7 +3,7 @@ using EFT;
 using EFT.Quests;
 using pitTeam.Modules;
 using HarmonyLib;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 
 using System.Reflection;
 using UnityEngine;
@@ -22,12 +22,12 @@ namespace pitTeam.Patches
                 {
                     typeof(int),
                     typeof(EFT.Quests.TaskConditionCounter),
-                    typeof(EFT.Quests.ConditionCheck[])
+                    typeof(Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<EFT.Quests.ConditionCheck>)
                 });
         }
 
         [PatchPrefix]
-        private static bool PatchPrefix(int valueToAdd, EFT.Quests.TaskConditionCounter counter, EFT.Quests.ConditionCheck[] checks)
+        private static bool PatchPrefix(int valueToAdd, EFT.Quests.TaskConditionCounter counter, Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<EFT.Quests.ConditionCheck> checks)
         {
             try
             {

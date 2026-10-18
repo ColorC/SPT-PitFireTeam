@@ -4,7 +4,7 @@ using pitTeam.BigBrain;
 using pitTeam.Components;
 using pitTeam.Modules;
 using HarmonyLib;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -444,11 +444,11 @@ namespace pitTeam.Patches
             return AccessTools.Method(
                 typeof(BotGroupRequestController),
                 "TryActivateOpenDoorRequest",
-                new[] { typeof(IPlayer), typeof(Door), typeof(Action) });
+                new[] { typeof(IPlayer), typeof(Door), typeof(Il2CppSystem.Action) });
         }
 
         [PatchPrefix]
-        private static bool PatchPrefix(ref bool __result, IPlayer requester, Door door, Action completeCallback)
+        private static bool PatchPrefix(ref bool __result, IPlayer requester, Door door, Il2CppSystem.Action completeCallback)
         {
             // Keep player-issued command behavior; block only autonomous AI follower door requests.
             BotOwner requesterBot = requester?.AIData?.BotOwner;

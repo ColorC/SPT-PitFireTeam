@@ -2,7 +2,7 @@ using EFT;
 using EFT.UI;
 using pitTeam.Components;
 using HarmonyLib;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System;
 using System.Reflection;
 
@@ -10,24 +10,33 @@ namespace pitTeam.Patches
 {
     internal class MenuScreenShowSquadControlPatch : ModulePatch
     {
-        private static readonly FieldInfo PlayerButtonField = AccessTools.Field(typeof(MenuScreen), "_playerButton");
-        private static readonly FieldInfo TradeButtonField = AccessTools.Field(typeof(MenuScreen), "_tradeButton");
-        private static readonly FieldInfo HideScreenButtonField = AccessTools.Field(typeof(MenuScreen), "_hideScreenButton");
+        private static readonly pitTeam.Compat.NativeUiMemberAccessor PlayerButtonAccessor = pitTeam.Compat.NativeUiMemberAccessor.ForProperty(typeof(MenuScreen), "_playerButton", typeof(DefaultUIButton), false, false);
+        private static readonly pitTeam.Compat.NativeUiMemberAccessor TradeButtonAccessor = pitTeam.Compat.NativeUiMemberAccessor.ForProperty(typeof(MenuScreen), "_tradeButton", typeof(DefaultUIButton), false, false);
+        private static readonly pitTeam.Compat.NativeUiMemberAccessor HideScreenButtonAccessor = pitTeam.Compat.NativeUiMemberAccessor.ForProperty(typeof(MenuScreen), "_hideScreenButton", typeof(DefaultUIButton), false, false);
 
         protected override MethodBase GetTargetMethod()
         {
-            return AccessTools.Method(
-                typeof(MenuScreen),
-                "Show",
-                new Type[] { typeof(Profile), typeof(EFT.UI.Matchmaker.MatchmakerPlayersController), typeof(ESessionMode) });
+                        foreach (MethodBase method in AccessTools.GetDeclaredMethods(typeof(MenuScreen)))
+            {
+                if (method.Name != "Show") continue;
+                ParameterInfo[] parameters = method.GetParameters();
+                if (parameters.Length == 5
+                    && parameters[0].ParameterType == typeof(EFT.UI.Matchmaker.MatchmakerPlayersController)
+                    && parameters[3].ParameterType == typeof(Profile))
+                {
+                    return method;
+                }
+            }
+
+            return null;
         }
 
         [PatchPostfix]
         private static void PatchPostfix(MenuScreen __instance)
         {
-            DefaultUIButton playerButton = PlayerButtonField?.GetValue(__instance) as DefaultUIButton;
-            DefaultUIButton tradeButton = TradeButtonField?.GetValue(__instance) as DefaultUIButton;
-            DefaultUIButton hideScreenButton = HideScreenButtonField?.GetValue(__instance) as DefaultUIButton;
+            DefaultUIButton playerButton = PlayerButtonAccessor.GetValue(__instance) as DefaultUIButton;
+            DefaultUIButton tradeButton = TradeButtonAccessor.GetValue(__instance) as DefaultUIButton;
+            DefaultUIButton hideScreenButton = HideScreenButtonAccessor.GetValue(__instance) as DefaultUIButton;
             if (playerButton == null)
             {
                 return;
@@ -47,7 +56,7 @@ namespace pitTeam.Patches
         [PatchPostfix]
         private static void PatchPostfix(MenuScreen __instance)
         {
-            __instance.GetComponent<SquadControlMenuUi>()?.SyncButtonVisibility();
+            __instance.GetComponentViaIl2CppType<SquadControlMenuUi>()?.SyncButtonVisibility();
         }
     }
 
@@ -61,7 +70,7 @@ namespace pitTeam.Patches
         [PatchPostfix]
         private static void PatchPostfix(MenuScreen __instance)
         {
-            __instance.GetComponent<SquadControlMenuUi>()?.SyncButtonVisibility();
+            __instance.GetComponentViaIl2CppType<SquadControlMenuUi>()?.SyncButtonVisibility();
         }
     }
 }

@@ -187,7 +187,7 @@ namespace pitTeam.BigBrain.Actions
         private bool TryGetBossCombatEvents(out CombatEvents? combatEvents)
         {
             combatEvents = null;
-            if (BotOwner.BotFollower?.BossToFollow is not pitAIBossPlayer boss)
+            if (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(BotOwner) is not pitAIBossPlayer boss)
             {
                 return false;
             }

@@ -1,0 +1,110 @@
+﻿{
+    "patches":  [
+                    {
+                        "parameterTypes":  [
+                                               "AICoreAgentBase"
+                                           ],
+                        "returnType":  "System.Void",
+                        "targetType":  "AICoreStrategy`1",
+                        "patchClassFullName":  "DrakiaXYZ.BigBrain.Patches.BotBaseBrainActivatePatch",
+                        "targetMethod":  "Activate"
+                    },
+                    {
+                        "parameterTypes":  [
+                                               "AICoreLayer`1\u003cT\u003e",
+                                               "System.Int32"
+                                           ],
+                        "returnType":  "System.Void",
+                        "targetType":  "AICoreStrategy`1",
+                        "patchClassFullName":  "DrakiaXYZ.BigBrain.Patches.BotBaseBrainActivateLayerPatch",
+                        "targetMethod":  "InsertLayerToActive",
+                        "targetGenericArguments":  [
+                                                       "BotLogicDecision"
+                                                   ]
+                    },
+                    {
+                        "parameterTypes":  [
+
+                                           ],
+                        "returnType":  "AICoreActionResult`2\u003cBotLogicDecision,CoreActionResultParams\u003e",
+                        "targetType":  "StandByLogicLayer",
+                        "patchClassFullName":  "DrakiaXYZ.BigBrain.Patches.NativeBrainDispatchPatches/StandByGetDecisionPatch",
+                        "targetMethod":  "GetDecision"
+                    },
+                    {
+                        "parameterTypes":  [
+
+                                           ],
+                        "returnType":  "System.Boolean",
+                        "targetType":  "StandByLogicLayer",
+                        "patchClassFullName":  "DrakiaXYZ.BigBrain.Patches.NativeBrainDispatchPatches/StandByShallUseNowPatch",
+                        "targetMethod":  "ShallUseNow"
+                    },
+                    {
+                        "parameterTypes":  [
+
+                                           ],
+                        "returnType":  "System.String",
+                        "targetType":  "StandByLogicLayer",
+                        "patchClassFullName":  "DrakiaXYZ.BigBrain.Patches.NativeBrainDispatchPatches/StandByNamePatch",
+                        "targetMethod":  "Name"
+                    },
+                    {
+                        "parameterTypes":  [
+                                               "AICoreActionResult`2\u003cBotLogicDecision,CoreActionResultParams\u003e"
+                                           ],
+                        "returnType":  "AICoreActionEnd",
+                        "targetType":  "BaseLogicLayerSimple",
+                        "patchClassFullName":  "DrakiaXYZ.BigBrain.Patches.NativeBrainDispatchPatches/BaseLayerShallEndPatch",
+                        "targetMethod":  "ShallEndCurrentDecision"
+                    },
+                    {
+                        "parameterTypes":  [
+                                               "CoreActionResultParams"
+                                           ],
+                        "returnType":  "System.Void",
+                        "targetType":  "StandByNode",
+                        "patchClassFullName":  "DrakiaXYZ.BigBrain.Patches.NativeBrainDispatchPatches/StandByNodeUpdatePatch",
+                        "targetMethod":  "UpdateNodeByBrain"
+                    },
+                    {
+                        "parameterTypes":  [
+
+                                           ],
+                        "returnType":  "System.Void",
+                        "targetType":  "StandartBotBrain",
+                        "patchClassFullName":  "DrakiaXYZ.BigBrain.Patches.NativeBrainDispatchPatches/StandartBrainDisposePatch",
+                        "targetMethod":  "Dispose"
+                    },
+                    {
+                        "targetMethod":  "Update",
+                        "patchClassFullName":  "DrakiaXYZ.BigBrain.Patches.BotBaseBrainUpdatePatch",
+                        "returnType":  "Il2CppSystem.Nullable`1\u003cAICoreActionResult`2\u003cT,CoreActionResultParams\u003e\u003e",
+                        "parameterTypes":  [
+                                               "AICoreActionResult`2\u003cT,CoreActionResultParams\u003e"
+                                           ],
+                        "targetGenericArguments":  [
+                                                       "BotLogicDecision"
+                                                   ],
+                        "targetType":  "AICoreStrategy`1"
+                    },
+                    {
+                        "parameterTypes":  [
+                                               "BotLogicDecision"
+                                           ],
+                        "returnType":  "AICoreNode",
+                        "targetType":  "StandartBotBrain",
+                        "patchClassFullName":  "DrakiaXYZ.BigBrain.Patches.BotBrainCreateLogicNodePatch",
+                        "targetMethod":  "_Activate_b__19_0"
+                    },
+                    {
+                        "parameterTypes":  [
+
+                                           ],
+                        "returnType":  "System.Void",
+                        "targetType":  "StandartBotBrain",
+                        "patchClassFullName":  "DrakiaXYZ.BigBrain.Patches.BotStandartBotBrainActivatePatch",
+                        "targetMethod":  "Activate"
+                    }
+                ]
+}

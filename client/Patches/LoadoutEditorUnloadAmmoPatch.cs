@@ -1,8 +1,9 @@
 using EFT.InventoryLogic;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using pitTeam.Compat;
 
 namespace pitTeam.Patches
 {
@@ -14,7 +15,7 @@ namespace pitTeam.Patches
         }
 
         [PatchPostfix]
-        private static void PatchPostfix(InventoryEquipment equipment, ref IEnumerable<EFT.InventoryLogic.Grid> __result)
+        private static void PatchPostfix(InventoryEquipment equipment, ref Il2CppSystem.Collections.Generic.IEnumerable<EFT.InventoryLogic.Grid> __result)
         {
             if (OtherPlayerProfileScreenPatch.LoadoutEditorOverlayRoot == null
                 || equipment == null
@@ -23,7 +24,7 @@ namespace pitTeam.Patches
                 return;
             }
 
-            List<EFT.InventoryLogic.Grid> prioritizedGrids = __result?.ToList() ?? [];
+            List<EFT.InventoryLogic.Grid> prioritizedGrids = __result == null ? new List<EFT.InventoryLogic.Grid>() : __result.AsManaged().ToList();
             HashSet<string> seenGridIds = prioritizedGrids
                 .Where(grid => grid != null)
                 .Select(grid => grid.ID)
@@ -32,12 +33,28 @@ namespace pitTeam.Patches
 
             AppendUniqueGrids(prioritizedGrids, seenGridIds, GetSlotGrids(equipment, EquipmentSlot.Backpack));
             AppendUniqueGrids(prioritizedGrids, seenGridIds, OtherPlayerProfileScreenPatch.LoadoutEditorProfile?.Inventory?.Stash?.Grids);
-            __result = prioritizedGrids;
+            __result = prioritizedGrids.ToNativeList();
         }
 
         private static IEnumerable<EFT.InventoryLogic.Grid> GetSlotGrids(InventoryEquipment equipment, EquipmentSlot slot)
         {
-            return (equipment.GetSlot(slot)?.ContainedItem as CompoundItem)?.Grids ?? [];
+            Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<EFT.InventoryLogic.Grid> nativeGrids = (equipment.GetSlot(slot)?.ContainedItem as CompoundItem)?.Grids;
+            if (nativeGrids == null)
+            {
+                return Enumerable.Empty<EFT.InventoryLogic.Grid>();
+            }
+
+            List<EFT.InventoryLogic.Grid> managedGrids = new List<EFT.InventoryLogic.Grid>();
+            for (int i = 0; i < nativeGrids.Length; i++)
+            {
+                EFT.InventoryLogic.Grid grid = nativeGrids[i];
+                if (grid != null)
+                {
+                    managedGrids.Add(grid);
+                }
+            }
+
+            return managedGrids;
         }
 
         private static void AppendUniqueGrids(

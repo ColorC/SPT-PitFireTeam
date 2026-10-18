@@ -13,7 +13,7 @@ using HarmonyLib;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using PlayerIcons;
-using SPT.Common.Http;
+using SPTushonka.Common.Http;
 using TMPro;
 using System;
 using System.Collections;
@@ -31,6 +31,7 @@ namespace pitTeam.Components
 {
     internal partial class SquadControlMenuUi
     {
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private void ShowPortraitContextMenu(SquadRosterEntry entry, PointerEventData eventData)
         {
             ClosePortraitContextMenu();
@@ -52,7 +53,7 @@ namespace pitTeam.Components
                 ? (Action)(() => RemoveTeammateFromGroup(entry))
                 : () => InviteTeammateToGroup(entry);
 
-            GameObject overlayRoot = new GameObject("pitFireTeam_PortraitContextMenuOverlay", typeof(RectTransform), typeof(Image), typeof(Button));
+            GameObject overlayRoot = new GameObject("pitFireTeam_PortraitContextMenuOverlay", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>(), Il2CppInterop.Runtime.Il2CppType.Of<Button>());
             overlayRoot.transform.SetParent(overlayParent, false);
             RectTransform overlayRect = overlayRoot.GetComponent<RectTransform>();
             Stretch(overlayRect);
@@ -64,7 +65,7 @@ namespace pitTeam.Components
 
             Button overlayButton = overlayRoot.GetComponent<Button>();
             overlayButton.transition = Selectable.Transition.None;
-            overlayButton.onClick.AddListener(ClosePortraitContextMenu);
+            overlayButton.onClick.AddListener((System.Action)ClosePortraitContextMenu);
 
             if (TryCreateStockPortraitContextMenu(overlayRoot.transform, overlayRect, entry, eventData, groupActionLabel, groupAction))
             {
@@ -72,7 +73,7 @@ namespace pitTeam.Components
                 return;
             }
 
-            GameObject menuObject = new GameObject("pitFireTeam_PortraitContextMenu", typeof(RectTransform), typeof(Image), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+            GameObject menuObject = new GameObject("pitFireTeam_PortraitContextMenu", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>(), Il2CppInterop.Runtime.Il2CppType.Of<VerticalLayoutGroup>(), Il2CppInterop.Runtime.Il2CppType.Of<ContentSizeFitter>());
             menuObject.transform.SetParent(overlayRoot.transform, false);
             RectTransform menuRect = menuObject.GetComponent<RectTransform>();
             menuRect.anchorMin = new Vector2(0.5f, 0.5f);
@@ -122,6 +123,7 @@ namespace pitTeam.Components
             portraitContextMenuOverlay = overlayRoot;
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private bool TryCreateStockPortraitContextMenu(
             Transform overlayParent,
             RectTransform overlayRect,
@@ -146,7 +148,7 @@ namespace pitTeam.Components
             menu.gameObject.SetActive(true);
             menu.enabled = false;
 
-            RectTransform menuRect = menu.transform as RectTransform;
+            RectTransform menuRect = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(menu.transform);
             if (menuRect == null)
             {
                 Destroy(menu.gameObject);
@@ -160,7 +162,7 @@ namespace pitTeam.Components
 
             InteractionButtonsContainer container = SimpleContextMenuButtonsContainerField?.GetValue(menu) as InteractionButtonsContainer;
             SimpleContextMenuButton buttonTemplate = InteractionButtonsContainerTemplateField?.GetValue(container) as SimpleContextMenuButton;
-            RectTransform buttonsRoot = InteractionButtonsContainerButtonsRootField?.GetValue(container) as RectTransform;
+            RectTransform buttonsRoot = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(InteractionButtonsContainerButtonsRootField?.GetValue(container) as Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase);
             if (container == null || buttonTemplate == null || buttonsRoot == null)
             {
                 Destroy(menu.gameObject);
@@ -228,6 +230,7 @@ namespace pitTeam.Components
                 Mathf.Clamp(desiredPosition.y, minY, maxY));
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private void CreateStockContextMenuButton(
             InteractionButtonsContainer container,
             SimpleContextMenuButton template,
@@ -253,9 +256,10 @@ namespace pitTeam.Components
                 false);
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private void CreateContextMenuButton(Transform parent, string label, Action onClick)
         {
-            GameObject buttonObject = new GameObject("pitFireTeam_ContextMenuButton", typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
+            GameObject buttonObject = new GameObject("pitFireTeam_ContextMenuButton", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>(), Il2CppInterop.Runtime.Il2CppType.Of<Button>(), Il2CppInterop.Runtime.Il2CppType.Of<LayoutElement>());
             buttonObject.transform.SetParent(parent, false);
 
             LayoutElement layout = buttonObject.GetComponent<LayoutElement>();
@@ -275,7 +279,7 @@ namespace pitTeam.Components
             colors.selectedColor = Color.white;
             colors.disabledColor = new Color(0.8f, 0.8f, 0.8f, 1f);
             button.colors = colors;
-            button.onClick.AddListener(() => onClick?.Invoke());
+            button.onClick.AddListener((System.Action)(() => onClick?.Invoke()));
 
             GameObject labelObject = CreateText("Label", label, 18f, TextAlignmentOptions.MidlineLeft);
             labelObject.transform.SetParent(buttonObject.transform, false);

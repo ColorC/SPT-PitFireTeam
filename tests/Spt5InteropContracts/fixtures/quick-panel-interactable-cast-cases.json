@@ -1,0 +1,21 @@
+{
+    "assemblyPath":  "D:\\game\\tarkov workshop\\candidate\\spt5-community\\EFT5.0.0BE\\BepInEx\\interop\\Assembly-CSharp.dll",
+    "cases":  [
+                  {
+                      "name":  "null-interactable",
+                      "expectedNull":  true
+                  },
+                  {
+                      "name":  "base-proxy-native-corpse",
+                      "expectedNativeMatch":  true,
+                      "oldClrAsWouldMatch":  false,
+                      "proxyType":  "EFT.Interactive.InteractableObject",
+                      "nativeType":  "EFT.Interactive.Corpse"
+                  },
+                  {
+                      "name":  "wrong-native-type",
+                      "expectedNull":  true,
+                      "nativeType":  "EFT.Player"
+                  }
+              ]
+}

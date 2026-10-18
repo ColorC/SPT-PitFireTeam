@@ -1,0 +1,23 @@
+{
+    "provenance":  "BD live LogOutput.log: OtherPlayerProfileScreenPatch.ClearProfileRightSideContent line 104, real native child enumerator failure",
+    "positiveFailureShape":  {
+                                 "exceptionType":  "System.InvalidCastException",
+                                 "currentType":  "Il2CppSystem.Object",
+                                 "targetType":  "UnityEngine.Transform",
+                                 "sourceMethod":  "OtherPlayerProfileScreenPatch.ClearProfileRightSideContent",
+                                 "sourceLine":  104,
+                                 "expectedAdapter":  "pitTeam.Compat.Il2CppBoundary.EnumerateNativeChildren"
+                             },
+    "negativeCases":  [
+                          {
+                              "id":  "null-right-side",
+                              "sourceGuard":  "if (rightSide != null)",
+                              "expected":  "skip enumeration"
+                          },
+                          {
+                              "id":  "typed-components-array",
+                              "sourceExpression":  "root.GetComponentsInChildren\u003cTransform\u003e(true)",
+                              "expected":  "keep typed array enumeration"
+                          }
+                      ]
+}

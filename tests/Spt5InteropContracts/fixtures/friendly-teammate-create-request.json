@@ -1,0 +1,16 @@
+{
+    "fixture":  "FriendlyTeammateCreateRequest",
+    "serializer":  "pitTeam.Compat.SptJsonBoundary.Serialize",
+    "expectedFields":  {
+                           "nickname":  "fixture-nickname",
+                           "voice":  "fixture-voice",
+                           "head":  "fixture-head"
+                       },
+    "expectedJsonPropertyNames":  [
+                                      "nickname",
+                                      "voice",
+                                      "head"
+                                  ],
+    "nativeObjects":  false,
+    "purpose":  "Verify managed DTO public fields remain in the JSON request payload."
+}

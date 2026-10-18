@@ -57,7 +57,7 @@ namespace pitTeam.BigBrain
         }
 
         public override void DecisionChanged(
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? prevDecision,
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> prevDecision,
             AICoreActionResult<BotLogicDecision, CoreActionResultParams> nextDecision)
         {
             CombatCommon.HandleSharedDecisionChanged(nextDecision);
@@ -86,18 +86,18 @@ namespace pitTeam.BigBrain
 
             CombatCommon.TrySwitchBackToPrimaryAtRange(goalEnemy, Enemy.EnemyDistance.Close);
 
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? dogFight = CombatCommon.TryGetDogFightDecision();
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> dogFight = CombatCommon.TryGetDogFightDecision();
             if (dogFight != null)
             {
                 complete = true;
-                return dogFight.Value;
+                return dogFight;
             }
 
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? healDecision = CombatCommon.TryGetNeedHealDecision();
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> healDecision = CombatCommon.TryGetNeedHealDecision();
             if (healDecision != null)
             {
                 complete = true;
-                return healDecision.Value;
+                return healDecision;
             }
 
             CombatCommon.RefreshShootCover();
@@ -303,7 +303,7 @@ namespace pitTeam.BigBrain
                 }
 
                 CombatCommon.HoldFor(Mathf.Max(0.1f, retryScanUntil - Time.time));
-                return default;
+                return FollowerCombatCommon.Continue();
             }
 
             if (CombatCommon.TryGetImmediateShootDecision($"{ReasonPrefix}.holdShoot") != null ||
@@ -322,7 +322,7 @@ namespace pitTeam.BigBrain
             }
 
             CombatCommon.HoldFor(Mathf.Max(0.1f, settleUntil - Time.time));
-            return default;
+            return FollowerCombatCommon.Continue();
         }
 
         private void ArmArrivalHold()

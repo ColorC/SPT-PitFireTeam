@@ -414,7 +414,7 @@ namespace pitTeam.BigBrain.Actions
 
         private static IEnumerable<EFT.InventoryLogic.Ammo> GetMagazineCartridgeItems(EFT.InventoryLogic.Magazine magazine)
         {
-            return magazine?.Cartridges?.Items?
+            return magazine?.Cartridges?.Items?.AsManaged()
                 .OfType<EFT.InventoryLogic.Ammo>()
                 .Where(ammo => ammo != null && ammo.StackObjectsCount > 0) ??
                 Enumerable.Empty<EFT.InventoryLogic.Ammo>();

@@ -3,14 +3,15 @@ using EFT.Game.Spawning;
 using Comfort.Common;
 using EFT.InventoryLogic;
 using EFT.UI.Matchmaker;
+using pitTeam.Compat;
 using pitTeam.Modules;
 using pitTeam.Utils;
 using HarmonyLib;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using SPT.Common.Http;
-using SPT.Common.Utils;
-using SPT.Reflection.Patching;
+using SPTushonka.Common.Http;
+using SPTushonka.Common.Utils;
+using SPTushonka.Reflection.Patching;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -30,6 +31,7 @@ namespace pitTeam.Patches
         private static readonly TimeSpan SyntheticRaidStartErrorWindow = TimeSpan.FromSeconds(30);
         private static DateTime _lastSyntheticRaidStartUtc = DateTime.MinValue;
 
+        private static readonly NativeUiMemberAccessor RaidSettingsAccessor = NativeUiMemberAccessor.ForProperty(typeof(TarkovApplication), "_raidSettings", typeof(RaidSettings), false, false);
         private static readonly MethodInfo LocalRaidStartMethod = AccessTools.Method(typeof(TarkovApplication), nameof(TarkovApplication.LocalGameMatching), new Type[]
         {
             typeof(TimeAndWeatherSettings),
@@ -48,7 +50,7 @@ namespace pitTeam.Patches
                 return false;
             }
 
-            RaidSettings raidSettings = AccessTools.Field(typeof(TarkovApplication), "_raidSettings").GetValue(application) as RaidSettings;
+            RaidSettings raidSettings = RaidSettingsAccessor.GetValue(application) as RaidSettings;
             if (raidSettings == null)
             {
                 pitFireTeam.Log.LogWarning($"[Raid] Failed to force local raid at {reason}: raid settings missing.");
@@ -67,15 +69,15 @@ namespace pitTeam.Patches
             return HasSyntheticTeammates() && DateTime.UtcNow - _lastSyntheticRaidStartUtc <= SyntheticRaidStartErrorWindow;
         }
 
-        public static Task StartLocalRaid(TarkovApplication application)
+        public static Il2CppSystem.Threading.Tasks.Task StartLocalRaid(TarkovApplication application)
         {
-            RaidSettings raidSettings = AccessTools.Field(typeof(TarkovApplication), "_raidSettings").GetValue(application) as RaidSettings;
+            RaidSettings raidSettings = RaidSettingsAccessor.GetValue(application) as RaidSettings;
             if (raidSettings == null)
             {
                 throw new InvalidOperationException("Raid settings missing while starting local teammate raid.");
             }
 
-            return (Task)LocalRaidStartMethod.Invoke(application, new object[]
+            return (Il2CppSystem.Threading.Tasks.Task)LocalRaidStartMethod.Invoke(application, new object[]
             {
                 raidSettings.TimeAndWeatherSettings,
                 false
@@ -93,7 +95,7 @@ namespace pitTeam.Patches
             return AccessTools.Method(typeof(HideoutGame), "Dispose");
         }
 
-        [PatchFinalizer]
+        [HarmonyFinalizer]
         private static Exception PatchFinalizer(HideoutGame __instance, Exception __exception)
         {
             if (__exception == null)
@@ -175,7 +177,7 @@ namespace pitTeam.Patches
 
             if (sourceHealth.BodyParts != null)
             {
-                foreach (KeyValuePair<EBodyPart, Profile.HealthInfo.BodyPartInfo> bodyPart in sourceHealth.BodyParts)
+                foreach (var bodyPart in sourceHealth.BodyParts)
                 {
                     Profile.HealthInfo.BodyPartInfo clonedBodyPart = CloneBodyPart(bodyPart.Value);
                     if (clonedBodyPart != null)
@@ -202,12 +204,12 @@ namespace pitTeam.Patches
                 Temperature = CloneValueInfo(source.Temperature) ?? new Profile.HealthInfo.ValueInfo(),
                 Poison = CloneValueInfo(source.Poison) ?? new Profile.HealthInfo.ValueInfo(),
                 UpdateTime = source.UpdateTime,
-                BodyParts = new Dictionary<EBodyPart, Profile.HealthInfo.BodyPartInfo>()
+                BodyParts = new Il2CppSystem.Collections.Generic.Dictionary<EBodyPart, Profile.HealthInfo.BodyPartInfo>()
             };
 
             if (source.BodyParts != null)
             {
-                foreach (KeyValuePair<EBodyPart, Profile.HealthInfo.BodyPartInfo> bodyPart in source.BodyParts)
+                foreach (var bodyPart in source.BodyParts)
                 {
                     Profile.HealthInfo.BodyPartInfo clonedBodyPart = CloneBodyPart(bodyPart.Value);
                     if (clonedBodyPart != null)
@@ -247,7 +249,7 @@ namespace pitTeam.Patches
             Profile.HealthInfo.BodyPartInfo bodyPart = new Profile.HealthInfo.BodyPartInfo
             {
                 Health = CloneValueInfo(source.Health) ?? new Profile.HealthInfo.ValueInfo(),
-                Effects = new Dictionary<string, Profile.HealthInfo.EffectInfo>()
+                Effects = new Il2CppSystem.Collections.Generic.Dictionary<string, Profile.HealthInfo.EffectInfo>()
             };
 
             if (source.Effects == null)
@@ -255,7 +257,7 @@ namespace pitTeam.Patches
                 return bodyPart;
             }
 
-            foreach (KeyValuePair<string, Profile.HealthInfo.EffectInfo> effect in source.Effects)
+            foreach (var effect in source.Effects)
             {
                 if (string.IsNullOrWhiteSpace(effect.Key) || effect.Value == null)
                 {
@@ -376,6 +378,32 @@ namespace pitTeam.Patches
             players.Add(teammate);
         }
 
+        private static void ReplaceOrAddPlayer(Diz.Binding.BindableList<EFT.UI.Matchmaker.RaidPlayer> players, EFT.UI.Matchmaker.RaidPlayer teammate)
+        {
+            if (players == null || teammate == null || string.IsNullOrWhiteSpace(teammate.AccountId))
+            {
+                return;
+            }
+
+            int existingIndex = -1;
+            for (int i = 0; i < players.Count; i++)
+            {
+                if (players[i]?.AccountId == teammate.AccountId)
+                {
+                    existingIndex = i;
+                    break;
+                }
+            }
+
+            if (existingIndex >= 0)
+            {
+                players[existingIndex] = teammate;
+                return;
+            }
+
+            players.Add(teammate);
+        }
+
         private static void EnsureLocalGroupOwner(EFT.UI.Matchmaker.MatchmakerPlayersController controller)
         {
             if (controller?.CurrentPlayer == null || controller.GroupPlayers == null || controller.Group == null)
@@ -383,7 +411,7 @@ namespace pitTeam.Patches
                 return;
             }
 
-            if (controller.GroupPlayers.All(player => player?.AccountId != controller.CurrentPlayer.AccountId))
+            if (controller.GroupPlayers.List.AsManaged().All(player => player?.AccountId != controller.CurrentPlayer.AccountId))
             {
                 controller.GroupPlayers.Insert(0, controller.CurrentPlayer);
             }
@@ -410,7 +438,7 @@ namespace pitTeam.Patches
                     return Array.Empty<string>();
                 }
 
-                return TeammateAutoJoinRuntime.FilterInviteCandidates(ids.Values<string>());
+                return TeammateAutoJoinRuntime.FilterInviteCandidates(ids.Values<string>().ToArray());
             }
             catch (Exception ex)
             {
@@ -429,9 +457,9 @@ namespace pitTeam.Patches
 
             try
             {
-                string responseJson = RequestHandler.PostJson(ProfileRoute, JsonConvert.SerializeObject(new { accountId }));
+                string responseJson = RequestHandler.PostJson(ProfileRoute, System.Text.Json.JsonSerializer.Serialize(new { accountId }));
                 FriendlyTeammateBodyResponse<OtherProfileResult> body =
-                    JsonConvert.DeserializeObject<FriendlyTeammateBodyResponse<OtherProfileResult>>(responseJson);
+                    pitTeam.Compat.SptJsonBoundary.Deserialize<FriendlyTeammateBodyResponse<OtherProfileResult>>(responseJson);
 
                 if (body?.err != 0)
                 {
@@ -505,6 +533,7 @@ namespace pitTeam.Patches
 
     internal class MatchMakerPlayerPreviewFollowerUiPatch : ModulePatch
     {
+        private static readonly NativeUiMemberAccessor GroupStatusFieldAccessor = NativeUiMemberAccessor.ForProperty(typeof(MatchMakerPlayerPreview), "_groupStatusField", typeof(TextMeshProUGUI), false, false);
         protected override MethodBase GetTargetMethod()
         {
             return AccessTools.Method(typeof(MatchMakerPlayerPreview), nameof(MatchMakerPlayerPreview.Show));
@@ -523,7 +552,7 @@ namespace pitTeam.Patches
                 string accountId = player?.AccountId ?? string.Empty;
                 bool isTeammate = !string.IsNullOrWhiteSpace(accountId)
                     && MainMenuControllerPatch.GroupPlayers.Any(groupPlayer => groupPlayer?.AccountId == accountId);
-                TextMeshProUGUI statusField = AccessTools.Field(typeof(MatchMakerPlayerPreview), "_groupStatusField")?.GetValue(__instance) as TextMeshProUGUI;
+                TextMeshProUGUI statusField = GroupStatusFieldAccessor.GetValue(__instance) as TextMeshProUGUI;
                 if (statusField != null)
                 {
                     statusField.gameObject.SetActive(!isTeammate);
@@ -610,7 +639,7 @@ namespace pitTeam.Patches
 
             if (profile.TryGetTraderInfo(Utils.Props.KnightTrader, out var traderInfo) && !traderInfo.Disabled)
             {
-                profile.QuestsData.ForEach(quest =>
+                profile.QuestsData.AsManaged().ToList().ForEach(quest =>
                 {
 
                     foreach (var item in Utils. Props.Quests)
@@ -692,11 +721,7 @@ namespace pitTeam.Patches
                 });
             }
 
-            // patch raid settings to that we can change the settings without restarting the game
-            var converterClass = typeof(AbstractGame).Assembly.GetTypes()
-                .First(t => t.GetField("Converters", BindingFlags.Static | BindingFlags.Public) != null);
 
-            var _defaultJsonConverters = Traverse.Create(converterClass).Field<JsonConverter[]>("Converters").Value;
 
             /* string pitConfig = RequestHandler.PostJson("/client/raid/pitconfig", new
             {
@@ -764,7 +789,7 @@ namespace pitTeam.Patches
 
         protected override MethodBase GetTargetMethod()
         {
-            return AccessTools.Method(typeof(EFT.MainMenuShowOperation), "method_49");
+            return AccessTools.Method(typeof(EFT.MainMenuShowOperation), nameof(EFT.MainMenuShowOperation.ShowCharacterSelectionScreen), Type.EmptyTypes);
         }
 
         [PatchPrefix]
@@ -907,7 +932,7 @@ namespace pitTeam.Patches
     {
         protected override MethodBase GetTargetMethod()
         {
-            return AccessTools.Method(typeof(EFT.MainMenuShowOperation), "method_52");
+            return AccessTools.Method(typeof(EFT.MainMenuShowOperation), nameof(EFT.MainMenuShowOperation.ShowCharacterSelectionScreen), Type.EmptyTypes);
         }
 
         [PatchPrefix]
@@ -918,7 +943,7 @@ namespace pitTeam.Patches
                 Modules.SquadSideSelectionFlow.Deactivate("play-ready-screen");
             }
 
-            RaidSettings raidSettings = __instance.raidSettings_0;
+            RaidSettings raidSettings = __instance._raidSettings;
             if (raidSettings == null || MainMenuControllerPatch.GroupPlayers.Count < 1)
             {
                 return;
@@ -969,15 +994,16 @@ namespace pitTeam.Patches
             }
 
             TeammateAutoJoinRuntime.MarkSuppressed(id);
-            MainMenuControllerPatch.GroupPlayers.RemoveFirst(x => x?.AccountId == id);
+            int removedIndex = MainMenuControllerPatch.GroupPlayers.FindIndex(x => x?.AccountId == id);
+            if (removedIndex >= 0) MainMenuControllerPatch.GroupPlayers.RemoveAt(removedIndex);
 
             EFT.UI.Matchmaker.IMatchmakerController controller = __instance._matchmakerPlayersController;
-            if (controller?.GroupPlayers == null || controller.GroupPlayers.All(player => player?.AccountId != id))
+            if (controller?.GroupPlayers == null || controller.GroupPlayers.List.AsManaged().All(player => player?.AccountId != id))
             {
                 return true;
             }
 
-            controller.GroupPlayers.RemoveFirst(player => player?.AccountId == id);
+            controller.GroupPlayers.RemoveFirst((System.Func<RaidPlayer, bool>)(player => player?.AccountId == id));
             if (controller.GroupPlayers.Count <= 1)
             {
                 controller.Group?.RemoveOwner();
@@ -993,16 +1019,13 @@ namespace pitTeam.Patches
     {
         protected override MethodBase GetTargetMethod()
         {
-            return AccessTools.Method(typeof(MatchmakerTimeHasCome), "Show", new Type[]
-            {
-                typeof(EFT.IEftSession),
-                typeof(RaidSettings),
-                typeof(EFT.UI.Matchmaker.MatchmakerPlayersController)
-            });
+            return AccessTools.Method(typeof(MatchmakerTimeHasCome), nameof(MatchmakerTimeHasCome.Show), new[] { typeof(MatchmakerTimeHasCome.TimeHasComeScreenController) });
         }
         [PatchPrefix]
-        private static void PatchPrefix(MatchmakerTimeHasCome __instance, EFT.IEftSession session, RaidSettings raidSettings, EFT.UI.Matchmaker.MatchmakerPlayersController matchmaker)
+        private static void PatchPrefix(MatchmakerTimeHasCome __instance, MatchmakerTimeHasCome.TimeHasComeScreenController controller)
         {
+            RaidSettings raidSettings = controller.RaidSettings;
+            EFT.UI.Matchmaker.MatchmakerPlayersController matchmaker = controller.Matchmaker;
             if (!raidSettings.IsPmc) MainMenuControllerPatch.GroupPlayers.Clear();
             SyntheticTeammateAutoJoinLoader.RefreshLoadedTeammateVisuals(matchmaker);
 
@@ -1011,11 +1034,11 @@ namespace pitTeam.Patches
                 return;
             }
 
-            List<EFT.UI.Matchmaker.RaidPlayer> raidGroup = matchmaker.GroupPlayers.List;
+            var raidGroup = matchmaker.GroupPlayers.List;
             EFT.UI.Matchmaker.RaidPlayer currentPlayer = matchmaker.CurrentPlayer;
             if (currentPlayer != null)
             {
-                int currentIndex = raidGroup.FindIndex(x => x?.AccountId == currentPlayer.AccountId);
+                int currentIndex = raidGroup.AsManaged().ToList().FindIndex(x => x?.AccountId == currentPlayer.AccountId);
                 if (currentIndex < 0)
                 {
                     raidGroup.Insert(0, currentPlayer);
@@ -1040,7 +1063,7 @@ namespace pitTeam.Patches
 
                     try
                     {
-                        if (raidGroup.All(x => x.AccountId != item.AccountId))
+                        if (raidGroup.AsManaged().All(x => x.AccountId != item.AccountId))
                         {
                             raidGroup.Add(item);
                         }
@@ -1065,7 +1088,7 @@ namespace pitTeam.Patches
                 {
                     foreach (var item in MainMenuControllerPatch.TransitPlayers)
                     {
-                        var player = raidGroup.FirstOrDefault(x => x.AccountId == item.AccountId);
+                        var player = raidGroup.AsManaged().FirstOrDefault(x => x.AccountId == item.AccountId);
                         if (player == null)
                         {
                             if (currentHealth != null)
@@ -1098,9 +1121,11 @@ namespace pitTeam.Patches
 
     internal class PartyInfoPanelEquipmentHealthPatch : ModulePatch
     {
+        private static readonly NativeUiMemberAccessor? ProfileAccessor = NativeUiMemberAccessor.TryForProperty(typeof(PartyInfoPanel), "_profile", typeof(Profile), false, false);
+
         protected override MethodBase GetTargetMethod()
         {
-            return AccessTools.Method(typeof(PartyInfoPanel), nameof(PartyInfoPanel.CG_method_3));
+            return AccessTools.Method(typeof(PartyInfoPanel), "Method_Private_Void_RaidPlayer_0");
         }
 
         [PatchPrefix]
@@ -1113,7 +1138,7 @@ namespace pitTeam.Patches
                     return;
                 }
 
-                Profile currentProfile = AccessTools.Field(typeof(PartyInfoPanel), "_profile").GetValue(__instance) as Profile;
+                Profile currentProfile = ProfileAccessor?.GetValue(__instance) as Profile;
                 Profile.HealthInfo referenceHealth = currentProfile?.Health;
                 if (referenceHealth == null)
                 {
@@ -1132,6 +1157,14 @@ namespace pitTeam.Patches
 
     internal class MatchMakerAcceptScreenPatch : ModulePatch
     {
+        private static readonly NativeUiMemberAccessor MatchmakerPlayersControllerAccessor =
+            NativeUiMemberAccessor.ForProperty(typeof(MatchMakerAcceptScreen).BaseType, "MatchmakerPlayersController", typeof(EFT.UI.Matchmaker.MatchmakerPlayersController), false, false);
+        private static readonly NativeUiMemberAccessor GroupPreviewAccessor =
+            NativeUiMemberAccessor.ForProperty(typeof(MatchMakerAcceptScreen), "_groupPreview", typeof(MatchMakerGroupPreview), false, false);
+        private static readonly NativeUiMemberAccessor RaidSettingsAccessor =
+            NativeUiMemberAccessor.ForProperty(typeof(MatchMakerAcceptScreen), "_raidSettings", typeof(RaidSettings), false, false);
+        private static readonly NativeUiMemberAccessor CurrentProfileAidAccessor =
+            NativeUiMemberAccessor.ForProperty(typeof(MatchMakerAcceptScreen), "_currentProfileAid", typeof(string), false, false);
         protected override MethodBase GetTargetMethod()
         {
             return AccessTools.Method(typeof(MatchMakerAcceptScreen), "Show", new Type[] { typeof(EFT.IEftSession), typeof(RaidSettings), typeof(RaidSettings) });
@@ -1143,7 +1176,7 @@ namespace pitTeam.Patches
         {
             try
             {
-                EFT.UI.Matchmaker.MatchmakerPlayersController controller = AccessTools.Field(typeof(MatchMakerAcceptScreen), "MatchmakerPlayersController")?.GetValue(__instance) as EFT.UI.Matchmaker.MatchmakerPlayersController;
+                EFT.UI.Matchmaker.MatchmakerPlayersController controller = MatchmakerPlayersControllerAccessor.GetValue(__instance) as EFT.UI.Matchmaker.MatchmakerPlayersController;
                 SyntheticTeammateAutoJoinLoader.EnsureLoaded(controller);
                 SyntheticTeammateAutoJoinLoader.RefreshLoadedTeammateVisuals(controller);
 
@@ -1194,10 +1227,10 @@ namespace pitTeam.Patches
             {
                 // Teammates are injected into controller via Prefix.
                 // Now rebuild the preview group to use updated controller.GroupPlayers
-                EFT.UI.Matchmaker.MatchmakerPlayersController controller = AccessTools.Field(typeof(MatchMakerAcceptScreen), "MatchmakerPlayersController")?.GetValue(__instance) as EFT.UI.Matchmaker.MatchmakerPlayersController;
-                MatchMakerGroupPreview groupPreview = AccessTools.Field(typeof(MatchMakerAcceptScreen), "_groupPreview").GetValue(__instance) as MatchMakerGroupPreview;
-                RaidSettings raidSettings_0 = AccessTools.Field(typeof(MatchMakerAcceptScreen), "_raidSettings").GetValue(__instance) as RaidSettings;
-                string string_2 = AccessTools.Field(typeof(MatchMakerAcceptScreen), "_currentProfileAid").GetValue(__instance) as string;
+                EFT.UI.Matchmaker.MatchmakerPlayersController controller = MatchmakerPlayersControllerAccessor.GetValue(__instance) as EFT.UI.Matchmaker.MatchmakerPlayersController;
+                MatchMakerGroupPreview groupPreview = GroupPreviewAccessor.GetValue(__instance) as MatchMakerGroupPreview;
+                RaidSettings raidSettings_0 = RaidSettingsAccessor.GetValue(__instance) as RaidSettings;
+                string string_2 = CurrentProfileAidAccessor.GetValue(__instance) as string;
 
                 if (controller == null || groupPreview == null || raidSettings_0 == null)
                 {
@@ -1229,7 +1262,7 @@ namespace pitTeam.Patches
         }
 
         [PatchPrefix]
-        private static bool PatchPrefix(TarkovApplication __instance, ref Task __result)
+        private static bool PatchPrefix(TarkovApplication __instance, ref Il2CppSystem.Threading.Tasks.Task __result)
         {
             if (!SyntheticTeammateRaidGuard.TryForceLocalRaid(__instance, "TarkovApplication.method_42"))
             {

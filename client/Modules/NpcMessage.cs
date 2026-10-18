@@ -1,7 +1,7 @@
 using EFT;
 using HarmonyLib;
 using Newtonsoft.Json;
-using SPT.Common.Http;
+using SPTushonka.Common.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -125,9 +125,9 @@ namespace pitTeam.Modules
                 }
             }
 
-            if (type == "ally" && allies.Count > 0) return allies.PickRandom();
-            else if (type == "boss" && bosses.Count > 0) return bosses.PickRandom();
-            else if (mates.Count > 0) return mates.PickRandom();
+            if (type == "ally" && allies.Count > 0) return allies[System.Random.Shared.Next(allies.Count)];
+            else if (type == "boss" && bosses.Count > 0) return bosses[System.Random.Shared.Next(bosses.Count)];
+            else if (mates.Count > 0) return mates[System.Random.Shared.Next(mates.Count)];
 
             return null;
         }
@@ -157,10 +157,10 @@ namespace pitTeam.Modules
                     }
                 }
 
-                if (allies.Count > 0) info = allies.PickRandom();
+                if (allies.Count > 0) info = allies[System.Random.Shared.Next(allies.Count)];
                 else
                 {
-                    info = mates.Count > 0 ? mates.PickRandom() : null;
+                    info = mates.Count > 0 ? mates[System.Random.Shared.Next(mates.Count)] : null;
                     if (info != null && Instance._matesLost.Count > 0)
                     {
                         ((Dictionary<string, object>)((Dictionary<string, object>)info)["SquadInfo"]).Add("Partial", true);
@@ -176,15 +176,7 @@ namespace pitTeam.Modules
 
             if (info == null) return;
 
-            var converterClass = typeof(AbstractGame).Assembly.GetTypes()
-                .First(t => t.GetField("Converters", BindingFlags.Static | BindingFlags.Public) != null);
-
-            var _defaultJsonConverters = Traverse.Create(converterClass).Field<JsonConverter[]>("Converters").Value;
-
-            string escapedJson = new
-            {
-                member = info,
-            }.ToJson(_defaultJsonConverters);
+            string escapedJson = pitTeam.Compat.SptJsonBoundary.Serialize(new { member = info });
 
             Task.Run(() =>
             {
@@ -206,11 +198,6 @@ namespace pitTeam.Modules
             {
                 return;
             }
-
-            var converterClass = typeof(AbstractGame).Assembly.GetTypes()
-                .First(t => t.GetField("Converters", BindingFlags.Static | BindingFlags.Public) != null);
-
-            var defaultJsonConverters = Traverse.Create(converterClass).Field<JsonConverter[]>("Converters").Value;
 
             var entries = Instance._matesLostMembers
                 .Where(member => !string.IsNullOrWhiteSpace(member.Aid))
@@ -251,11 +238,7 @@ namespace pitTeam.Modules
 
             Components.SquadControlMenuUi.RequestRosterRefreshOnNextInject();
 
-            string json = new
-            {
-                Notify = false,
-                Entries = entries
-            }.ToJson(defaultJsonConverters);
+            string json = pitTeam.Compat.SptJsonBoundary.Serialize(new { Notify = false, Entries = entries });
 
             Instance._matesLostMembers.Clear();
 

@@ -53,7 +53,7 @@ namespace pitTeam.Modules
                 bot.AITaskManager.RegisterDelayedTask(
                     bot,
                     PostLootSelectionDelaySeconds,
-                    () => RunPostLootSelection(bot, weapon, context));
+                    (System.Action)(() => RunPostLootSelection(bot, weapon, context)));
                 Logger.LogInfo(
                     $"[LootCommand][WeaponRegistration] follower='{bot.Profile?.Nickname ?? bot.ProfileId ?? "unknown"}' " +
                     $"weapon={weapon.TemplateId} context={context} result=postLootSelectionQueued " +
@@ -88,7 +88,7 @@ namespace pitTeam.Modules
                 bot.AITaskManager.RegisterDelayedTask(
                     bot,
                     PostLootSelectionDelaySeconds,
-                    () => RunPostLootSecondaryPromotion(bot, weapon, context, 0));
+                    (System.Action)(() => RunPostLootSecondaryPromotion(bot, weapon, context, 0)));
                 Logger.LogInfo(
                     $"[LootCommand][WeaponRegistration] follower='{bot.Profile?.Nickname ?? bot.ProfileId ?? "unknown"}' " +
                     $"weapon={weapon.TemplateId} context={context} result=postLootPromotionQueued " +
@@ -210,7 +210,7 @@ namespace pitTeam.Modules
                 readiness.ToDiagnosticString());
             inventory.RunNetworkTransaction(
                 moveResult.Value,
-                new Callback(result =>
+                (Callback)(System.Action<IResult>)(result =>
                 {
                     Weapon completedPrimary = bot.GetPlayer?.InventoryController?.Inventory?.Equipment
                         ?.GetSlot(EquipmentSlot.FirstPrimaryWeapon)?.ContainedItem as Weapon;
@@ -243,7 +243,7 @@ namespace pitTeam.Modules
                 bot.AITaskManager.RegisterDelayedTask(
                     bot,
                     SwitchRetryDelaySeconds,
-                    () => RunPostLootSecondaryPromotion(bot, weapon, context, attempt + 1));
+                    (System.Action)(() => RunPostLootSecondaryPromotion(bot, weapon, context, attempt + 1)));
             }
             catch (Exception ex)
             {
@@ -377,7 +377,7 @@ namespace pitTeam.Modules
                     bot,
                     weapon,
                     EquipmentSlot.FirstPrimaryWeapon,
-                    weaponManager.ChangeToMode);
+                    (Il2CppSystem.Func<Weapon.EFireMode, bool>)(mode => weaponManager.ChangeToMode(mode)));
                 weaponManager.info[EquipmentSlot.FirstPrimaryWeapon] = mainInfo;
 
                 TryRegisterTrackedSupportWeapon(
@@ -488,7 +488,7 @@ namespace pitTeam.Modules
                 bot,
                 supportWeapon,
                 supportSlot,
-                weaponManager.ChangeToMode);
+                (Il2CppSystem.Func<Weapon.EFireMode, bool>)(mode => weaponManager.ChangeToMode(mode)));
             weaponManager.info[supportSlot] = supportInfo;
             Logger.LogInfo(
                 $"[LootCommand][WeaponRegistration] follower='{bot.Profile?.Nickname ?? bot.ProfileId ?? "unknown"}' " +
@@ -698,7 +698,7 @@ namespace pitTeam.Modules
                 bot.AITaskManager.RegisterDelayedTask(
                     bot,
                     SwitchRetryDelaySeconds,
-                    () => TryEnsureSelected(bot, weapon, context, attempt));
+                    (System.Action)(() => TryEnsureSelected(bot, weapon, context, attempt)));
             }
             catch (Exception ex)
             {

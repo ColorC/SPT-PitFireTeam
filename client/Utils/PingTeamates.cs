@@ -5,6 +5,8 @@ using EFT;
 using EFT.HealthSystem;
 
 using System;
+using Il2CppInterop.Runtime.Attributes;
+using Il2CppInterop.Runtime.Injection;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -27,6 +29,8 @@ namespace pitTeam.Utils
         public BotOwner Data;
         public GUIContent GuiContent;
         public Rect GuiRect;
+        public long ProbeDrawCount;
+        public float ProbeLastDrawTime;
     }
 
     internal sealed class EnemyMarkerContact
@@ -47,6 +51,11 @@ namespace pitTeam.Utils
         public bool IsRetainedDeath;
         public BotOwner? ReportingFollower;
         public Rect MarkRect;
+        public long ProbeDrawCount;
+        public float ProbeLastDrawTime;
+        public Vector3 ProbeLastProjection;
+        public Rect ProbeLastDrawRect;
+        public string? ProbeLastReportingFollower;
 
         public void SetDead(bool isDead)
         {
@@ -68,6 +77,7 @@ namespace pitTeam.Utils
 
     internal class PingTeamates : MonoBehaviour, IDisposable
     {
+        public PingTeamates(IntPtr pointer) : base(pointer) { }
 
         public List<BotData> botMap = new List<BotData>();
         private readonly Dictionary<string, BotData> botDataCache = new Dictionary<string, BotData>(StringComparer.Ordinal);
@@ -84,7 +94,37 @@ namespace pitTeam.Utils
         private float _nextAutoCombatRosterRefreshTime;
         private bool _autoCombatMarkerActive;
 
-        private float nextUpdateTime;
+        private long _probeOnGuiCalls;
+        private long _probeRepaintCalls;
+        private long _probeReportCalls;
+
+        [HideFromIl2Cpp]
+        public static object GetInstallProbeSnapshot()
+        {
+            if (!pitTeam.Compat.Spt5RuntimeInstallProbe.Enabled) return new { available = false, reason = "shadow-probe-root-required" };
+            var instance = Instance;
+            var contacts = new List<object>();
+            var roster = new List<object>();
+            if (instance != null)
+            {
+                foreach (var bot in instance.botMap)
+                    roster.Add(new { profileId = bot.Data?.ProfileId, text = bot.GuiContent?.text,
+                        drawCount = bot.ProbeDrawCount, lastDrawTime = bot.ProbeLastDrawTime });
+                foreach (var contact in instance.enemyMarkers)
+                {
+                    Camera camera = GetGameplayCamera();
+                    Vector3? projection = camera == null ? null : ProjectToDisplay(camera, contact.WorldPosition + Vector3.up * EnemyMarkerHeightOffset);
+                    var p = contact.ProbeLastProjection; var r = contact.ProbeLastDrawRect;
+                    Vector3 world = contact.WorldPosition;
+                    contacts.Add(new { enemyProfileId = contact.EnemyProfileId, reportingFollower = contact.ReportingFollower?.ProfileId, visible = contact.IsVisible, dead = contact.IsDead, worldPosition = new { x = world.x, y = world.y, z = world.z }, untilTime = contact.UntilTime, drawCount = contact.ProbeDrawCount, lastDrawTime = contact.ProbeLastDrawTime, lastReportingFollower = contact.ProbeLastReportingFollower, markRect = new { x = r.x, y = r.y, width = r.width, height = r.height }, lastProjection = new { x = p.x, y = p.y, z = p.z }, projection = projection.HasValue ? (object)new { x = projection.Value.x, y = projection.Value.y, z = projection.Value.z } : null });
+                }
+            }
+            return new { available = instance != null, enemyMarkerEnabled = pitFireTeam.enemyMarker?.Value, enemyMarkerDefault = pitFireTeam.enemyMarker?.DefaultValue,
+                automaticCombatDisplay = pitFireTeam.autoDisplayCombatStatus?.Value, shortcut = pitFireTeam.pingKey?.Value.ToString(),
+                reportCalls = instance?._probeReportCalls ?? 0, statusReportUntil = instance?._statusReportUntil, statusReportVisible = instance?._statusReportVisible, rosterCount = instance?.botMap.Count,
+                showHealth = pitFireTeam.statusReportShowHealth?.Value, roster,
+                onGuiCalls = instance?._probeOnGuiCalls ?? 0, repaintCalls = instance?._probeRepaintCalls ?? 0, gameTime = Time.time, screenWidth = Screen.width, screenHeight = Screen.height, contacts };
+        }
 
         private GUIStyle guiStyle;
         private Texture2D? _enemyVisibleTexture;
@@ -92,8 +132,6 @@ namespace pitTeam.Utils
         private Texture2D? _enemyDownTexture;
         private bool _enemyMarkerTextureLoadAttempted;
 
-        private float screenScale = 1.0f;
-        private float fovFactor = 1f;
         private readonly StringBuilder _guiTextBuilder = new StringBuilder(256);
         private static readonly EBodyPart[] TrackedBodyParts =
         {
@@ -138,8 +176,10 @@ namespace pitTeam.Utils
         private int _highlightRebuildAfterFrame = -1;
         private readonly TeammatePingHighlight _teammateHighlight = new TeammatePingHighlight();
 
+        [HideFromIl2Cpp]
         public void Ping(pitAIBossPlayer player)
         {
+            if (pitTeam.Compat.Spt5RuntimeInstallProbe.Enabled) _probeReportCalls++;
             float now = Time.time;
             bool statusReportWasActive = _statusReportUntil > now;
             bool killedMarkerWasActive = IsEnemyKilledMarkerDisplayActive(now);
@@ -389,18 +429,6 @@ namespace pitTeam.Utils
                 (_statusReportVisible || (alwaysHighlightActive && _alwaysHighlightRosterReady)));
 
 
-            if (Time.time < nextUpdateTime)
-            {
-                return;
-            }
-            nextUpdateTime = Time.time + 1.0f;
-
-            if (EFT.CameraControl.CameraManager.Instance.SSAA != null && EFT.CameraControl.CameraManager.Instance.SSAA.isActiveAndEnabled)
-            {
-                int outputWidth = EFT.CameraControl.CameraManager.Instance.SSAA.GetOutputWidth();
-                float inputWidth = EFT.CameraControl.CameraManager.Instance.SSAA.GetInputWidth();
-                screenScale = outputWidth / inputWidth;
-            }
         }
 
         private bool RefreshAlwaysHighlightRoster()
@@ -433,6 +461,7 @@ namespace pitTeam.Utils
             return RefreshFollowerRoster(localPlayer, followers);
         }
 
+        [HideFromIl2Cpp]
         private bool RefreshFollowerRoster(
             Player localPlayer,
             List<Components.BotFollowerPlayer> followers)
@@ -472,10 +501,12 @@ namespace pitTeam.Utils
 
         void OnGUI()
         {
+            if (pitTeam.Compat.Spt5RuntimeInstallProbe.Enabled) _probeOnGuiCalls++;
             if (Event.current.type != EventType.Repaint)
             {
                 return;
             }
+            if (pitTeam.Compat.Spt5RuntimeInstallProbe.Enabled) _probeRepaintCalls++;
 
             bool killedMarkerDisplayActive = IsEnemyKilledMarkerDisplayActive(Time.time);
             bool liveEnemyMarkerDisplayActive = IsLiveEnemyMarkerDisplayActive();
@@ -506,17 +537,18 @@ namespace pitTeam.Utils
             }
         }
 
+        [HideFromIl2Cpp]
         private void DrawBotGUI(BotData bt)
         {
             if (!_statusReportVisible) return;
 
             if (bt == null || bt.Data == null || !bt.Data.HealthController.IsAlive) return;
 
-            Camera mainCamera = Camera.main;
+            Camera mainCamera = GetGameplayCamera();
             Player teammate = bt.Data.GetPlayer;
             if (mainCamera == null || teammate == null) return;
 
-            Vector3 screenPos = mainCamera.WorldToScreenPoint(GetStatusReportHeadTop(teammate));
+            Vector3 screenPos = ProjectToDisplay(mainCamera, GetStatusReportHeadTop(teammate));
 
             if (screenPos.z > 0)
             {
@@ -612,10 +644,9 @@ namespace pitTeam.Utils
                         for (int i = 0; i < TrackedBodyParts.Length; i++)
                         {
                             EBodyPart part = TrackedBodyParts[i];
-                            bt.Data.Profile.Health.BodyParts.TryGetValue(part, out var bodyPart);
-                            if (bodyPart != null)
+                            ValueStruct value = bt.Data.HealthController.GetBodyPartHealth(part, true);
+                            if (value.Maximum > 0f)
                             {
-                                ValueStruct value = bt.Data.HealthController.GetBodyPartHealth(part, true);
                                 hp += value.Current;
                                 hpmax += value.Maximum;
                                 if (value.Current == 0)
@@ -673,16 +704,21 @@ namespace pitTeam.Utils
 
                     Vector2 guiSize = guiStyle.CalcSize(bt.GuiContent);
 
-                    bt.GuiRect.x = (screenPos.x * screenScale) - (guiSize.x / 2);
+                    bt.GuiRect.x = screenPos.x - (guiSize.x / 2);
                     float headGapPixels = Mathf.Lerp(
                         StatusReportCloseHeadGapPixels,
                         StatusReportHeadGapPixels,
                         Mathf.InverseLerp(StatusReportCloseDistanceMeters, StatusReportNormalDistanceMeters, teammateDistance));
 
-                    bt.GuiRect.y = Screen.height - ((screenPos.y * screenScale) + guiSize.y + headGapPixels);
+                    bt.GuiRect.y = Screen.height - (screenPos.y + guiSize.y + headGapPixels);
                     bt.GuiRect.size = guiSize;
 
                     GUI.Box(bt.GuiRect, bt.GuiContent.text, guiStyle);
+                    if (pitTeam.Compat.Spt5RuntimeInstallProbe.Enabled)
+                    {
+                        bt.ProbeDrawCount++;
+                        bt.ProbeLastDrawTime = Time.time;
+                    }
                 }
             }
         }
@@ -724,6 +760,7 @@ namespace pitTeam.Utils
             detailStarted = true;
         }
 
+        [HideFromIl2Cpp]
         private void DrawEnemyMarkerGUI(EnemyMarkerContact contact)
         {
             if (contact == null || Time.time > contact.UntilTime)
@@ -750,13 +787,13 @@ namespace pitTeam.Utils
                 return;
             }
 
-            Camera mainCamera = Camera.main;
+            Camera mainCamera = GetGameplayCamera();
             if (mainCamera == null || !IsPlausibleEnemyMarkerPosition(contact.WorldPosition))
             {
                 return;
             }
 
-            Vector3 screenPos = mainCamera.WorldToScreenPoint(
+            Vector3 screenPos = ProjectToDisplay(mainCamera,
                 contact.WorldPosition + (Vector3.up * EnemyMarkerHeightOffset));
             if (screenPos.z <= 0f)
             {
@@ -788,6 +825,19 @@ namespace pitTeam.Utils
             enemyMarkersByProfileId.Clear();
             activeEnemyProfileIds.Clear();
             _autoCombatMarkerActive = false;
+        }
+
+        private static Camera GetGameplayCamera() =>
+            EFT.CameraControl.CameraManager.Instance?.Camera ?? Camera.main;
+
+        private static Vector3 ProjectToDisplay(Camera camera, Vector3 worldPosition)
+        {
+            Vector3 point = camera.WorldToViewportPoint(worldPosition);
+            // EFT stretches the SSAA viewport across the final display. Its
+            // camera.rect describes the internal render area, not the HUD area.
+            point.x *= Screen.width;
+            point.y *= Screen.height;
+            return point;
         }
 
         private static bool IsAutomaticCombatMarkerEnabled()
@@ -1085,6 +1135,7 @@ namespace pitTeam.Utils
             return activeEnemyProfileIds.Count > 0;
         }
 
+        [HideFromIl2Cpp]
         private EnemyMarkerContact? GetClosestReportedContact(Vector3 playerPosition)
         {
             EnemyMarkerContact? closest = null;
@@ -1154,6 +1205,7 @@ namespace pitTeam.Utils
             }
         }
 
+        [HideFromIl2Cpp]
         private bool TryResolveEnemyMarker(
             string enemyProfileId,
             out EnemyMarkerResolution resolution)
@@ -1469,6 +1521,7 @@ namespace pitTeam.Utils
             return texture;
         }
 
+        [HideFromIl2Cpp]
         private void DrawEnemyMarker(
             EnemyMarkerContact contact,
             Vector3 markerPos,
@@ -1486,10 +1539,10 @@ namespace pitTeam.Utils
                 : 0f;
 
             contact.MarkRect.x =
-                (markerPos.x * screenScale / fovFactor) - (markerWidth / 2f);
+                markerPos.x - (markerWidth / 2f);
             contact.MarkRect.y =
                 Screen.height -
-                ((markerPos.y * screenScale / fovFactor) + markerHeight) +
+                (markerPos.y + markerHeight) +
                 animationOffset;
             contact.MarkRect.size = new Vector2(markerWidth, markerHeight);
 
@@ -1498,6 +1551,14 @@ namespace pitTeam.Utils
             {
                 GUI.color = Color.white;
                 GUI.DrawTexture(contact.MarkRect, texture, ScaleMode.ScaleToFit, true);
+                if (pitTeam.Compat.Spt5RuntimeInstallProbe.Enabled)
+                {
+                    contact.ProbeDrawCount++;
+                    contact.ProbeLastDrawTime = Time.time;
+                    contact.ProbeLastProjection = markerPos;
+                    contact.ProbeLastDrawRect = contact.MarkRect;
+                    contact.ProbeLastReportingFollower = contact.ReportingFollower?.ProfileId;
+                }
             }
             finally
             {
@@ -1572,7 +1633,7 @@ namespace pitTeam.Utils
             var decision = bot.Brain?.Agent?.LastResult();
             if (decision != null)
             {
-                string reason = decision.Value.Reason ?? string.Empty;
+                string reason = decision.Reason ?? string.Empty;
                 if (string.Equals(reason, "runToHeal", StringComparison.Ordinal) ||
                     string.Equals(reason, "moveToHeal", StringComparison.Ordinal))
                 {
@@ -1588,11 +1649,13 @@ namespace pitTeam.Utils
         {
             if (Singleton<AbstractGame>.Instantiated)
             {
+                Il2CppBoundary.EnsureInjectedComponentRegistered<PingTeamates>();
+                Il2CppBoundary.EnsureInjectedComponentRegistered<RadioSound>();
                 var gameWorld = Singleton<GameWorld>.Instance;
 
-                Instance = gameWorld.GetOrAddComponent<PingTeamates>();
-                radioSound = gameWorld.GetOrAddComponent<RadioSound>();
-                radioSound.Enable();
+                Instance = gameWorld.GetComponentViaIl2CppType<PingTeamates>() ?? gameWorld.gameObject.AddComponentViaIl2CppType<PingTeamates>();
+                radioSound = gameWorld.GetComponentViaIl2CppType<RadioSound>() ?? gameWorld.gameObject.AddComponentViaIl2CppType<RadioSound>();
+                radioSound.EnableAsync();
             }
         }
         private Vector3 GetLimitedPosition(Vector3 origin, Vector3 target, float maxDistance)

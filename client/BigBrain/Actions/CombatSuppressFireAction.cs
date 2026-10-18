@@ -135,7 +135,7 @@ namespace pitTeam.BigBrain.Actions
 
             Vector3 suppressTarget = GetRawData(data) is AimingResultParams suppressData && suppressData.PointToShoot.HasValue
                 ? suppressData.PointToShoot.Value
-                : BotOwner.SuppressShoot?.GetPoint() ?? goalEnemy.CurrPosition;
+                : BotOwner.SuppressShoot?.GetPoint().ToManagedNullable() ?? goalEnemy.CurrPosition;
             if (ShouldHoldSuppressFireUntilAimed(
                     BotOwner.WeaponRoot != null ? BotOwner.WeaponRoot.position : BotOwner.Position + Vector3.up * 1.2f,
                     suppressTarget))
@@ -189,7 +189,7 @@ namespace pitTeam.BigBrain.Actions
         {
             bool launcherSuppress = FollowerCombatCommon.IsGrenadeLauncherSuppressReason(reason);
             float launcherUnsafeRadius = launcherSuppress ? GetLauncherSuppressUnsafeRadius(reason) : 0f;
-            Vector3? target = BotOwner.SuppressShoot?.GetPoint();
+            Vector3? target = BotOwner.SuppressShoot?.GetPoint().ToManagedNullable();
             if (!target.HasValue)
             {
                 RecordWeaponSuppressState(reason, "targetMissing", null);

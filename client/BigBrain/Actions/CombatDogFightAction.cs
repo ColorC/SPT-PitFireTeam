@@ -176,7 +176,7 @@ namespace pitTeam.BigBrain.Actions
                 ? pointBlankContactTarget
                 : hasRecentContactShot && !hasConfirmedShot
                     ? recentContactTarget
-                    : shootLogic.GetTarget() ?? GetDogFightThreatLookPoint(goalEnemy);
+                    : shootLogic.GetTarget().ToManagedNullable() ?? GetDogFightThreatLookPoint(goalEnemy);
             MaintainThreatFacing(goalEnemy, shootPoint, allowHardTurn: true);
 
             // Dogfight tends to happen inside the squad. Friendly lane safety is the hard stop before

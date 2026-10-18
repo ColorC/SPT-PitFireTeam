@@ -40,14 +40,14 @@ namespace pitTeam.BigBrain
         private readonly FiringPositionArrivalState firingPositionArrival = new FiringPositionArrivalState();
         private readonly BotOwner BotOwner;
         private readonly FollowerCombatCommon CombatCommon;
-        private AICoreActionResult<BotLogicDecision, CoreActionResultParams>? currentEndSourceDecision;
+        private AICoreActionResult<BotLogicDecision, CoreActionResultParams> currentEndSourceDecision;
         private float noActionFallbackUntil;
         private float nextFiringPositionAllowedTime;
         private float closeWeaponPrepareUntil;
         private float closeWeaponPrepareRetryUntil;
         private string closeWeaponPrepareEnemyProfileId = string.Empty;
         private bool closeWeaponPreparationPending;
-        private AICoreActionResult<BotLogicDecision, CoreActionResultParams>? preparedCloseSearchDecision;
+        private AICoreActionResult<BotLogicDecision, CoreActionResultParams> preparedCloseSearchDecision;
         private Vector3 preparedCloseSearchPoint;
         private float closeSearchRetryUntil;
 
@@ -80,7 +80,7 @@ namespace pitTeam.BigBrain
         }
 
         public void DecisionChanged(
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? prevDecision,
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> prevDecision,
             AICoreActionResult<BotLogicDecision, CoreActionResultParams> nextDecision)
         {
             if (!firingPositionArrival.Owns(nextDecision.Reason))
@@ -173,11 +173,11 @@ namespace pitTeam.BigBrain
                 }
 
 
-                AICoreActionResult<BotLogicDecision, CoreActionResultParams>? suppressDecision =
+                AICoreActionResult<BotLogicDecision, CoreActionResultParams> suppressDecision =
                     CombatCommon.TryGetAllyEngagementSupportDecision(true);
                 if (suppressDecision != null)
                 {
-                    CombatCommon.SetInitialDecision(suppressDecision.Value);
+                    CombatCommon.SetInitialDecision(suppressDecision);
                     return;
                 }
 
@@ -213,10 +213,10 @@ namespace pitTeam.BigBrain
 
             // Marksman follows the same shared commitment model as default, but its fresh
             // planning branches prefer firing/support positions over assault pressure.
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? preFight = TryGetMarksmanPreFightDecision(goalEnemy);
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> preFight = TryGetMarksmanPreFightDecision(goalEnemy);
             if (preFight != null)
             {
-                return preFight.Value;
+                return preFight;
             }
 
             if (CombatCommon.TryGetCommittedGrenadeDecision(out AICoreActionResult<BotLogicDecision, CoreActionResultParams> committedGrenade))
@@ -368,12 +368,12 @@ namespace pitTeam.BigBrain
                     "sniper.closeImmediateShoot");
                 return true;
             }
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? dogFight = closeEnoughForSecondary
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> dogFight = closeEnoughForSecondary
                 ? CombatCommon.TryGetDogFightDecision()
                 : null;
             if (dogFight != null)
             {
-                if (dogFight.Value.Action == BotLogicDecision.dogFight)
+                if (dogFight.Action == BotLogicDecision.dogFight)
                 {
                     // Dogfight aiming can be unstable for marksman at close breakouts. Prefer a
                     // stable immediate shot decision here and let close-quarter policy continue next tick.
@@ -383,7 +383,7 @@ namespace pitTeam.BigBrain
                     return true;
                 }
 
-                decision = dogFight.Value;
+                decision = dogFight;
                 return true;
             }
 
@@ -473,10 +473,10 @@ namespace pitTeam.BigBrain
 
             // Select a real, distinct route before drawing the support weapon. Otherwise a failed
             // search can repeatedly draw automatic support and immediately return to sniper hold.
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? searchDecision =
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> searchDecision =
                 CombatCommon.EnemyCoverSearch(reason, weakEnemy: false, avoidBossFireLane: true);
-            if (!searchDecision.HasValue ||
-                searchDecision.Value.Action != BotLogicDecision.goToPointTactical ||
+            if (searchDecision == null ||
+                searchDecision.Action != BotLogicDecision.goToPointTactical ||
                 BotOwner.GoToSomePointData?.HaveTarget() != true ||
                 !IsMarksmanCloseSearchDestinationSafe(goalEnemy, BotOwner.GoToSomePointData.Point))
             {
@@ -498,7 +498,7 @@ namespace pitTeam.BigBrain
                 return true;
             }
 
-            decision = searchDecision.Value;
+            decision = searchDecision;
             return true;
         }
 
@@ -583,16 +583,16 @@ namespace pitTeam.BigBrain
         /// Marksman still uses the shared prefight gates, but a generic immediate-shoot handoff
         /// must not steal ownership from close-quarter secondary logic mid-fight.
         /// </summary>
-        private AICoreActionResult<BotLogicDecision, CoreActionResultParams>? TryGetMarksmanPreFightDecision(EnemyInfo goalEnemy)
+        private AICoreActionResult<BotLogicDecision, CoreActionResultParams> TryGetMarksmanPreFightDecision(EnemyInfo goalEnemy)
         {
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? preFight = CombatCommon.PreFightLogic();
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> preFight = CombatCommon.PreFightLogic();
             if (preFight == null)
             {
                 return null;
             }
 
-            if (preFight.Value.Action == BotLogicDecision.shootFromPlace &&
-                string.Equals(preFight.Value.Reason, "ShootImmediately", StringComparison.Ordinal) &&
+            if (preFight.Action == BotLogicDecision.shootFromPlace &&
+                string.Equals(preFight.Reason, "ShootImmediately", StringComparison.Ordinal) &&
                 ShouldPreserveCloseQuarterWeaponFlow(goalEnemy))
             {
                 return null;
@@ -794,7 +794,7 @@ namespace pitTeam.BigBrain
                 return false;
             }
 
-            if (BotOwner.BotFollower?.BossToFollow is not pitAIBossPlayer boss ||
+            if (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(BotOwner) is not pitAIBossPlayer boss ||
                 boss.Followers == null)
             {
                 return false;
@@ -876,7 +876,7 @@ namespace pitTeam.BigBrain
                 return true;
             }
 
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? immediate = CombatCommon.TryGetImmediateShootDecision("sniper.immediateShoot");
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> immediate = CombatCommon.TryGetImmediateShootDecision("sniper.immediateShoot");
             if (immediate != null)
             {
                 if (ShouldPreserveCloseQuarterWeaponFlow(goalEnemy))
@@ -884,7 +884,7 @@ namespace pitTeam.BigBrain
                     return false;
                 }
 
-                decision = immediate.Value;
+                decision = immediate;
                 return true;
             }
 
@@ -1149,9 +1149,9 @@ namespace pitTeam.BigBrain
             bool beginSupportTravel,
             bool beginRepositionTravel)
         {
-            if (!currentEndSourceDecision.HasValue ||
+            if (currentEndSourceDecision == null ||
                 !CombatCommon.TryPrepareDecisionTransition(
-                    currentEndSourceDecision.Value,
+                    currentEndSourceDecision,
                     "marksmanPreparedBreak",
                     decision))
             {
@@ -1185,7 +1185,7 @@ namespace pitTeam.BigBrain
                 return false;
             }
 
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? shotDecision = null;
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> shotDecision = null;
             if (CombatCommon.CanShootFromCurrentCoverOrStandingIntent(out _))
             {
                 shotDecision = new AICoreActionResult<BotLogicDecision, CoreActionResultParams>(
@@ -1197,12 +1197,12 @@ namespace pitTeam.BigBrain
                 shotDecision = CombatCommon.TryGetImmediateShootDecision("sniper.preparedImmediateShoot");
             }
 
-            if (!shotDecision.HasValue)
+            if (shotDecision == null)
             {
                 return false;
             }
 
-            if (!TryPrepareBreakDecision(shotDecision.Value, false, false))
+            if (!TryPrepareBreakDecision(shotDecision, false, false))
             {
                 return false;
             }
@@ -1400,11 +1400,11 @@ namespace pitTeam.BigBrain
                 return true;
             }
 
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? immediate =
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> immediate =
                 CombatCommon.TryGetImmediateShootDecision("sniper.pushSupportImmediateShoot");
             if (immediate != null)
             {
-                decision = immediate.Value;
+                decision = immediate;
                 return true;
             }
 
@@ -1852,8 +1852,8 @@ namespace pitTeam.BigBrain
                 return true;
             }
             var immediate = CombatCommon.TryGetImmediateShootDecision(reason);
-            decision = immediate.GetValueOrDefault();
-            return immediate.HasValue;
+            decision = immediate;
+            return immediate != null;
         }
 
         private bool TryPreparePendingMedicalBreak(
@@ -1868,7 +1868,7 @@ namespace pitTeam.BigBrain
 
             // Keep the shared medical planner's contact/retry policy and its concrete destination.
             var medical = CombatCommon.TryGetNeedHealDecision();
-            if (!medical.HasValue || !TryPrepareBreakDecision(medical.Value, false, false)) return false;
+            if (medical == null || !TryPrepareBreakDecision(medical, false, false)) return false;
             CombatCommon.ClearCommittedPosition("sniperHoldMedicalWork");
             firingPositionArrival.Reset();
             return true;
@@ -2539,13 +2539,13 @@ namespace pitTeam.BigBrain
                 return new AICoreActionEnd("sniperMedicalRetryCombatEnded", true);
             }
 
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? dogFight =
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> dogFight =
                 CombatCommon.TryGetDogFightDecision();
             if (dogFight != null &&
                 CombatCommon.TryPrepareDecisionTransition(
                     currentDecision,
                     "sniperMedicalRetryDogFight",
-                    dogFight.Value))
+                    dogFight))
             {
                 return new AICoreActionEnd("sniperMedicalRetryDogFight", true);
             }
@@ -2553,25 +2553,25 @@ namespace pitTeam.BigBrain
             // Pressure recovery is a fallback only after a due medical retry has had its turn.
             if (!CombatCommon.IsHealDecisionRetryBlocked)
             {
-                AICoreActionResult<BotLogicDecision, CoreActionResultParams>? healDecision =
+                AICoreActionResult<BotLogicDecision, CoreActionResultParams> healDecision =
                     CombatCommon.TryGetNeedHealDecision();
                 if (healDecision != null &&
                     CombatCommon.TryPrepareDecisionTransition(
                         currentDecision,
                         "sniperMedicalRetryReady",
-                        healDecision.Value))
+                        healDecision))
                 {
                     return new AICoreActionEnd("sniperMedicalRetryReady", true);
                 }
             }
 
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? immediateShoot =
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> immediateShoot =
                 CombatCommon.TryGetImmediateShootDecision("sniper.medicalRetryImmediateShoot");
             if (immediateShoot != null &&
                 CombatCommon.TryPrepareDecisionTransition(
                     currentDecision,
                     "sniperMedicalRetryImmediateShoot",
-                    immediateShoot.Value))
+                    immediateShoot))
             {
                 return new AICoreActionEnd("sniperMedicalRetryImmediateShoot", true);
             }
@@ -2617,7 +2617,7 @@ namespace pitTeam.BigBrain
             if (!CombatCommon.HasActiveCombatEnemy(goalEnemy) ||
                 goalEnemy == null ||
                 (goalEnemy.Distance > CombatDistanceConfiguration.Instance.GetCloseQuarterDistance() &&
-                 (!preparedCloseSearchDecision.HasValue || !ShouldUseOffensiveAutoSearch(goalEnemy))))
+                 (preparedCloseSearchDecision == null || !ShouldUseOffensiveAutoSearch(goalEnemy))))
             {
                 ClearCloseWeaponPreparation();
                 return new AICoreActionEnd("sniperCloseWeaponPrepareNoCloseEnemy", true);
@@ -2647,7 +2647,7 @@ namespace pitTeam.BigBrain
 
             if (CombatCommon.IsAutomaticCloseCombatWeaponReady())
             {
-                if (preparedCloseSearchDecision.HasValue)
+                if (preparedCloseSearchDecision != null)
                 {
                     if (!ShouldUseOffensiveAutoSearch(goalEnemy) || ShouldDeferCloseAutoToNearbyRifleman(goalEnemy) ||
                         !IsMarksmanCloseSearchDestinationSafe(goalEnemy, preparedCloseSearchPoint))
@@ -2658,7 +2658,7 @@ namespace pitTeam.BigBrain
                     }
 
                     BotOwner.GoToSomePointData.SetPoint(preparedCloseSearchPoint);
-                    if (!TryPrepareBreakDecision(preparedCloseSearchDecision.Value, false, false))
+                    if (!TryPrepareBreakDecision(preparedCloseSearchDecision, false, false))
                     {
                         return FollowerCombatCommon.Continue();
                     }
@@ -2842,11 +2842,11 @@ namespace pitTeam.BigBrain
                 return new AICoreActionEnd("fireSupportPositionNoEnemy", true);
             }
 
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? immediateShot =
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> immediateShot =
                 CombatCommon.TryGetImmediateShootDecision("sniper.positionImmediateShoot");
-            if (immediateShot.HasValue)
+            if (immediateShot != null)
             {
-                if (!TryPrepareBreakDecision(immediateShot.Value, false, false))
+                if (!TryPrepareBreakDecision(immediateShot, false, false))
                 {
                     return FollowerCombatCommon.Continue();
                 }
@@ -2881,7 +2881,7 @@ namespace pitTeam.BigBrain
             }
 
             CombatCommon.HoldFor(FireSupportSettleSeconds);
-            return default;
+            return FollowerCombatCommon.Continue();
         }
 
         private AICoreActionEnd EndMarksmanPositionHold()
@@ -2894,11 +2894,11 @@ namespace pitTeam.BigBrain
                 return new AICoreActionEnd("marksmanPositionNoEnemy", true);
             }
 
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? immediateShot =
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> immediateShot =
                 CombatCommon.TryGetImmediateShootDecision("sniper.positionImmediateShoot");
-            if (immediateShot.HasValue)
+            if (immediateShot != null)
             {
-                if (!TryPrepareBreakDecision(immediateShot.Value, false, false))
+                if (!TryPrepareBreakDecision(immediateShot, false, false))
                 {
                     return FollowerCombatCommon.Continue();
                 }
@@ -2940,7 +2940,7 @@ namespace pitTeam.BigBrain
             }
 
             CombatCommon.HoldFor(FireSupportSettleSeconds);
-            return default;
+            return FollowerCombatCommon.Continue();
         }
 
         private AICoreActionEnd EndNoActionHold()
@@ -2952,11 +2952,11 @@ namespace pitTeam.BigBrain
                 return new AICoreActionEnd("sniperNoActionNoEnemy", true);
             }
 
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? immediateShot =
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> immediateShot =
                 CombatCommon.TryGetImmediateShootDecision("sniper.noActionImmediateShoot");
-            if (immediateShot.HasValue)
+            if (immediateShot != null)
             {
-                if (!TryPrepareBreakDecision(immediateShot.Value, false, false))
+                if (!TryPrepareBreakDecision(immediateShot, false, false))
                 {
                     return FollowerCombatCommon.Continue();
                 }
@@ -2994,7 +2994,7 @@ namespace pitTeam.BigBrain
             }
 
             CombatCommon.HoldFor(Mathf.Max(0.1f, noActionFallbackUntil - Time.time));
-            return default;
+            return FollowerCombatCommon.Continue();
         }
 
 
@@ -3493,7 +3493,7 @@ namespace pitTeam.BigBrain
                 return false;
             }
 
-            if (BotOwner.BotFollower?.BossToFollow is not pitAIBossPlayer boss)
+            if (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(BotOwner) is not pitAIBossPlayer boss)
             {
                 return false;
             }

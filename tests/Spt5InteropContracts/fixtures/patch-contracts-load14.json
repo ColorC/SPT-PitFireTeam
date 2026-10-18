@@ -1,0 +1,164 @@
+{
+    "patches":  [
+                    {
+                        "parameterTypes":  [
+                                               "EFT.Ballistics.Shot",
+                                               "EFT.PlayerHitInfo"
+                                           ],
+                        "returnType":  "System.Void",
+                        "targetType":  "Il2CppSystems.Effects.EffectsCommutator",
+                        "patchClassFullName":  "pitTeam.Patches.BulletImpactPatch",
+                        "targetMethod":  "PlayHitEffect"
+                    },
+                    {
+                        "parameterTypes":  [
+                                               "EFT.SocialNetwork"
+                                           ],
+                        "returnType":  "System.Void",
+                        "targetType":  "EFT.UI.Chat.ChatCreateDialoguePanel",
+                        "patchClassFullName":  "pitTeam.Patches.ChatCreateDialoguePanelRefreshPatch",
+                        "targetMethod":  "Show"
+                    },
+                    {
+                        "parameterTypes":  [
+                                               "System.Int32",
+                                               "EFT.Quests.TaskConditionCounter",
+                                               "Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray`1\u003cEFT.Quests.ConditionCheck\u003e"
+                                           ],
+                        "returnType":  "System.Void",
+                        "targetType":  "EFT.Quests.ConditionCounterManager",
+                        "patchClassFullName":  "pitTeam.Patches.ConditionCounterPatch",
+                        "targetMethod":  "Test"
+                    },
+                    {
+                        "parameterTypes":  [
+                                               "System.Single",
+                                               "System.Single"
+                                           ],
+                        "returnType":  "System.Single",
+                        "targetType":  "BotAimingData",
+                        "patchClassFullName":  "pitTeam.Patches.FollowerAimTimeProficiencyPatch",
+                        "targetMethod":  "CalcTimeShoot"
+                    },
+                    {
+                        "parameterTypes":  [
+                                               "EFT.InventoryLogic.CompoundItem",
+                                               "EFT.InventoryLogic.ItemContext"
+                                           ],
+                        "returnType":  "System.Void",
+                        "targetType":  "EFT.UI.ItemUiContext",
+                        "patchClassFullName":  "pitTeam.Patches.LoadoutEditorLockedContainerOpenPatch",
+                        "targetMethod":  "OpenItem"
+                    },
+                    {
+                        "parameterTypes":  [
+                                               "EFT.InventoryLogic.ItemAddress",
+                                               "EFT.InventoryLogic.ItemController",
+                                               "Diz.LanguageExtensions.Error\u0026"
+                                           ],
+                        "returnType":  "System.Boolean",
+                        "targetType":  "EFT.InventoryLogic.ItemManipulator",
+                        "patchClassFullName":  "pitTeam.Patches.LoadoutEditorLockedDestinationPatch",
+                        "targetMethod":  "CanTransferTo"
+                    },
+                    {
+                        "parameterTypes":  [
+                                               "EFT.InventoryLogic.Item",
+                                               "EFT.InventoryLogic.ItemAddress",
+                                               "EFT.InventoryLogic.ItemController",
+                                               "Diz.LanguageExtensions.Error\u0026"
+                                           ],
+                        "returnType":  "System.Boolean",
+                        "targetType":  "EFT.InventoryLogic.ItemManipulator",
+                        "patchClassFullName":  "pitTeam.Patches.LoadoutEditorLockedItemMovePatch",
+                        "targetMethod":  "CanModifyItem"
+                    },
+                    {
+                        "parameterTypes":  [
+                                               "EFT.Game.Spawning.ESpawnCategory",
+                                               "EFT.EPlayerSide",
+                                               "System.String",
+                                               "System.String",
+                                               "EFT.IPlayer",
+                                               "System.String",
+                                               "System.String"
+                                           ],
+                        "returnType":  "EFT.Game.Spawning.ISpawnPoint",
+                        "targetType":  "EFT.Game.Spawning.SpawnSystem",
+                        "patchClassFullName":  "pitTeam.Patches.SelectSpawnPointPatch",
+                        "targetMethod":  "EFT.Game.Spawning.ISpawnSystem.SelectSpawnPoint"
+                    },
+                    {
+                        "parameterTypes":  [
+                                               "EFT.InventoryLogic.CompoundItem",
+                                               "EFT.InventoryLogic.InventoryController",
+                                               "EFT.InventoryLogic.ItemContext",
+                                               "EFT.InventoryLogic.SortingTable",
+                                               "EFT.UI.SimpleStashPanel/EStashSearchAvailability",
+                                               "EFT.InventoryLogic.InventoryController",
+                                               "EFT.UI.ItemsPanel/EItemsTab"
+                                           ],
+                        "returnType":  "System.Void",
+                        "targetType":  "EFT.UI.SimpleStashPanel",
+                        "patchClassFullName":  "pitTeam.Patches.TeammateBackpackSimpleStashLabelPatch",
+                        "targetMethod":  "Show"
+                    },
+                    {
+                        "parameterTypes":  [
+                                               "EFT.InventoryLogic.ItemContext",
+                                               "EFT.InventoryLogic.InventoryEquipment",
+                                               "EFT.InventoryLogic.InventoryController",
+                                               "EFT.SkillManager",
+                                               "EFT.UI.Insurance.InsuranceCompany",
+                                               "System.Boolean"
+                                           ],
+                        "returnType":  "System.Void",
+                        "targetType":  "EFT.UI.ContainersPanel",
+                        "patchClassFullName":  "pitTeam.Patches.TeammateCorpseContainersPanelSearchPatch",
+                        "targetMethod":  "Show"
+                    },
+                    {
+                        "parameterTypes":  [
+                                               "EFT.InventoryLogic.Item",
+                                               "EFT.InventoryLogic.ItemController",
+                                               "System.Boolean"
+                                           ],
+                        "returnType":  "Diz.LanguageExtensions.OperationResult`1\u003cEFT.InventoryLogic.RemoveResult\u003e",
+                        "targetType":  "EFT.InventoryLogic.ItemManipulator",
+                        "patchClassFullName":  "pitTeam.Patches.TeammateCorpseDogtagRemovePatch",
+                        "targetMethod":  "Remove"
+                    },
+                    {
+                        "parameterTypes":  [
+                                               "EFT.InventoryLogic.ItemContext",
+                                               "EFT.InventoryLogic.InventoryEquipment",
+                                               "EFT.InventoryLogic.InventoryController",
+                                               "EFT.SkillManager",
+                                               "EFT.UI.Insurance.InsuranceCompany",
+                                               "System.Boolean"
+                                           ],
+                        "returnType":  "System.Void",
+                        "targetType":  "EFT.UI.EquipmentTab",
+                        "patchClassFullName":  "pitTeam.Patches.TeammateCorpseEquipmentTabSearchPatch",
+                        "targetMethod":  "Show"
+                    },
+                    {
+                        "parameterTypes":  [
+                                               "EFT.UI.ContextInteractions`1\u003cEFT.InventoryLogic.EItemInfoButton\u003e"
+                                           ],
+                        "returnType":  "System.Void",
+                        "targetType":  "EFT.UI.ItemSpecificationPanel",
+                        "patchClassFullName":  "pitTeam.Patches.TeammateEquipmentBuildsInspectButtonsPatch",
+                        "targetMethod":  "InitInteractionButtonsPanel"
+                    },
+                    {
+                        "parameterTypes":  [
+                                               "EFT.InventoryLogic.IContainer"
+                                           ],
+                        "returnType":  "System.Boolean",
+                        "targetType":  "EFT.InventoryLogic.UnlootableComponent",
+                        "patchClassFullName":  "pitTeam.Patches.UnlootableComponentPatch",
+                        "targetMethod":  "IsUnlootableFrom"
+                    }
+                ]
+}

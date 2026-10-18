@@ -1,0 +1,16 @@
+﻿{
+    "requiredPatches":  [
+                            "DrakiaXYZ.BigBrain.Patches.BotBaseBrainActivatePatch",
+                            "DrakiaXYZ.BigBrain.Patches.BotBaseBrainActivateLayerPatch",
+                            "DrakiaXYZ.BigBrain.Patches.NativeBrainDispatchPatches/StandByGetDecisionPatch",
+                            "DrakiaXYZ.BigBrain.Patches.NativeBrainDispatchPatches/StandByShallUseNowPatch",
+                            "DrakiaXYZ.BigBrain.Patches.NativeBrainDispatchPatches/StandByNamePatch",
+                            "DrakiaXYZ.BigBrain.Patches.NativeBrainDispatchPatches/BaseLayerShallEndPatch",
+                            "DrakiaXYZ.BigBrain.Patches.NativeBrainDispatchPatches/StandByNodeUpdatePatch",
+                            "DrakiaXYZ.BigBrain.Patches.NativeBrainDispatchPatches/StandartBrainDisposePatch",
+                            "DrakiaXYZ.BigBrain.Patches.BotBaseBrainUpdatePatch",
+                            "DrakiaXYZ.BigBrain.Patches.BotBrainCreateLogicNodePatch",
+                            "DrakiaXYZ.BigBrain.Patches.BotStandartBotBrainActivatePatch",
+                            "DrakiaXYZ.BigBrain.Patches.NativeBrainDispatchPatches/MissingRequiredPatch"
+                        ]
+}

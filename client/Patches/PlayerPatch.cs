@@ -5,11 +5,12 @@ using EFT.HealthSystem;
 using EFT.InventoryLogic;
 using EFT.Quests;
 using pitTeam.Components;
+using pitTeam.Compat;
 using pitTeam.Modules;
 using HarmonyLib;
 using Newtonsoft.Json;
-using SPT.Common.Http;
-using SPT.Reflection.Patching;
+using SPTushonka.Common.Http;
+using SPTushonka.Reflection.Patching;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -66,49 +67,176 @@ namespace pitTeam.Patches
         }
     }
 
+    internal static class RegisteredBossAIDataBinder
+    {
+        internal sealed class Snapshot
+        {
+            public int Attempts { get; set; }
+            public int Successes { get; set; }
+            public int Pending { get; set; }
+            public int Errors { get; set; }
+            public int CleanupErrors { get; set; }
+            public string LastProfileId { get; set; } = string.Empty;
+            public string AIDataPointer { get; set; } = string.Empty;
+            public string ExpectedBossPointer { get; set; } = string.Empty;
+            public string ReadbackBossPointer { get; set; } = string.Empty;
+            public string LastError { get; set; } = string.Empty;
+            public string LastCleanupProfileId { get; set; } = string.Empty;
+            public string LastCleanupAIDataPointer { get; set; } = string.Empty;
+            public string LastCleanupExpectedBossPointer { get; set; } = string.Empty;
+            public string LastCleanupReadbackBossPointer { get; set; } = string.Empty;
+            public string LastCleanupError { get; set; } = string.Empty;
+        }
+
+        private static readonly object Sync = new object();
+        private static readonly Snapshot State = new Snapshot();
+
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+        internal static Snapshot GetProbeSnapshot()
+        {
+            lock (Sync)
+            {
+                return new Snapshot {
+                    Attempts = State.Attempts, Successes = State.Successes, Pending = State.Pending, Errors = State.Errors, CleanupErrors = State.CleanupErrors,
+                    LastProfileId = State.LastProfileId, AIDataPointer = State.AIDataPointer,
+                    ExpectedBossPointer = State.ExpectedBossPointer, ReadbackBossPointer = State.ReadbackBossPointer, LastError = State.LastError,
+                    LastCleanupProfileId = State.LastCleanupProfileId, LastCleanupAIDataPointer = State.LastCleanupAIDataPointer,
+                    LastCleanupExpectedBossPointer = State.LastCleanupExpectedBossPointer, LastCleanupReadbackBossPointer = State.LastCleanupReadbackBossPointer, LastCleanupError = State.LastCleanupError
+                };
+            }
+        }
+
+        private static void RecordAttempt(string profileId, IntPtr aiData, IntPtr expectedBoss, IntPtr readbackBoss, string error = null, bool success = false, bool pending = false)
+        {
+            lock (Sync)
+            {
+                State.Attempts++;
+                State.LastProfileId = profileId ?? string.Empty;
+                State.AIDataPointer = aiData == IntPtr.Zero ? string.Empty : aiData.ToString("X");
+                State.ExpectedBossPointer = expectedBoss == IntPtr.Zero ? string.Empty : expectedBoss.ToString("X");
+                State.ReadbackBossPointer = readbackBoss == IntPtr.Zero ? string.Empty : readbackBoss.ToString("X");
+                State.LastError = error ?? string.Empty;
+                if (success) State.Successes++;
+                if (pending) State.Pending++;
+                if (!string.IsNullOrEmpty(error)) State.Errors++;
+            }
+        }
+
+        private static void RecordCleanupFailure(string profileId, IntPtr aiData, IntPtr expectedBoss, IntPtr readbackBoss, Exception error)
+        {
+            string message = "Prior boss cleanup failed after replacement setter/readback succeeded for " + profileId + "; current native boss readback=" + readbackBoss.ToString("X") + "; error: " + error;
+            lock (Sync)
+            {
+                State.CleanupErrors++;
+                State.Errors++;
+                State.LastError = message;
+                State.LastCleanupProfileId = profileId ?? string.Empty;
+                State.LastCleanupAIDataPointer = aiData == IntPtr.Zero ? string.Empty : aiData.ToString("X");
+                State.LastCleanupExpectedBossPointer = expectedBoss == IntPtr.Zero ? string.Empty : expectedBoss.ToString("X");
+                State.LastCleanupReadbackBossPointer = readbackBoss == IntPtr.Zero ? string.Empty : readbackBoss.ToString("X");
+                State.LastCleanupError = message;
+            }
+            pitTeam.Modules.Logger.LogError(message);
+        }
+        private static bool SameBoss(AIBossPlayer? left, AIBossPlayer? right)
+        {
+            if (ReferenceEquals(left, null) || ReferenceEquals(right, null)) return ReferenceEquals(left, right);
+            return pitTeam.Compat.Il2CppBoundary.SameNativeObject(left, right);
+        }
+
+        internal static void BindMappedBoss(Player player, pitAIBossPlayer? expectedBoss = null)
+        {
+            if (ReferenceEquals(player, null)) return;
+            string profileId = string.Empty;
+            IntPtr aiDataPointer = IntPtr.Zero;
+            IntPtr expectedPointer = IntPtr.Zero;
+            IntPtr readbackPointer = IntPtr.Zero;
+            try { profileId = player.ProfileId ?? string.Empty; }
+            catch (Exception ex) { RecordAttempt(profileId, aiDataPointer, expectedPointer, readbackPointer, "ProfileId read failed: " + ex); pitTeam.Modules.Logger.LogError("Boss AIData binding could not read player ProfileId: " + ex); return; }
+            if (string.IsNullOrEmpty(profileId)) return;
+            pitAIBossPlayer? mappedBoss;
+            try { mappedBoss = BossPlayers.GetBoss(profileId); }
+            catch (Exception ex) { RecordAttempt(profileId, aiDataPointer, expectedPointer, readbackPointer, "Boss map lookup failed: " + ex); pitTeam.Modules.Logger.LogError("Boss AIData binding map lookup failed for " + profileId + ": " + ex); return; }
+            if (ReferenceEquals(mappedBoss, null)) return;
+            if (!ReferenceEquals(expectedBoss, null) && !pitTeam.Compat.Il2CppBoundary.SameNativeObject(mappedBoss, expectedBoss)) return;
+            expectedPointer = mappedBoss.Pointer;
+            if (expectedPointer == IntPtr.Zero) { RecordAttempt(profileId, aiDataPointer, expectedPointer, readbackPointer, "Mapped boss has a zero native pointer."); pitTeam.Modules.Logger.LogError("Boss AIData binding refused zero-pointer mapped boss for " + profileId); return; }
+            AIData? aiData;
+            try
+            {
+                var nativeAIData = player.AIData;
+                if (ReferenceEquals(nativeAIData, null)) { RecordAttempt(profileId, aiDataPointer, expectedPointer, readbackPointer, null, pending: true); return; }
+                aiData = nativeAIData.TryCast<AIData>();
+                if (ReferenceEquals(aiData, null)) { RecordAttempt(profileId, aiDataPointer, expectedPointer, readbackPointer, null, pending: true); return; }
+                aiDataPointer = aiData.Pointer;
+            }
+            catch (Exception ex) { RecordAttempt(profileId, aiDataPointer, expectedPointer, readbackPointer, "AIData access/cast failed: " + ex); pitTeam.Modules.Logger.LogError("Boss AIData binding could not resolve AIData for " + profileId + ": " + ex); return; }
+            if (aiDataPointer == IntPtr.Zero) { RecordAttempt(profileId, aiDataPointer, expectedPointer, readbackPointer, "Resolved AIData has a zero native pointer."); pitTeam.Modules.Logger.LogError("Boss AIData binding refused zero-pointer AIData for " + profileId); return; }
+            AIBossPlayer? previousBoss;
+            try { previousBoss = aiData._AIBossPlayer_k__BackingField; }
+            catch (Exception ex) { RecordAttempt(profileId, aiDataPointer, expectedPointer, readbackPointer, "Current boss getter failed: " + ex); pitTeam.Modules.Logger.LogError("Boss AIData binding could not read current boss for " + profileId + ": " + ex); return; }
+            if (SameBoss(previousBoss, mappedBoss)) { readbackPointer = ReferenceEquals(previousBoss, null) ? IntPtr.Zero : previousBoss.Pointer; RecordAttempt(profileId, aiDataPointer, expectedPointer, readbackPointer, success: true); return; }
+            if (!ReferenceEquals(previousBoss, null) && previousBoss.Pointer == IntPtr.Zero) { RecordAttempt(profileId, aiDataPointer, expectedPointer, readbackPointer, "Current boss has a zero native pointer; preserving it."); pitTeam.Modules.Logger.LogError("Boss AIData binding preserved zero-pointer current boss for " + profileId); return; }
+            try
+            {
+                aiData._AIBossPlayer_k__BackingField = mappedBoss;
+                AIBossPlayer? readback = aiData._AIBossPlayer_k__BackingField;
+                readbackPointer = ReferenceEquals(readback, null) ? IntPtr.Zero : readback.Pointer;
+                if (!SameBoss(readback, mappedBoss)) throw new InvalidOperationException("AIData boss setter readback did not match the registered boss native pointer.");
+            }
+            catch (Exception writeError)
+            {
+                string restoreError = string.Empty;
+                try
+                {
+                    aiData._AIBossPlayer_k__BackingField = previousBoss;
+                    AIBossPlayer? restored = aiData._AIBossPlayer_k__BackingField;
+                    readbackPointer = ReferenceEquals(restored, null) ? IntPtr.Zero : restored.Pointer;
+                    if (!SameBoss(restored, previousBoss)) throw new InvalidOperationException("Previous boss pointer did not restore on readback.");
+                }
+                catch (Exception ex) { restoreError = " Restore failed: " + ex; }
+                string message = "Boss AIData binding write failed for " + profileId + "; previous native pointer was preserved/restored when possible. Write error: " + writeError + restoreError;
+                RecordAttempt(profileId, aiDataPointer, expectedPointer, readbackPointer, message);
+                pitTeam.Modules.Logger.LogError(message);
+                return;
+            }
+            RecordAttempt(profileId, aiDataPointer, expectedPointer, readbackPointer, success: true);
+            if (!ReferenceEquals(previousBoss, null))
+            {
+                try { previousBoss.Dispose(); }
+                catch (Exception ex)
+                {
+                    Exception cleanupError = ex;
+                    try
+                    {
+                        AIBossPlayer? afterCleanup = aiData._AIBossPlayer_k__BackingField;
+                        readbackPointer = ReferenceEquals(afterCleanup, null) ? IntPtr.Zero : afterCleanup.Pointer;
+                        if (!SameBoss(afterCleanup, mappedBoss))
+                            cleanupError = new InvalidOperationException("New boss pointer no longer matches after prior boss cleanup failure; readback=" + readbackPointer.ToString("X"), ex);
+                    }
+                    catch (Exception readbackError)
+                    {
+                        cleanupError = new AggregateException("Prior boss cleanup failed and new boss readback also failed.", ex, readbackError);
+                    }
+                    RecordCleanupFailure(profileId, aiDataPointer, expectedPointer, readbackPointer, cleanupError);
+                }
+            }
+        }
+    }
+
     internal class AIDataContructPatch : ModulePatch
     {
-
-        public static Dictionary<string, AIData> playerAIData = new Dictionary<string, AIData>();
         protected override MethodBase GetTargetMethod()
         {
+            pitTeam.Compat.NativeConstructorPatchTargets.EnsureInstalled();
             return AccessTools.Constructor(typeof(AIData), new Type[] { typeof(BotOwner), typeof(Player) });
         }
-        // overwrite AIData to make it use our pitAIBossPlayer
+
         [PatchPostfix]
         private static void PatchPostfix(AIData __instance, BotOwner owner, Player player)
         {
-            if (owner == null && player != null)
-            {
-                // remove old AIBossPlayer
-                try
-                {
-                    if (__instance.AIBossPlayer != null && __instance.AIBossPlayer.GetType() != typeof(pitAIBossPlayer))
-                    {
-                        __instance.AIBossPlayer.Dispose();
-                        pitAIBossPlayer? boss = BossPlayers.GetBoss(player.ProfileId);
-                        // replace AIBossPlayer with ours
-                        if (boss != null)
-                        {
-                            var field = AccessTools.Field(typeof(AIData), "_aIBossPlayer");
-                            field.SetValue(__instance, boss);
-                            Logger.LogInfo("Replaced AIBossPlayer in AIData with ours");
-                        }
-                    }
-
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError("Failed to dispose old AIBossPlayer");
-                    Logger.LogError(ex);
-                }
-
-
-
-                if (!playerAIData.ContainsKey(player.ProfileId))
-                    playerAIData.Add(player.ProfileId, __instance);
-            }
-
+            pitTeam.Compat.NativeConstructorPatchTargets.RecordAIDataCallback(__instance.Pointer);
+            if (player != null) RegisteredBossAIDataBinder.BindMappedBoss(player);
         }
     }
     /** Handle firing TeamStatus and boss gesture commands inside PlayPhraseOrGesture so enemies do not hear command-only traffic. **/
@@ -141,6 +269,26 @@ namespace pitTeam.Patches
                     $"storedPickup='{DescribeLootTarget(InteractableObjects.GetCurLootItem())}' " +
                     $"storedBody='{DescribeLootTarget(InteractableObjects.GetCurBodyLootTarget())}' " +
                     $"storedContainer='{DescribeLootTarget(InteractableObjects.GetCurLootContainerTarget())}'");
+                if (phrase == EPhraseTrigger.CheckHim || phrase == EPhraseTrigger.LootBody)
+                {
+                    try
+                    {
+                        Spt5BodyLootDiagnostics.RecordRoute("PlayPhraseOrGesture", "menuAction", () =>
+                        {
+                            string? requesterId = __instance.Player?.ProfileId;
+                            string? bossId = boss?.realPlayer?.ProfileId;
+                            var corpse = InteractableObjects.GetCurBodyLootTarget();
+                            string? corpsePointer = corpse == null ? null : corpse.Pointer.ToInt64().ToString("X");
+                            return new Spt5BodyLootDiagnostics.RouteFields(
+                                phrase.ToString(),
+                                requesterId,
+                                bossId,
+                                requesterId != null && bossId != null ? string.Equals(requesterId, bossId, StringComparison.Ordinal) : (bool?)null,
+                                corpsePointer);
+                        });
+                    }
+                    catch { }
+                }
             }
 
             if (!isGesture &&
@@ -206,7 +354,6 @@ namespace pitTeam.Patches
 
     internal class QuickMumbleStartViewBackpackPatch : ModulePatch
     {
-        private static readonly FieldInfo BattleUiControllerField = AccessTools.Field(typeof(GamePlayerOwner), "BattleUIScreenController");
 
         protected override MethodBase GetTargetMethod()
         {
@@ -216,15 +363,27 @@ namespace pitTeam.Patches
         [PatchPrefix]
         private static bool PatchPrefix(GamePlayerOwner __instance)
         {
+            if (__instance == null) return true;
+
             EPhraseTrigger viewBackpackPhrase = (EPhraseTrigger)CustomPhrases.ViewBackpack;
-            EFT.UI.IBattleUIScreenController battleUi = BattleUiControllerField.GetValue(__instance) as EFT.UI.IBattleUIScreenController;
-            if (battleUi?.GesturesQuickPanel?.PrioritizedCommand != viewBackpackPhrase)
+            EFT.UI.IBattleUIScreenController battleUi = __instance.BattleUIScreenController;
+            var quickPanel = battleUi?.GesturesQuickPanel;
+            if (quickPanel?.PrioritizedCommand != viewBackpackPhrase)
             {
                 return true;
             }
 
-            battleUi.GesturesQuickPanel.ActivateCommand();
-            TeammateBackpackInspection.TryOpenFromQuickInteraction(__instance);
+            Player player = __instance.Player;
+            if (player == null || !TeammateBackpackInspection.CanShowQuickInteraction(player))
+            {
+                return true;
+            }
+
+            quickPanel.ActivateCommand();
+            if (!TeammateBackpackInspection.TryOpenFromQuickInteraction(__instance))
+            {
+                return true;
+            }
             return false;
         }
     }
@@ -263,6 +422,7 @@ namespace pitTeam.Patches
         [PatchPostfix]
         private static void PatchPostfix(Player __instance, IPlayer aggressor, EFT.Ballistics.DamageInfo damageInfo, EBodyPart bodyPart, EDamageType lethalDamageType)
         {
+            pitTeam.Compat.Spt5RuntimeInstallProbe.RecordKill(__instance, aggressor);
             try
             {
                 TryRecordDeadSquadmate(__instance, aggressor, bodyPart, lethalDamageType);
@@ -510,7 +670,7 @@ namespace pitTeam.Patches
                     }
                 }
 
-                string json = JsonConvert.SerializeObject(new
+                string json = System.Text.Json.JsonSerializer.Serialize(new
                 {
                     victimProfileId,
                     victimAccountId = victim.AccountId,
@@ -518,6 +678,7 @@ namespace pitTeam.Patches
                     messageText,
                 });
 
+                string victimNickname = victim.Profile?.Info?.Nickname;
                 Task.Run(() =>
                 {
                     try
@@ -526,7 +687,7 @@ namespace pitTeam.Patches
                     }
                     catch (Exception ex)
                     {
-                        Modules.Logger.LogError($"Failed to record post-raid kill message for {victim.Profile?.Info?.Nickname}");
+                        Modules.Logger.LogError($"Failed to record post-raid kill message for {victimNickname}");
                         Modules.Logger.LogError(ex);
                     }
                 });
@@ -633,8 +794,8 @@ namespace pitTeam.Patches
                 HealthEffects victimEffects = victim.HealthController?.BodyPartEffects;
                 HealthEffects followerEffects = followerPlayer.HealthController?.BodyPartEffects;
                 string[] followerBuffs = followerPlayer.HealthController?.ActiveBuffsNames() ?? Array.Empty<string>();
-                List<string> victimZones = victim.TriggerZones ?? new List<string>();
-                List<string> victimEquipment = victim.Inventory?.EquippedInSlotsTemplateIds ?? new List<string>();
+                var victimZones = victim.TriggerZones ?? new Il2CppSystem.Collections.Generic.List<string>();
+                var victimEquipment = victim.Inventory?.EquippedInSlotsTemplateIds ?? new Il2CppSystem.Collections.Generic.List<string>();
                 string victimRole = victim.Profile?.Info?.Settings?.Role.ToStringNoBox<WildSpawnType>() ?? string.Empty;
 
                 foreach (string target in targets)
@@ -754,6 +915,7 @@ namespace pitTeam.Patches
         [PatchPostfix]
         private static void PatchPostfix(Player __instance)
         {
+            pitTeam.Compat.Spt5RuntimeInstallProbe.RecordShot(__instance);
             pitAIBossPlayer? bossPlayer = BossPlayers.GetBoss(__instance.ProfileId);
             if (bossPlayer == null)
             {

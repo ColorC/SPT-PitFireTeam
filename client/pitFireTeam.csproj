@@ -1,12 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <TargetFramework>net472</TargetFramework>
+        <TargetFramework>net6.0</TargetFramework>
         <OutputType>Library</OutputType>
         <RootNamespace>pitTeam</RootNamespace>
         <AssemblyName>pitFireTeam</AssemblyName>
         <Version>0.10.3</Version>
         <LangVersion>latest</LangVersion>
         <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <NoWarn>$(NoWarn);CS0618;CS0649;CS8600;CS8601;CS8602;CS8604;CS8618;CS8620;CS8625</NoWarn>
         <Deterministic>true</Deterministic>
         <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
@@ -14,141 +15,167 @@
 
     <ItemGroup>
         <Reference Include="0Harmony">
-            <HintPath>libs\0Harmony.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\core\0Harmony.dll</HintPath>
         </Reference>
         <Reference Include="Assembly-CSharp, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-            <HintPath>libs4.1\Assembly-CSharp.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\Assembly-CSharp.dll</HintPath>
         </Reference>
         <Reference Include="ConfigurationManager">
-            <HintPath>libs\ConfigurationManager.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\plugins\sptushonka\ConfigurationManager\ConfigurationManager.dll</HintPath>
         </Reference>
         <Reference Include="ItemTemplate.Types, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-            <HintPath>libs4.1\ItemTemplate.Types.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\ItemTemplate.Types.dll</HintPath>
         </Reference>
+        <Reference Include="AnimationSystem.Types"><Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\AnimationSystem.Types.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.AnimationModule"><Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\UnityEngine.AnimationModule.dll</HintPath></Reference>
         <Reference Include="spt-common">
-            <HintPath>libs4.1\spt4.1.0\spt-common.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\plugins\sptushonka\SPTushonka.Common.dll</HintPath>
+        </Reference>
+        <Reference Include="BepInEx.KeyboardShortcut">
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\plugins\sptushonka\ConfigurationManager\BepInEx.KeyboardShortcut.dll</HintPath>
         </Reference>
         <Reference Include="BepInEx">
-            <HintPath>libs4.1\BepInEx.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\core\BepInEx.Core.dll</HintPath>
+        </Reference>
+        <Reference Include="Il2CppSystem"><Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\Il2CppSystem.dll</HintPath></Reference>
+        <Reference Include="BSG.GameSettings"><Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\BSG.GameSettings.dll</HintPath></Reference>
+        <Reference Include="BitPacking"><Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\BitPacking.dll</HintPath></Reference>
+        <Reference Include="Diz.Jobs"><Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\Diz.Jobs.dll</HintPath></Reference>
+        <Reference Include="CoreServices">
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\CoreServices.dll</HintPath>
         </Reference>
         <Reference Include="bsg.console.core">
-            <HintPath>libs4.1\bsg.console.core.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\bsg.console.core.dll</HintPath>
         </Reference>
         <Reference Include="Comfort">
-            <HintPath>libs4.1\Comfort.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\Comfort.dll</HintPath>
         </Reference>
         <Reference Include="Comfort.Unity">
-            <HintPath>libs4.1\Comfort.Unity.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\Comfort.Unity.dll</HintPath>
         </Reference>
         <Reference Include="CommonExtensions">
-            <HintPath>libs4.1\CommonExtensions.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\CommonExtensions.dll</HintPath>
         </Reference>
         <Reference Include="DissonanceVoip, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-            <HintPath>libs4.1\DissonanceVoip.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\DissonanceVoip.dll</HintPath>
         </Reference>
         <Reference Include="DrakiaXYZ-BigBrain">
-            <HintPath>libs4.1\DrakiaXYZ-BigBrain.dll</HintPath>
+            <Private>false</Private><HintPath>$(BigBrainAssemblyPath)</HintPath>
         </Reference>
         <Reference Include="ItemComponent.Types">
-            <HintPath>libs4.1\ItemComponent.Types.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\ItemComponent.Types.dll</HintPath>
         </Reference>
-        <Reference Include="Newtonsoft.Json">
-            <HintPath>libs4.1\Newtonsoft.Json.dll</HintPath>
+        <Reference Include="Diz.Binding">
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\Diz.Binding.dll</HintPath>
+        </Reference>
+        <Reference Include="NetworkPackets">
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\NetworkPackets.dll</HintPath>
+        </Reference>
+        <Reference Include="PlayerEnums">
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\PlayerEnums.dll</HintPath>
+        </Reference>
+        <Reference Include="Il2CppSystem.Core">
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\Il2CppSystem.Core.dll</HintPath>
+        </Reference>
+        <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=null"><SpecificVersion>true</SpecificVersion><Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\Newtonsoft.Json.dll</HintPath><Aliases>NativeJson</Aliases></Reference>
+        <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed"><SpecificVersion>true</SpecificVersion><Private>false</Private>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\plugins\Newtonsoft.Json.dll</HintPath>
         </Reference>
         <Reference Include="Sirenix.Serialization">
-            <HintPath>libs4.1\Sirenix.Serialization.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\Sirenix.Serialization.dll</HintPath>
         </Reference>
         <Reference Include="spt-reflection">
-            <HintPath>libs4.1\spt4.1.0\spt-reflection.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\plugins\sptushonka\SPTushonka.Reflection.dll</HintPath>
         </Reference>
-
-        <Reference Include="System" />
-        <Reference Include="System.Core" />
-        <Reference Include="System.Data" />
-        <Reference Include="System.Drawing" />
-        <Reference Include="System.IO.Compression" />
-        <Reference Include="System.IO.Compression.FileSystem" />
-        <Reference Include="System.Numerics" />
-        <Reference Include="System.Runtime.Serialization" />
-        <Reference Include="System.Xml" />
-        <Reference Include="System.Xml.Linq" />
 
         <Reference Include="UnityEngine">
-            <HintPath>libs\UnityEngine.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\UnityEngine.dll</HintPath>
         </Reference>
         <Reference Include="Unity.Postprocessing.Runtime">
-            <HintPath>libs\Unity.Postprocessing.Runtime.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\Unity.Postprocessing.Runtime.dll</HintPath>
         </Reference>
         <Reference Include="Unity.TextMeshPro">
-            <HintPath>libs\Unity.TextMeshPro.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\Unity.TextMeshPro.dll</HintPath>
         </Reference>
 
         <Reference Include="UnityEngine.AIModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-            <HintPath>libs\UnityEngine.AIModule.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\UnityEngine.AIModule.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.AssetBundleModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-            <HintPath>libs\UnityEngine.AssetBundleModule.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\UnityEngine.AssetBundleModule.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.AudioModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-            <HintPath>libs\UnityEngine.AudioModule.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\UnityEngine.AudioModule.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-            <HintPath>libs\UnityEngine.CoreModule.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\UnityEngine.CoreModule.dll</HintPath>
         </Reference>
+        <Reference Include="UnityEngine.ScreenCaptureModule"><Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\UnityEngine.ScreenCaptureModule.dll</HintPath></Reference>
         <Reference Include="UnityEngine.ImageConversionModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-            <HintPath>libs\UnityEngine.ImageConversionModule.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\UnityEngine.ImageConversionModule.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.IMGUIModule">
-            <HintPath>libs\UnityEngine.IMGUIModule.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\UnityEngine.IMGUIModule.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.InputLegacyModule">
-            <HintPath>libs\UnityEngine.InputLegacyModule.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\UnityEngine.InputLegacyModule.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.InputModule">
-            <HintPath>libs\UnityEngine.InputModule.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\UnityEngine.InputModule.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.PhysicsModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-            <HintPath>libs\UnityEngine.PhysicsModule.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\UnityEngine.PhysicsModule.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.TextRenderingModule">
-            <HintPath>libs\UnityEngine.TextRenderingModule.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\UnityEngine.TextRenderingModule.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.UI">
-            <HintPath>libs\UnityEngine.UI.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\UnityEngine.UI.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.UIModule">
-            <HintPath>libs\UnityEngine.UIModule.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\UnityEngine.UIModule.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.UnityWebRequestAudioModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-            <HintPath>libs\UnityEngine.UnityWebRequestAudioModule.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\UnityEngine.UnityWebRequestAudioModule.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.UnityWebRequestModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-            <HintPath>libs\UnityEngine.UnityWebRequestModule.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\UnityEngine.UnityWebRequestModule.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.UnityWebRequestWWWModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-            <HintPath>libs\UnityEngine.UnityWebRequestWWWModule.dll</HintPath>
+            <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\UnityEngine.UnityWebRequestWWWModule.dll</HintPath>
         </Reference>
     </ItemGroup>
 
     <ItemGroup>
-        <None Remove="libs\**\*" />
-        <None Remove="libs4.1\**\*" />
+        <None Remove="$(ClientRuntimeRoot)\BepInEx\interop\**\*" />
+        <None Remove="$(ClientRuntimeRoot)\BepInEx\interop\**\*" />
         <None Include=".editorconfig" />
     </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="BepInEx.Unity.IL2CPP">
+      <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\core\BepInEx.Unity.IL2CPP.dll</HintPath>
+    </Reference>
+    <Reference Include="Il2CppInterop.Runtime">
+      <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\core\Il2CppInterop.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="Il2Cppmscorlib">
+      <Private>false</Private><HintPath>$(ClientRuntimeRoot)\BepInEx\interop\Il2Cppmscorlib.dll</HintPath>
+    </Reference>
+  </ItemGroup>
     <Target Name="ValidateSptClientReferences" BeforeTargets="ResolveReferences">
-        <!-- These are the SPT libraries called by the core plugin. Keep the 4.1.0 baseline. -->
+        <!-- These are the SPT libraries called by the core plugin. Use the extracted SPT 5.0 client libraries. -->
         <ItemGroup>
-            <SptClientReference Include="$(MSBuildProjectDirectory)/libs4.1/spt4.1.0/spt-common.dll" />
-            <SptClientReference Include="$(MSBuildProjectDirectory)/libs4.1/spt4.1.0/spt-reflection.dll" />
+            <SptClientReference Include="$(ClientRuntimeRoot)\BepInEx\plugins\sptushonka\SPTushonka.Common.dll" />
+            <SptClientReference Include="$(ClientRuntimeRoot)\BepInEx\plugins\sptushonka\SPTushonka.Reflection.dll" />
         </ItemGroup>
         <Error Condition="!Exists('%(SptClientReference.Identity)')"
-               Text="Required SPT 4.1.0 client reference was not found: %(SptClientReference.Identity)" />
+               Text="Required SPT 5.0.0 client reference was not found: %(SptClientReference.Identity)" />
         <GetAssemblyIdentity AssemblyFiles="@(SptClientReference)">
             <Output TaskParameter="Assemblies" ItemName="SptClientReferenceIdentity" />
         </GetAssemblyIdentity>
-        <Error Condition="'%(SptClientReferenceIdentity.Version)' != '4.1.0.0'"
-               Text="SPT 4.1.x compatibility requires 4.1.0.0 compile references. %(SptClientReferenceIdentity.Identity) is %(SptClientReferenceIdentity.Version)." />
+        <Error Condition="'%(SptClientReferenceIdentity.Version)' != '5.0.0.0'"
+               Text="SPT 5.0 compatibility requires 5.0.0.0 compile references. %(SptClientReferenceIdentity.Identity) is %(SptClientReferenceIdentity.Version)." />
     </Target>
 
     <Target Name="BuildSAINAddon" AfterTargets="Build" Condition="'$(BuildSAINAddon)' != 'false' and '$(IsBuildingSAINAddon)' != 'true'">
@@ -157,4 +184,8 @@
                  Properties="Configuration=$(Configuration);Platform=$(Platform);BuildProjectReferences=false;IsBuildingSAINAddon=true;OutDir=$(OutDir)" />
     </Target>
 
+  <Target Name="VerifySpt5InteropContracts" AfterTargets="Build"
+          Condition="'$(SkipSpt5Contracts)' != 'true' and '$(IsBuildingSAINAddon)' != 'true'">
+    <Exec Command="powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\tests\Check-Spt5Build.ps1&quot; -ModDll &quot;$(TargetPath)&quot; -ClientRuntimeRoot &quot;$(ClientRuntimeRoot)&quot; -ModKind pitFireTeam" />
+  </Target>
 </Project>

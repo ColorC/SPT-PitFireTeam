@@ -3,7 +3,7 @@ using EFT.InventoryLogic;
 using pitTeam.BigBrain;
 using pitTeam.Modules;
 using HarmonyLib;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -93,8 +93,9 @@ namespace pitTeam.Patches
             }
 
             UpdateEnemyState(botOwner);
+            var lastDecision = botOwner.Brain?.LastDecision;
             return IsInEnemyNullCooldown(botOwner) &&
-                   botOwner.Brain?.LastDecision == BotLogicDecision.holdPosition;
+                   lastDecision.HasValue && lastDecision.Value == BotLogicDecision.holdPosition;
         }
 
         public static bool ShouldAllowSupportNoAmmoMainSwitch(BotOwner botOwner, BotReload reload)
@@ -256,7 +257,7 @@ namespace pitTeam.Patches
                             botOwner,
                             handsWeapon,
                             slot.Value,
-                            weaponManager.ChangeToMode);
+                            (Il2CppSystem.Func<Weapon.EFireMode, bool>)(mode => weaponManager.ChangeToMode(mode)));
                     }
                 }
             }
@@ -354,7 +355,7 @@ namespace pitTeam.Patches
             return false;
         }
 
-        [PatchFinalizer]
+        [HarmonyFinalizer]
         private static Exception PatchFinalizer(BotWeaponSelector __instance, Exception __exception)
         {
             return FollowerWeaponSwitchPolicyRuntime.TryRecoverFollowerWeaponTakenException(__instance, __exception)
@@ -397,7 +398,7 @@ namespace pitTeam.Patches
             {
                 typeof(bool),
                 typeof(EFT.InventoryLogic.Magazine).MakeByRefType(),
-                typeof(List<EFT.InventoryLogic.Ammo>).MakeByRefType(),
+                typeof(Il2CppSystem.Collections.Generic.List<EFT.InventoryLogic.Ammo>).MakeByRefType(),
             });
         }
 

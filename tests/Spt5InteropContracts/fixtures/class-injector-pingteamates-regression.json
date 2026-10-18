@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 1,
+  "sourceEvidence": {
+    "logPath": "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261014w-LogOutput-after-mainmenu.log",
+    "registrationRefusal": "[Error  :Il2CppInterop] Assembly pitFireTeam.dll is not registered in il2cpp",
+    "exceptionType": "System.NullReferenceException",
+    "throwFrame": "Il2CppInterop.Runtime.Injection.ClassInjector.ConvertMethodInfo(MethodInfo monoMethod, INativeClassStruct declaringClass)",
+    "lineNumber": 755,
+    "entryFrame": "pitTeam.Utils.PingTeamates.Enable()",
+    "unsupportedWarnings": [
+      "Method Boolean RefreshFollowerRoster(EFT.Player, System.Collections.Generic.List`1[pitTeam.Components.BotFollowerPlayer]) on type pitTeam.Utils.PingTeamates has unsupported parameter System.Collections.Generic.List`1[pitTeam.Components.BotFollowerPlayer] followers of type System.Collections.Generic.List`1[pitTeam.Components.BotFollowerPlayer]",
+      "Method Void DrawBotGUI(pitTeam.Utils.BotData) on type pitTeam.Utils.PingTeamates has unsupported parameter pitTeam.Utils.BotData bt of type pitTeam.Utils.BotData",
+      "Method Void DrawEnemyMarkerGUI(pitTeam.Utils.EnemyMarkerContact) on type pitTeam.Utils.PingTeamates has unsupported parameter pitTeam.Utils.EnemyMarkerContact contact of type pitTeam.Utils.EnemyMarkerContact",
+      "Method pitTeam.Utils.EnemyMarkerContact GetClosestReportedContact(UnityEngine.Vector3) on type pitTeam.Utils.PingTeamates has unsupported return type pitTeam.Utils.EnemyMarkerContact",
+      "Method Void DrawEnemyMarker(pitTeam.Utils.EnemyMarkerContact, UnityEngine.Vector3, UnityEngine.Texture2D, Boolean) on type pitTeam.Utils.PingTeamates has unsupported parameter pitTeam.Utils.EnemyMarkerContact contact of type pitTeam.Utils.EnemyMarkerContact"
+    ]
+  },
+  "component": "pitTeam.Utils.PingTeamates",
+  "hiddenMethods": [
+    {
+      "name": "RefreshFollowerRoster",
+      "returnType": "System.Boolean",
+      "parameterTypes": [
+        "EFT.Player",
+        "System.Collections.Generic.List`1<pitTeam.Components.BotFollowerPlayer>"
+      ]
+    },
+    {
+      "name": "DrawBotGUI",
+      "returnType": "System.Void",
+      "parameterTypes": [
+        "pitTeam.Utils.BotData"
+      ]
+    },
+    {
+      "name": "DrawEnemyMarkerGUI",
+      "returnType": "System.Void",
+      "parameterTypes": [
+        "pitTeam.Utils.EnemyMarkerContact"
+      ]
+    },
+    {
+      "name": "GetClosestReportedContact",
+      "returnType": "pitTeam.Utils.EnemyMarkerContact",
+      "parameterTypes": [
+        "UnityEngine.Vector3"
+      ]
+    },
+    {
+      "name": "DrawEnemyMarker",
+      "returnType": "System.Void",
+      "parameterTypes": [
+        "pitTeam.Utils.EnemyMarkerContact",
+        "UnityEngine.Vector3",
+        "UnityEngine.Texture2D",
+        "System.Boolean"
+      ]
+    }
+  ],
+  "byRefManagedValueTypeMethods": [
+    {
+      "name": "TryResolveEnemyMarker",
+      "returnType": "System.Boolean",
+      "parameterTypes": [
+        "System.String",
+        "pitTeam.Utils.PingTeamates/EnemyMarkerResolution&"
+      ],
+      "managedValueType": "pitTeam.Utils.PingTeamates/EnemyMarkerResolution"
+    }
+  ],
+  "followupXEvidence": {
+    "logPath": "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261014x-LogOutput-after-crash.log",
+    "probePath": "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261014x-probe\\probe-x-normal-world01.json",
+    "unsupportedWarningCount": 0,
+    "nreLine": 97,
+    "secondAttemptFailure": "PingTeamates does not have a corresponding IL2CPP class pointer"
+  },
+  "visibleUnityCallbacks": [
+    {
+      "name": "Update",
+      "returnType": "System.Void",
+      "parameterTypes": []
+    },
+    {
+      "name": "OnGUI",
+      "returnType": "System.Void",
+      "parameterTypes": []
+    }
+  ],
+  "radioSound": "pitTeam.Modules.RadioSound",
+  "radioSoundHiddenMethods": [
+    {
+      "name": "EnableCoreAsync",
+      "parameterCount": 0
+    },
+    {
+      "name": "EnableAsync",
+      "parameterCount": 0
+    },
+    {
+      "name": "GetSound",
+      "parameterCount": 0
+    },
+    {
+      "name": "LoadAudioClip",
+      "parameterCount": 1
+    },
+    {
+      "name": "PlayRadioBeep",
+      "parameterCount": 0
+    },
+    {
+      "name": "PlayRadioSound",
+      "parameterCount": 1
+    },
+    {
+      "name": "PlayLocationSound",
+      "parameterCount": 1
+    },
+    {
+      "name": "ResolveSoundPath",
+      "parameterCount": 1
+    }
+  ],
+  "radioSoundMethodSignatures": [
+    {
+      "name": "EnableAsync",
+      "returnType": "System.Threading.Tasks.Task",
+      "parameterTypes": [],
+      "hideFromIl2Cpp": true
+    },
+    {
+      "name": "EnableCoreAsync",
+      "returnType": "System.Threading.Tasks.Task",
+      "parameterTypes": [],
+      "hideFromIl2Cpp": true
+    },
+    {
+      "name": "Update",
+      "returnType": "System.Void",
+      "parameterTypes": [],
+      "hideFromIl2Cpp": false
+    }
+  ]
+}

@@ -52,7 +52,7 @@ namespace pitTeam.Modules
                 return;
             }
 
-            var players = new List<Player>(gameWorld.AllAlivePlayersList);
+            var players = gameWorld.AllAlivePlayersList;
             var reciprocalHostileGroups = new HashSet<BotsGroup>();
             var reciprocalNeutralGroups = new HashSet<BotsGroup>();
 
@@ -247,7 +247,7 @@ namespace pitTeam.Modules
                     continue;
                 }
 
-                List<WildSpawnType> warnTypes = member.Settings.GetWarnBotTypes();
+                var warnTypes = member.Settings.GetWarnBotTypes();
                 if (!warnTypes.Contains(targetRole))
                 {
                     warnTypes.Add(targetRole);

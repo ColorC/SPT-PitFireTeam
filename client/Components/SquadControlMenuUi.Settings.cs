@@ -12,10 +12,11 @@ using pitTeam.Modules;
 using pitTeam.Patches;
 using pitTeam.Utils;
 using HarmonyLib;
+using Il2CppInterop.Runtime.Attributes;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using PlayerIcons;
-using SPT.Common.Http;
+using SPTushonka.Common.Http;
 using TMPro;
 using System;
 using System.Collections;
@@ -116,14 +117,14 @@ namespace pitTeam.Components
                 return;
             }
 
-            GameObject scrollRootObject = new GameObject("pitFireTeam_SquadControlSettingsScroll", typeof(RectTransform), typeof(ScrollRectNoDrag));
+            GameObject scrollRootObject = new GameObject("pitFireTeam_SquadControlSettingsScroll", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<ScrollRectNoDrag>());
             scrollRootObject.transform.SetParent(panelRect, false);
             RectTransform scrollRoot = scrollRootObject.GetComponent<RectTransform>();
             Stretch(scrollRoot);
             scrollRoot.offsetMin = new Vector2(SettingsViewportSideInset, SettingsViewportBottomInset);
             scrollRoot.offsetMax = new Vector2(-SettingsViewportSideInset, -SettingsViewportTopInset);
 
-            GameObject viewportObject = new GameObject("Viewport", typeof(RectTransform), typeof(Image), typeof(RectMask2D));
+            GameObject viewportObject = new GameObject("Viewport", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>(), Il2CppInterop.Runtime.Il2CppType.Of<RectMask2D>());
             viewportObject.transform.SetParent(scrollRoot, false);
             settingsViewport = viewportObject.GetComponent<RectTransform>();
             settingsViewport.anchorMin = Vector2.zero;
@@ -138,7 +139,7 @@ namespace pitTeam.Components
             settingsScrollbar = CreateRosterScrollbar(scrollRoot);
             settingsScrollbar.name = "pitFireTeam_SquadControlSettingsScrollbar";
 
-            GameObject contentObject = new GameObject("pitFireTeam_SquadControlSettingsContent", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+            GameObject contentObject = new GameObject("pitFireTeam_SquadControlSettingsContent", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<VerticalLayoutGroup>(), Il2CppInterop.Runtime.Il2CppType.Of<ContentSizeFitter>());
             contentObject.transform.SetParent(settingsViewport, false);
             settingsContentRoot = contentObject.GetComponent<RectTransform>();
             settingsContentRoot.anchorMin = new Vector2(0f, 1f);
@@ -203,6 +204,7 @@ namespace pitTeam.Components
             }
 
             string currentSection = null;
+            bool settingsFailed = false;
             foreach (SquadSettingEntry setting in BuildSquadSettingsEntries())
             {
                 if (!string.Equals(currentSection, setting.SectionTitle, StringComparison.Ordinal))
@@ -211,8 +213,23 @@ namespace pitTeam.Components
                     CreateSettingsSectionHeader(currentSection);
                 }
 
-                CreateSettingsEntryRow(setting);
+                int firstRowChild = settingsContentRoot.childCount;
+                try { CreateSettingsEntryRow(setting); }
+                catch (Exception ex)
+                {
+                    settingsFailed = true;
+                    for (int child = settingsContentRoot.childCount - 1; child >= firstRowChild; child--)
+                    {
+                        var failedRow = settingsContentRoot.GetChild(child).gameObject;
+                        failedRow.SetActive(false);
+                        Destroy(failedRow);
+                    }
+                    Modules.Logger.LogError($"[UI] Failed to create squad setting '{setting.Entry?.Definition?.Key}' in '{setting.SectionTitle}'.");
+                    Modules.Logger.LogError(ex);
+                }
             }
+            if (settingsFailed)
+                NotificationManager.DisplayWarningNotification(GetSocialUiText("SettingsControlsUnavailable"), ENotificationDurationType.Default);
 
             LayoutRebuilder.ForceRebuildLayoutImmediate(settingsContentRoot);
             if (settingsScrollRect != null)
@@ -220,7 +237,7 @@ namespace pitTeam.Components
                 SetSettingsTopScrollOffset(targetTopScrollOffset);
                 if (preserveScrollPosition)
                 {
-                    settingsScrollRestoreCoroutine = StartCoroutine(
+                    settingsScrollRestoreCoroutine = pitFireTeam.Instance.StartCoroutine(
                         RestoreSettingsScrollPositionAfterLayout(targetTopScrollOffset));
                 }
             }
@@ -255,6 +272,7 @@ namespace pitTeam.Components
             settingsScrollRect.SetContentAnchoredPosition(anchoredPosition);
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private IEnumerator RestoreSettingsScrollPositionAfterLayout(float targetTopScrollOffset)
         {
             yield return null;
@@ -307,9 +325,10 @@ namespace pitTeam.Components
                 return;
             }
 
-            settingsWarmupCoroutine = StartCoroutine(WarmRaidSettingsEntriesCoroutine());
+            settingsWarmupCoroutine = pitFireTeam.Instance.StartCoroutine(WarmRaidSettingsEntriesCoroutine());
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private IEnumerator WarmRaidSettingsEntriesCoroutine()
         {
             yield return null;
@@ -323,6 +342,7 @@ namespace pitTeam.Components
             EnsureSettingsEntriesForCurrentContext();
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private IEnumerable<SquadSettingEntry> BuildSquadSettingsEntries()
         {
             foreach (SquadSettingEntry setting in BuildSettingsSection(
@@ -502,7 +522,7 @@ namespace pitTeam.Components
 
         private void CreateSettingsSectionHeader(string title)
         {
-            GameObject headerObject = new GameObject($"pitFireTeam_SettingsHeader_{title}", typeof(RectTransform), typeof(LayoutElement));
+            GameObject headerObject = new GameObject($"pitFireTeam_SettingsHeader_{title}", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<LayoutElement>());
             headerObject.transform.SetParent(settingsContentRoot, false);
 
             LayoutElement layout = headerObject.GetComponent<LayoutElement>();
@@ -522,7 +542,7 @@ namespace pitTeam.Components
             label.fontWeight = FontWeight.Bold;
             label.fontSize = 20f;
 
-            GameObject dividerObject = new GameObject("Divider", typeof(RectTransform), typeof(Image));
+            GameObject dividerObject = new GameObject("Divider", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             dividerObject.transform.SetParent(headerObject.transform, false);
             RectTransform dividerRect = dividerObject.GetComponent<RectTransform>();
             dividerRect.anchorMin = new Vector2(0f, 0f);
@@ -536,6 +556,7 @@ namespace pitTeam.Components
             divider.raycastTarget = false;
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private void CreateSettingsEntryRow(SquadSettingEntry setting)
         {
             if (setting?.LoadoutMode is LoadoutManagementMode loadoutMode)
@@ -547,6 +568,7 @@ namespace pitTeam.Components
             CreateSettingsEntryRow(setting?.Entry);
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private void CreateSettingsEntryRow(ConfigEntryBase entry)
         {
             if (entry == null)
@@ -557,9 +579,9 @@ namespace pitTeam.Components
             bool disabledDuringRaid = ShouldDisableSettingDuringRaid(entry);
             GameObject rowObject = new GameObject(
                 $"pitFireTeam_Setting_{SanitizeName(entry.Definition.Key)}",
-                typeof(RectTransform),
-                typeof(Image),
-                typeof(LayoutElement));
+                Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(),
+                Il2CppInterop.Runtime.Il2CppType.Of<Image>(),
+                Il2CppInterop.Runtime.Il2CppType.Of<LayoutElement>());
             rowObject.transform.SetParent(settingsContentRoot, false);
 
             LayoutElement layout = rowObject.GetComponent<LayoutElement>();
@@ -618,7 +640,7 @@ namespace pitTeam.Components
             descriptionLabel.enableWordWrapping = true;
             descriptionLabel.overflowMode = TextOverflowModes.Ellipsis;
 
-            RectTransform controlRect = new GameObject("Control", typeof(RectTransform)).GetComponent<RectTransform>();
+            RectTransform controlRect = new GameObject("Control", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>()).GetComponent<RectTransform>();
             controlRect.SetParent(rowObject.transform, false);
             controlRect.sizeDelta = new Vector2(360f, 72f);
             controlRect.anchoredPosition = new Vector2(-1 * (SettingsControlRightInset + controlRect.sizeDelta.x), 0f);
@@ -637,14 +659,10 @@ namespace pitTeam.Components
 
             if (entry.SettingType == typeof(int) && entry.Description?.AcceptableValues is AcceptableValueRange<int> acceptableRange)
             {
-                if (IsLootPriceSetting(entry))
-                {
-                    controlRect.anchorMin = new Vector2(1f, 0.5f);
-                    controlRect.anchorMax = new Vector2(1f, 0.5f);
-                    controlRect.pivot = new Vector2(1f, 0.5f);
-                }
-
-                controlRect.anchoredPosition = new Vector2(-SettingsControlRightInset, SettingsSliderVerticalOffset);
+                controlRect.anchorMin = new Vector2(1f, 0.5f);
+                controlRect.anchorMax = new Vector2(1f, 0.5f);
+                controlRect.pivot = new Vector2(1f, 0.5f);
+                controlRect.anchoredPosition = new Vector2(-SettingsControlRightInset, 0f);
                 CreateIntSliderSettingControl(controlRect, entry, acceptableRange, !disabledDuringRaid);
                 AddRaidDisabledTooltipOverlay(rowObject, disabledDuringRaid);
                 return;
@@ -691,14 +709,15 @@ namespace pitTeam.Components
                 || entry == pitFireTeam.statusReportAlwaysHighlight;
         }
 
+        [HideFromIl2Cpp]
         private void CreateLoadoutManagementEntryRow(LoadoutManagementMode mode)
         {
             bool disabledDuringRaid = IsRaidActive();
             GameObject rowObject = new GameObject(
                 $"pitFireTeam_Setting_LoadoutManagement_{mode}",
-                typeof(RectTransform),
-                typeof(Image),
-                typeof(LayoutElement));
+                Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(),
+                Il2CppInterop.Runtime.Il2CppType.Of<Image>(),
+                Il2CppInterop.Runtime.Il2CppType.Of<LayoutElement>());
             rowObject.transform.SetParent(settingsContentRoot, false);
 
             LayoutElement layout = rowObject.GetComponent<LayoutElement>();
@@ -752,7 +771,7 @@ namespace pitTeam.Components
             descriptionLabel.enableWordWrapping = true;
             descriptionLabel.overflowMode = TextOverflowModes.Ellipsis;
 
-            RectTransform controlRect = new GameObject("Control", typeof(RectTransform)).GetComponent<RectTransform>();
+            RectTransform controlRect = new GameObject("Control", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>()).GetComponent<RectTransform>();
             controlRect.SetParent(rowObject.transform, false);
             controlRect.anchorMin = new Vector2(1f, 0.5f);
             controlRect.anchorMax = new Vector2(1f, 0.5f);
@@ -766,7 +785,7 @@ namespace pitTeam.Components
 
         private static void CreateSettingsRowChrome(Transform rowTransform)
         {
-            GameObject topLineObject = new GameObject("TopLine", typeof(RectTransform), typeof(Image));
+            GameObject topLineObject = new GameObject("TopLine", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             topLineObject.transform.SetParent(rowTransform, false);
 
             RectTransform topLineRect = topLineObject.GetComponent<RectTransform>();
@@ -780,7 +799,7 @@ namespace pitTeam.Components
             topLine.color = new Color(0.68f, 0.58f, 0.38f, 0.14f);
             topLine.raycastTarget = false;
 
-            GameObject bottomLineObject = new GameObject("BottomLine", typeof(RectTransform), typeof(Image));
+            GameObject bottomLineObject = new GameObject("BottomLine", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             bottomLineObject.transform.SetParent(rowTransform, false);
 
             RectTransform bottomLineRect = bottomLineObject.GetComponent<RectTransform>();
@@ -795,6 +814,7 @@ namespace pitTeam.Components
             bottomLine.raycastTarget = false;
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private bool ShouldDisableSettingDuringRaid(ConfigEntryBase entry)
         {
             return IsRaidRestrictedSettingsContext() && RequiresRaidRestart(entry);
@@ -873,11 +893,6 @@ namespace pitTeam.Components
                     return false;
                 }
 
-                if (LocalGameCtorPatch.Instance != null)
-                {
-                    return true;
-                }
-
                 return Singleton<AbstractGame>.Instantiated
                     && Singleton<GameWorld>.Instantiated
                     && Singleton<GameWorld>.Instance != null
@@ -901,7 +916,7 @@ namespace pitTeam.Components
                 return;
             }
 
-            GameObject tooltipAreaObject = new GameObject("pitFireTeam_SettingDisabledDuringRaidTooltip", typeof(RectTransform), typeof(Image));
+            GameObject tooltipAreaObject = new GameObject("pitFireTeam_SettingDisabledDuringRaidTooltip", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             tooltipAreaObject.transform.SetParent(rowObject.transform, false);
 
             RectTransform tooltipAreaRect = tooltipAreaObject.GetComponent<RectTransform>();
@@ -915,7 +930,7 @@ namespace pitTeam.Components
             tooltipAreaImage.color = new Color(0f, 0f, 0f, 0f);
             tooltipAreaImage.raycastTarget = true;
 
-            ProfileTooltipHoverController tooltipHover = tooltipAreaObject.AddComponent<ProfileTooltipHoverController>();
+            ProfileTooltipHoverController tooltipHover = tooltipAreaObject.AddComponentViaIl2CppType<ProfileTooltipHoverController>();
             tooltipHover.Configure(GetSocialUiText("SettingsUnavailableDuringRaid"));
         }
 
@@ -948,6 +963,7 @@ namespace pitTeam.Components
             }
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private void CreateBoolSettingControl(RectTransform parent, ConfigEntryBase entry, bool interactable)
         {
             UpdatableToggle toggle = CloneStockToggle(parent);
@@ -959,26 +975,22 @@ namespace pitTeam.Components
                 SetSettingsControlInteractable(fallbackToggle.transform, interactable);
                 if (interactable)
                 {
-                    fallbackToggle.onValueChanged.AddListener(isOn =>
-                    {
+                    fallbackToggle.onValueChanged.AddListener((System.Action<bool>)(isOn => {
                         entry.BoxedValue = isOn;
-                        pitFireTeam.Instance?.Config.Save();
-                    });
+                        pitFireTeam.Instance?.Config.Save();}));
                 }
                 return;
             }
 
             bool currentValue = entry.BoxedValue is bool boolValue && boolValue;
-            toggle.UpdateValue(currentValue, false, null, null);
+            toggle.UpdateValue(currentValue, false, ((bool?)null).ToNativeNullable(), ((bool?)null).ToNativeNullable());
             SetSettingsControlInteractable(toggle.transform, interactable);
             toggle.enabled = interactable;
             if (interactable)
             {
-                toggle.Bind(isOn =>
-                {
+                toggle.Bind((System.Action<bool>)(isOn => {
                     entry.BoxedValue = isOn;
-                    pitFireTeam.Instance?.Config.Save();
-                });
+                    pitFireTeam.Instance?.Config.Save();}));
             }
         }
 
@@ -998,6 +1010,7 @@ namespace pitTeam.Components
             }
         }
 
+        [HideFromIl2Cpp]
         private void CreateLoadoutManagementRadioControl(RectTransform parent, LoadoutManagementMode mode, string label, bool interactable)
         {
             Image hoverBackground = CreateLoadoutManagementHoverBackground(parent);
@@ -1008,11 +1021,11 @@ namespace pitTeam.Components
                 fallbackToggle.SetIsOnWithoutNotify(pitFireTeam.loadoutManagementMode?.Value == mode);
                 loadoutManagementFallbackToggles[mode] = fallbackToggle;
                 SetSettingsControlInteractable(fallbackToggle.transform, interactable);
-                CreateLoadoutManagementClickOverlay(parent, fallbackToggle.transform as RectTransform, hoverBackground, mode, interactable);
+                CreateLoadoutManagementClickOverlay(parent, pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(fallbackToggle.transform), hoverBackground, mode, interactable);
                 return;
             }
 
-            RectTransform rect = toggle.transform as RectTransform;
+            RectTransform rect = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(toggle.transform);
             if (rect != null)
             {
                 rect.anchorMin = new Vector2(0f, 0.5f);
@@ -1047,27 +1060,24 @@ namespace pitTeam.Components
                 toggle.SpawnedObject.interactable = interactable;
                 if (interactable)
                 {
-                    toggle.SpawnedObject.OnMouseDown += () =>
-                    {
+                    toggle.SpawnedObject.OnMouseDown += (System.Action)(() => {
                         Modules.Logger.LogInfo($"[UI] Loadout management toggle clicked: {mode}");
-                        RequestLoadoutManagementModeChange(mode);
-                    };
-                    toggle.SpawnedObject.onValueChanged.AddListener(isOn =>
-                    {
-                        Modules.Logger.LogInfo($"[UI] Loadout management toggle value changed: {mode}={isOn}");
-                    });
+                        RequestLoadoutManagementModeChange(mode);});
+                    toggle.SpawnedObject.onValueChanged.AddListener((System.Action<bool>)(isOn => {
+                        Modules.Logger.LogInfo($"[UI] Loadout management toggle value changed: {mode}={isOn}");}));
                 }
             }
 
             toggle.ToggleSilently(pitFireTeam.loadoutManagementMode?.Value == mode);
             loadoutManagementToggleSpawners[mode] = toggle;
             SetSettingsControlInteractable(toggle.transform, interactable);
-            CreateLoadoutManagementClickOverlay(parent, toggle.transform as RectTransform, hoverBackground, mode, interactable);
+            CreateLoadoutManagementClickOverlay(parent, pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(toggle.transform), hoverBackground, mode, interactable);
         }
 
+        [HideFromIl2Cpp]
         private void CreateLoadoutManagementClickOverlay(RectTransform parent, RectTransform hoverTarget, Image hoverBackground, LoadoutManagementMode mode, bool interactable)
         {
-            GameObject overlayObject = new GameObject("pitFireTeam_LoadoutManagementClickOverlay", typeof(RectTransform), typeof(Image));
+            GameObject overlayObject = new GameObject("pitFireTeam_LoadoutManagementClickOverlay", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             overlayObject.transform.SetParent(parent, false);
 
             RectTransform overlayRect = overlayObject.GetComponent<RectTransform>();
@@ -1078,7 +1088,7 @@ namespace pitTeam.Components
             overlayImage.color = new Color(0f, 0f, 0f, 0.001f);
             overlayImage.raycastTarget = interactable;
 
-            LoadoutModeToggleHoverController hoverController = overlayObject.AddComponent<LoadoutModeToggleHoverController>();
+            LoadoutModeToggleHoverController hoverController = overlayObject.AddComponentViaIl2CppType<LoadoutModeToggleHoverController>();
             hoverController.Configure(hoverTarget, hoverBackground);
             if (interactable)
             {
@@ -1092,7 +1102,7 @@ namespace pitTeam.Components
 
         private static Image CreateLoadoutManagementHoverBackground(RectTransform parent)
         {
-            GameObject backgroundObject = new GameObject("HoverBackground", typeof(RectTransform), typeof(Image));
+            GameObject backgroundObject = new GameObject("HoverBackground", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             backgroundObject.transform.SetParent(parent, false);
 
             RectTransform rect = backgroundObject.GetComponent<RectTransform>();
@@ -1139,7 +1149,7 @@ namespace pitTeam.Components
             }
 
             Transform parent = settingsPanel != null ? settingsPanel.transform : settingsContentRoot;
-            GameObject groupObject = new GameObject("pitFireTeam_LoadoutManagementToggleGroup", typeof(RectTransform), typeof(ToggleGroup));
+            GameObject groupObject = new GameObject("pitFireTeam_LoadoutManagementToggleGroup", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<ToggleGroup>());
             groupObject.transform.SetParent(parent, false);
             groupObject.SetActive(true);
 
@@ -1148,6 +1158,7 @@ namespace pitTeam.Components
             return loadoutManagementToggleGroup;
         }
 
+        [HideFromIl2Cpp]
         private void RequestLoadoutManagementModeChange(LoadoutManagementMode mode)
         {
             if (pitFireTeam.loadoutManagementMode == null)
@@ -1172,6 +1183,7 @@ namespace pitTeam.Components
             ApplyLoadoutManagementModeChange(mode);
         }
 
+        [HideFromIl2Cpp]
         private void ApplyLoadoutManagementModeChange(LoadoutManagementMode mode)
         {
             if (pitFireTeam.loadoutManagementMode == null)
@@ -1188,6 +1200,7 @@ namespace pitTeam.Components
             RefreshRosterPortraitsAfterLoadoutManagementSync(serverSyncTask);
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private void RefreshRosterPortraitsAfterLoadoutManagementSync(Task serverSyncTask)
         {
             if (pitFireTeam.Instance == null)
@@ -1205,6 +1218,7 @@ namespace pitTeam.Components
             loadoutManagementRosterRefreshCoroutine = pitFireTeam.Instance.StartCoroutine(RefreshRosterPortraitsAfterLoadoutManagementSyncCoroutine(serverSyncTask));
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private IEnumerator RefreshRosterPortraitsAfterLoadoutManagementSyncCoroutine(Task serverSyncTask)
         {
             while (serverSyncTask != null && !serverSyncTask.IsCompleted)
@@ -1252,6 +1266,7 @@ namespace pitTeam.Components
             }
         }
 
+        [HideFromIl2Cpp]
         private void ShowLoadoutManagementConfirmOverlay(LoadoutManagementMode mode)
         {
             CloseLoadoutManagementConfirmOverlay(rebuild: false);
@@ -1263,7 +1278,7 @@ namespace pitTeam.Components
                 return;
             }
 
-            GameObject overlayRoot = new GameObject("pitFireTeam_LoadoutManagementConfirmOverlay", typeof(RectTransform), typeof(Image));
+            GameObject overlayRoot = new GameObject("pitFireTeam_LoadoutManagementConfirmOverlay", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             overlayRoot.transform.SetParent(overlayParent, false);
             RectTransform overlayRect = overlayRoot.GetComponent<RectTransform>();
             Stretch(overlayRect);
@@ -1273,7 +1288,7 @@ namespace pitTeam.Components
             overlayImage.color = new Color(0f, 0f, 0f, 0.62f);
             overlayImage.raycastTarget = true;
 
-            GameObject panel = new GameObject("pitFireTeam_LoadoutManagementConfirmPanel", typeof(RectTransform), typeof(Image));
+            GameObject panel = new GameObject("pitFireTeam_LoadoutManagementConfirmPanel", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             panel.transform.SetParent(overlayRoot.transform, false);
             RectTransform panelRect = panel.GetComponent<RectTransform>();
             panelRect.anchorMin = new Vector2(0.5f, 0.5f);
@@ -1285,7 +1300,7 @@ namespace pitTeam.Components
             panelImage.color = new Color(0.02f, 0.02f, 0.02f, 0.98f);
             panelImage.raycastTarget = true;
 
-            GameObject header = new GameObject("pitFireTeam_LoadoutManagementConfirmHeader", typeof(RectTransform), typeof(Image));
+            GameObject header = new GameObject("pitFireTeam_LoadoutManagementConfirmHeader", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             header.transform.SetParent(panel.transform, false);
             RectTransform headerRect = header.GetComponent<RectTransform>();
             headerRect.anchorMin = new Vector2(0f, 1f);
@@ -1311,7 +1326,7 @@ namespace pitTeam.Components
             titleRect.offsetMax = new Vector2(-42f, 0f);
 
             Button closeButton = CreateWindowCloseButton(header.transform, "pitFireTeam_LoadoutManagementConfirmCloseButton");
-            if (closeButton.transform is RectTransform closeRect)
+            if (pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(closeButton.transform) is RectTransform closeRect)
             {
                 closeRect.anchorMin = new Vector2(1f, 0.5f);
                 closeRect.anchorMax = new Vector2(1f, 0.5f);
@@ -1319,7 +1334,7 @@ namespace pitTeam.Components
                 closeRect.anchoredPosition = new Vector2(-4f, 0f);
             }
 
-            closeButton.onClick.AddListener(() => CloseLoadoutManagementConfirmOverlay());
+            closeButton.onClick.AddListener((System.Action)(() => CloseLoadoutManagementConfirmOverlay()));
 
             GameObject bodyObject = CreateText(
                 "pitFireTeam_LoadoutManagementConfirmBody",
@@ -1340,7 +1355,7 @@ namespace pitTeam.Components
             DefaultUIButton confirmButton = CreateOverlayActionButton(panel.transform, new Vector2(0f, 10f), new Vector2(180f, 36f));
             confirmButton.SetRawText(GetSocialUiText("LoadoutManagementConfirm"), 22);
             confirmButton.OnClick.RemoveAllListeners();
-            confirmButton.OnClick.AddListener(() => ApplyLoadoutManagementModeChange(mode));
+            confirmButton.OnClick.AddListener((System.Action)(() => ApplyLoadoutManagementModeChange(mode)));
 
             loadoutManagementConfirmOverlay = overlayRoot;
             Modules.Logger.LogInfo($"[UI] Loadout management confirmation overlay opened for mode: {mode}");
@@ -1360,6 +1375,7 @@ namespace pitTeam.Components
             }
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private void CreateIntSliderSettingControl(RectTransform parent, ConfigEntryBase entry, AcceptableValueRange<int> acceptableRange, bool interactable)
         {
             if (IsLootPriceSetting(entry))
@@ -1371,7 +1387,7 @@ namespace pitTeam.Components
             NumberSlider slider = CloneStockNumberSlider(parent);
             if (slider == null)
             {
-                RectTransform sliderRoot = new GameObject("SliderRoot", typeof(RectTransform)).GetComponent<RectTransform>();
+                RectTransform sliderRoot = new GameObject("SliderRoot", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>()).GetComponent<RectTransform>();
                 sliderRoot.SetParent(parent, false);
                 Stretch(sliderRoot);
 
@@ -1385,8 +1401,7 @@ namespace pitTeam.Components
 
                 if (interactable)
                 {
-                    fallbackSlider.onValueChanged.AddListener(value =>
-                    {
+                    fallbackSlider.onValueChanged.AddListener((System.Action<float>)(value => {
                         int boxed = Mathf.RoundToInt(value);
                         if (Equals(entry.BoxedValue, boxed))
                         {
@@ -1395,20 +1410,18 @@ namespace pitTeam.Components
 
                         entry.BoxedValue = boxed;
                         valueLabel.text = boxed.ToString();
-                        pitFireTeam.Instance?.Config.Save();
-                    });
+                        pitFireTeam.Instance?.Config.Save();}));
                 }
                 return;
             }
 
             slider.Show(acceptableRange.MinValue, acceptableRange.MaxValue, "0");
-            slider.UpdateValue(Convert.ToSingle(entry.BoxedValue), false, acceptableRange.MinValue, acceptableRange.MaxValue);
+            slider.UpdateValue(Convert.ToSingle(entry.BoxedValue), false, ((float?)acceptableRange.MinValue).ToNativeNullable(), ((float?)acceptableRange.MaxValue).ToNativeNullable());
             SetSettingsControlInteractable(slider.transform, interactable);
             slider.enabled = interactable;
             if (interactable)
             {
-                slider.Bind(value =>
-                {
+                slider.Bind((System.Action<float>)(value => {
                     int boxed = Mathf.RoundToInt(value);
                     if (Equals(entry.BoxedValue, boxed))
                     {
@@ -1416,11 +1429,11 @@ namespace pitTeam.Components
                     }
 
                     entry.BoxedValue = boxed;
-                    pitFireTeam.Instance?.Config.Save();
-                });
+                    pitFireTeam.Instance?.Config.Save();}));
             }
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private void CreateIntNumericInputSettingControl(RectTransform parent, ConfigEntryBase entry, AcceptableValueRange<int> acceptableRange, bool interactable)
         {
             TMP_InputField input = CloneStockNumberInput(parent) ?? CreateBasicNumberInput(parent);
@@ -1433,6 +1446,7 @@ namespace pitTeam.Components
             ConfigureNumberInput(input, entry, acceptableRange, interactable);
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private void CreateHexColorSettingControl(
             RectTransform parent,
             ConfigEntry<string> entry,
@@ -1447,8 +1461,8 @@ namespace pitTeam.Components
 
             GameObject swatchBorderObject = new GameObject(
                 "pitFireTeam_HexColorSwatchBorder",
-                typeof(RectTransform),
-                typeof(Image));
+                Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(),
+                Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             swatchBorderObject.transform.SetParent(parent, false);
             RectTransform swatchBorderRect = swatchBorderObject.GetComponent<RectTransform>();
             swatchBorderRect.anchorMin = new Vector2(1f, 0.5f);
@@ -1463,8 +1477,8 @@ namespace pitTeam.Components
 
             GameObject swatchObject = new GameObject(
                 "Color",
-                typeof(RectTransform),
-                typeof(Image));
+                Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(),
+                Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             swatchObject.transform.SetParent(swatchBorderObject.transform, false);
             RectTransform swatchRect = swatchObject.GetComponent<RectTransform>();
             Stretch(swatchRect);
@@ -1483,7 +1497,7 @@ namespace pitTeam.Components
             }
 
             input.name = "pitFireTeam_HexColorInput";
-            RectTransform inputRect = input.transform as RectTransform;
+            RectTransform inputRect = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(input.transform);
             if (inputRect != null)
             {
                 inputRect.anchorMin = new Vector2(1f, 0.5f);
@@ -1497,6 +1511,7 @@ namespace pitTeam.Components
             ConfigureHexColorInput(input, entry, defaultHex, swatch, interactable);
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private void ConfigureHexColorInput(
             TMP_InputField input,
             ConfigEntry<string> entry,
@@ -1538,16 +1553,13 @@ namespace pitTeam.Components
                 return;
             }
 
-            input.onSelect.AddListener(_ => ActivateNumberInput(input));
-            input.onValueChanged.AddListener(value =>
-            {
+            input.onSelect.AddListener((System.Action<string>)(_ => ActivateNumberInput(input)));
+            input.onValueChanged.AddListener((System.Action<string>)(value => {
                 if (HexColorSetting.TryNormalize(value, defaultHex, out _, out Color previewColor))
                 {
                     swatch.color = previewColor;
-                }
-            });
-            input.onEndEdit.AddListener(value =>
-            {
+                }}));
+            input.onEndEdit.AddListener((System.Action<string>)(value => {
                 if (!HexColorSetting.TryNormalize(value, defaultHex, out string normalized, out Color color))
                 {
                     input.SetTextWithoutNotify(currentValue);
@@ -1565,8 +1577,7 @@ namespace pitTeam.Components
                 }
 
                 entry.Value = normalized;
-                pitFireTeam.Instance?.Config.Save();
-            });
+                pitFireTeam.Instance?.Config.Save();}));
         }
 
         private static bool IsLootPriceSetting(ConfigEntryBase entry)
@@ -1619,13 +1630,13 @@ namespace pitTeam.Components
             TMP_InputField input = Instantiate(templateInput, parent, false);
             input.name = "pitFireTeam_LootPriceNumberInput";
             input.gameObject.SetActive(true);
-            ConfigureNumberInputRect(input.transform as RectTransform, templateInput.transform as RectTransform);
+            ConfigureNumberInputRect(pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(input.transform), pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(templateInput.transform));
             return input;
         }
 
         private TMP_InputField CreateBasicNumberInput(RectTransform parent)
         {
-            GameObject inputObject = new GameObject("pitFireTeam_LootPriceNumberInput", typeof(RectTransform), typeof(Image), typeof(TMP_InputField));
+            GameObject inputObject = new GameObject("pitFireTeam_LootPriceNumberInput", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>(), Il2CppInterop.Runtime.Il2CppType.Of<TMP_InputField>());
             inputObject.transform.SetParent(parent, false);
 
             RectTransform inputRect = inputObject.GetComponent<RectTransform>();
@@ -1696,10 +1707,11 @@ namespace pitTeam.Components
             inputRect.anchorMax = new Vector2(1f, 0.5f);
             inputRect.pivot = new Vector2(1f, 0.5f);
             inputRect.sizeDelta = new Vector2(width, Mathf.Max(34f, inputRect.sizeDelta.y));
-            inputRect.anchoredPosition = new Vector2(-SettingsLootPriceInputLeftOffset, -SettingsSliderVerticalOffset);
+            inputRect.anchoredPosition = new Vector2(-SettingsLootPriceInputLeftOffset, 0f);
             inputRect.localScale = Vector3.one;
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private void ConfigureNumberInput(TMP_InputField input, ConfigEntryBase entry, AcceptableValueRange<int> acceptableRange, bool interactable)
         {
             input.onValueChanged.RemoveAllListeners();
@@ -1729,9 +1741,8 @@ namespace pitTeam.Components
                 return;
             }
 
-            input.onSelect.AddListener(_ => ActivateNumberInput(input));
-            input.onEndEdit.AddListener(value =>
-            {
+            input.onSelect.AddListener((System.Action<string>)(_ => ActivateNumberInput(input)));
+            input.onEndEdit.AddListener((System.Action<string>)(value => {
                 int boxed = ParseClampedSettingInt(value, currentValue, acceptableRange);
                 input.SetTextWithoutNotify(boxed.ToString());
                 if (Equals(entry.BoxedValue, boxed))
@@ -1740,8 +1751,7 @@ namespace pitTeam.Components
                 }
 
                 entry.BoxedValue = boxed;
-                pitFireTeam.Instance?.Config.Save();
-            });
+                pitFireTeam.Instance?.Config.Save();}));
         }
 
         private static void ConfigureNumberInputText(TMP_InputField input)
@@ -1804,14 +1814,14 @@ namespace pitTeam.Components
             input.colors = colors;
 
             Transform existingBorder = input.transform.Find("pitFireTeam_LootPriceInputBottomBorder");
-            RectTransform borderRect = existingBorder as RectTransform;
+            RectTransform borderRect = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(existingBorder);
             Image borderImage = existingBorder != null
                 ? existingBorder.GetComponent<Image>()
                 : null;
 
             if (borderRect == null || borderImage == null)
             {
-                GameObject borderObject = new GameObject("pitFireTeam_LootPriceInputBottomBorder", typeof(RectTransform), typeof(Image));
+                GameObject borderObject = new GameObject("pitFireTeam_LootPriceInputBottomBorder", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
                 borderObject.transform.SetParent(input.transform, false);
                 borderRect = borderObject.GetComponent<RectTransform>();
                 borderImage = borderObject.GetComponent<Image>();
@@ -1856,6 +1866,7 @@ namespace pitTeam.Components
             return Mathf.Clamp(parsed, acceptableRange.MinValue, acceptableRange.MaxValue);
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private void CreateShortcutSettingControl(RectTransform parent, ConfigEntry<KeyboardShortcut> entry, bool interactable)
         {
             if (entry == null)
@@ -1869,16 +1880,14 @@ namespace pitTeam.Components
             SetSettingsControlInteractable(button.transform, interactable);
             if (interactable)
             {
-                button.onClick.AddListener(() =>
-                {
+                button.onClick.AddListener((System.Action)(() => {
                     if (ReferenceEquals(activeShortcutCaptureEntry, entry))
                     {
                         CancelShortcutCapture(true);
                         return;
                     }
 
-                    BeginShortcutCapture(entry, button, label);
-                });
+                    BeginShortcutCapture(entry, button, label);}));
             }
         }
 
@@ -1901,7 +1910,7 @@ namespace pitTeam.Components
             settingsScrollRect = Instantiate(template, panelRect, false);
             settingsScrollRect.name = "pitFireTeam_SquadControlSettingsScroll";
 
-            RectTransform scrollRect = settingsScrollRect.transform as RectTransform;
+            RectTransform scrollRect = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(settingsScrollRect.transform);
             if (scrollRect != null)
             {
                 Stretch(scrollRect);
@@ -1947,6 +1956,7 @@ namespace pitTeam.Components
             return true;
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private bool CreateStockSettingsEntryRow(ConfigEntryBase entry)
         {
             if (settingsContentRoot == null)
@@ -1967,6 +1977,7 @@ namespace pitTeam.Components
             return false;
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private bool CreateStockToggleRow(ConfigEntryBase entry)
         {
             UpdatableToggle template = ResolveSettingsToggleTemplate();
@@ -1983,7 +1994,7 @@ namespace pitTeam.Components
 
             GameObject clonedRow = Instantiate(rowTemplate.gameObject, settingsContentRoot, false);
             clonedRow.name = $"pitFireTeam_StockToggleRow_{SanitizeName(entry.Definition.Key)}";
-            ConfigureStockSettingsRow(clonedRow.transform as RectTransform, rowTemplate as RectTransform);
+            ConfigureStockSettingsRow(pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(clonedRow.transform), pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(rowTemplate));
 
             UpdatableToggle clonedToggle = FindComponentByPath<UpdatableToggle>(rowTemplate, clonedRow.transform, template.transform);
             if (clonedToggle == null)
@@ -1994,16 +2005,15 @@ namespace pitTeam.Components
 
             ApplyStockSettingsLabelText(rowTemplate, clonedRow.transform, template.transform, GetSettingDisplayName(entry));
             clonedToggle.group = null;
-            clonedToggle.UpdateValue(entry.BoxedValue is bool boolValue && boolValue, false, null, null);
-            clonedToggle.Bind(isOn =>
-            {
+            clonedToggle.UpdateValue(entry.BoxedValue is bool boolValue && boolValue, false, ((bool?)null).ToNativeNullable(), ((bool?)null).ToNativeNullable());
+            clonedToggle.Bind((System.Action<bool>)(isOn => {
                 entry.BoxedValue = isOn;
-                pitFireTeam.Instance?.Config.Save();
-            });
+                pitFireTeam.Instance?.Config.Save();}));
 
             return true;
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private bool CreateStockSliderRow(ConfigEntryBase entry, AcceptableValueRange<int> acceptableRange)
         {
             NumberSlider template = ResolveSettingsSliderTemplate();
@@ -2020,7 +2030,7 @@ namespace pitTeam.Components
 
             GameObject clonedRow = Instantiate(rowTemplate.gameObject, settingsContentRoot, false);
             clonedRow.name = $"pitFireTeam_StockSliderRow_{SanitizeName(entry.Definition.Key)}";
-            ConfigureStockSettingsRow(clonedRow.transform as RectTransform, rowTemplate as RectTransform);
+            ConfigureStockSettingsRow(pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(clonedRow.transform), pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(rowTemplate));
 
             NumberSlider clonedSlider = FindComponentByPath<NumberSlider>(rowTemplate, clonedRow.transform, template.transform);
             if (clonedSlider == null)
@@ -2032,9 +2042,8 @@ namespace pitTeam.Components
             ApplyStockSettingsLabelText(rowTemplate, clonedRow.transform, template.transform, GetSettingDisplayName(entry));
             ConfigureSliderValueInputChrome(NumberSliderValueInputField?.GetValue(clonedSlider) as TMP_InputField);
             clonedSlider.Show(acceptableRange.MinValue, acceptableRange.MaxValue, "0");
-            clonedSlider.UpdateValue(Convert.ToSingle(entry.BoxedValue), false, acceptableRange.MinValue, acceptableRange.MaxValue);
-            clonedSlider.Bind(value =>
-            {
+            clonedSlider.UpdateValue(Convert.ToSingle(entry.BoxedValue), false, ((float?)acceptableRange.MinValue).ToNativeNullable(), ((float?)acceptableRange.MaxValue).ToNativeNullable());
+            clonedSlider.Bind((System.Action<float>)(value => {
                 int boxed = Mathf.RoundToInt(value);
                 if (Equals(entry.BoxedValue, boxed))
                 {
@@ -2042,8 +2051,7 @@ namespace pitTeam.Components
                 }
 
                 entry.BoxedValue = boxed;
-                pitFireTeam.Instance?.Config.Save();
-            });
+                pitFireTeam.Instance?.Config.Save();}));
 
             return true;
         }
@@ -2084,7 +2092,7 @@ namespace pitTeam.Components
 
             for (Transform current = controlTransform.parent; current != null; current = current.parent)
             {
-                if (current.GetComponentsInChildren(controlType, true).Length != 1)
+                if (current.GetComponentsInChildren<Transform>(true).Length != 1)
                 {
                     break;
                 }
@@ -2130,12 +2138,15 @@ namespace pitTeam.Components
 
             UpdatableToggle toggle = Instantiate(template, parent, false);
             toggle.name = "pitFireTeam_StockToggle";
-            RectTransform rect = toggle.transform as RectTransform;
+            RectTransform rect = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(toggle.transform);
             if (rect != null)
             {
                 rect.anchorMin = new Vector2(0f, 0.5f);
                 rect.anchorMax = new Vector2(0f, 0.5f);
                 rect.pivot = new Vector2(0f, 0.5f);
+                // The stock row is 750px wide, with its checkbox at the far right.
+                // Reparenting that row into a 120px control clips the entire graphic.
+                rect.sizeDelta = new Vector2(120f, 35f);
                 rect.anchoredPosition = Vector2.zero;
                 rect.localScale = Vector3.one;
             }
@@ -2165,7 +2176,11 @@ namespace pitTeam.Components
             slider.name = "pitFireTeam_StockNumberSlider";
             if (sliderRoot != null)
             {
-                Stretch(sliderRoot);
+                sliderRoot.anchorMin = new Vector2(0f, 0.5f);
+                sliderRoot.anchorMax = new Vector2(1f, 0.5f);
+                sliderRoot.pivot = new Vector2(0.5f, 0.5f);
+                sliderRoot.sizeDelta = new Vector2(0f, 32f);
+                sliderRoot.anchoredPosition = Vector2.zero;
                 sliderRoot.localScale = Vector3.one;
             }
 
@@ -2208,67 +2223,20 @@ namespace pitTeam.Components
                 return;
             }
 
-            HashSet<GameObject> hiddenObjects = new HashSet<GameObject>();
-
             foreach (TMP_Text label in root.GetComponentsInChildren<TMP_Text>(true))
             {
-                HideStockLabelContainer(root, exemptRoot, label?.transform, hiddenObjects);
+                if (label != null && (exemptRoot == null || !IsAncestorOf(exemptRoot, label.transform))) label.enabled = false;
             }
 
             foreach (Text label in root.GetComponentsInChildren<Text>(true))
             {
-                HideStockLabelContainer(root, exemptRoot, label?.transform, hiddenObjects);
+                if (label != null && (exemptRoot == null || !IsAncestorOf(exemptRoot, label.transform))) label.enabled = false;
             }
-        }
-
-        private void HideStockLabelContainer(Transform root, Transform exemptRoot, Transform labelTransform, HashSet<GameObject> hiddenObjects)
-        {
-            if (root == null || labelTransform == null)
-            {
-                return;
-            }
-
-            if (exemptRoot != null && IsAncestorOf(exemptRoot, labelTransform))
-            {
-                return;
-            }
-
-            Transform directChild = ResolveDirectChildContainer(root, labelTransform);
-            if (directChild == null || directChild == root || directChild == exemptRoot || (exemptRoot != null && IsAncestorOf(directChild, exemptRoot)))
-            {
-                return;
-            }
-
-            if (hiddenObjects.Add(directChild.gameObject))
-            {
-                directChild.gameObject.SetActive(false);
-            }
-        }
-
-        private static Transform ResolveDirectChildContainer(Transform root, Transform descendant)
-        {
-            if (root == null || descendant == null)
-            {
-                return null;
-            }
-
-            if (ReferenceEquals(root, descendant))
-            {
-                return root;
-            }
-
-            Transform current = descendant;
-            while (current != null && current.parent != root)
-            {
-                current = current.parent;
-            }
-
-            return current == null ? descendant : current;
         }
 
         private Toggle CreateBasicToggle(RectTransform parent)
         {
-            GameObject root = new GameObject("Toggle", typeof(RectTransform), typeof(Toggle));
+            GameObject root = new GameObject("Toggle", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Toggle>());
             root.transform.SetParent(parent, false);
             RectTransform rootRect = root.GetComponent<RectTransform>();
             rootRect.anchorMin = new Vector2(1f, 0.5f);
@@ -2277,14 +2245,14 @@ namespace pitTeam.Components
             rootRect.sizeDelta = new Vector2(92f, 38f);
             rootRect.anchoredPosition = Vector2.zero;
 
-            GameObject backgroundObject = new GameObject("Background", typeof(RectTransform), typeof(Image));
+            GameObject backgroundObject = new GameObject("Background", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             backgroundObject.transform.SetParent(root.transform, false);
             RectTransform backgroundRect = backgroundObject.GetComponent<RectTransform>();
             Stretch(backgroundRect);
             Image background = backgroundObject.GetComponent<Image>();
             background.color = new Color(0.18f, 0.18f, 0.18f, 1f);
 
-            GameObject checkmarkObject = new GameObject("Checkmark", typeof(RectTransform), typeof(Image));
+            GameObject checkmarkObject = new GameObject("Checkmark", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             checkmarkObject.transform.SetParent(backgroundObject.transform, false);
             RectTransform checkRect = checkmarkObject.GetComponent<RectTransform>();
             checkRect.anchorMin = new Vector2(0.5f, 0.5f);
@@ -2322,7 +2290,7 @@ namespace pitTeam.Components
             valueRect.sizeDelta = new Vector2(52f, 26f);
             valueRect.anchoredPosition = new Vector2(0f, -20f);
 
-            GameObject sliderRoot = new GameObject("Slider", typeof(RectTransform), typeof(Slider));
+            GameObject sliderRoot = new GameObject("Slider", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Slider>());
             sliderRoot.transform.SetParent(parent, false);
             RectTransform sliderRect = sliderRoot.GetComponent<RectTransform>();
             sliderRect.anchorMin = new Vector2(0f, 0.5f);
@@ -2330,7 +2298,7 @@ namespace pitTeam.Components
             sliderRect.offsetMin = new Vector2(0f, -10f);
             sliderRect.offsetMax = new Vector2(-64f, 10f);
 
-            GameObject backgroundObject = new GameObject("Background", typeof(RectTransform), typeof(Image));
+            GameObject backgroundObject = new GameObject("Background", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             backgroundObject.transform.SetParent(sliderRoot.transform, false);
             RectTransform backgroundRect = backgroundObject.GetComponent<RectTransform>();
             backgroundRect.anchorMin = new Vector2(0f, 0.5f);
@@ -2340,14 +2308,14 @@ namespace pitTeam.Components
             Image background = backgroundObject.GetComponent<Image>();
             background.color = new Color(0.16f, 0.16f, 0.16f, 1f);
 
-            GameObject fillAreaObject = new GameObject("Fill Area", typeof(RectTransform));
+            GameObject fillAreaObject = new GameObject("Fill Area", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>());
             fillAreaObject.transform.SetParent(sliderRoot.transform, false);
             RectTransform fillAreaRect = fillAreaObject.GetComponent<RectTransform>();
             Stretch(fillAreaRect);
             fillAreaRect.offsetMin = new Vector2(0f, 0f);
             fillAreaRect.offsetMax = new Vector2(-18f, 0f);
 
-            GameObject fillObject = new GameObject("Fill", typeof(RectTransform), typeof(Image));
+            GameObject fillObject = new GameObject("Fill", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             fillObject.transform.SetParent(fillAreaObject.transform, false);
             RectTransform fillRect = fillObject.GetComponent<RectTransform>();
             fillRect.anchorMin = new Vector2(0f, 0.5f);
@@ -2357,14 +2325,14 @@ namespace pitTeam.Components
             Image fillImage = fillObject.GetComponent<Image>();
             fillImage.color = new Color(0.82f, 0.59f, 0.16f, 1f);
 
-            GameObject handleSlideArea = new GameObject("Handle Slide Area", typeof(RectTransform));
+            GameObject handleSlideArea = new GameObject("Handle Slide Area", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>());
             handleSlideArea.transform.SetParent(sliderRoot.transform, false);
             RectTransform slideAreaRect = handleSlideArea.GetComponent<RectTransform>();
             Stretch(slideAreaRect);
             slideAreaRect.offsetMin = new Vector2(8f, -6f);
             slideAreaRect.offsetMax = new Vector2(-8f, 6f);
 
-            GameObject handleObject = new GameObject("Handle", typeof(RectTransform), typeof(Image));
+            GameObject handleObject = new GameObject("Handle", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             handleObject.transform.SetParent(handleSlideArea.transform, false);
             RectTransform handleRect = handleObject.GetComponent<RectTransform>();
             handleRect.sizeDelta = new Vector2(18f, 18f);
@@ -2391,7 +2359,7 @@ namespace pitTeam.Components
 
         private Button CreateActionButton(RectTransform parent, out TextMeshProUGUI label)
         {
-            GameObject buttonObject = new GameObject("Button", typeof(RectTransform), typeof(Image), typeof(Button));
+            GameObject buttonObject = new GameObject("Button", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>(), Il2CppInterop.Runtime.Il2CppType.Of<Button>());
             buttonObject.transform.SetParent(parent, false);
             RectTransform buttonRect = buttonObject.GetComponent<RectTransform>();
             buttonRect.anchorMin = new Vector2(1f, 0.5f);
@@ -2404,7 +2372,7 @@ namespace pitTeam.Components
             background.color = new Color(0.52f, 0.43f, 0.27f, 0.88f);
             background.raycastTarget = true;
 
-            GameObject fillObject = new GameObject("Fill", typeof(RectTransform), typeof(Image));
+            GameObject fillObject = new GameObject("Fill", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             fillObject.transform.SetParent(buttonObject.transform, false);
             RectTransform fillRect = fillObject.GetComponent<RectTransform>();
             fillRect.anchorMin = Vector2.zero;
@@ -2444,6 +2412,7 @@ namespace pitTeam.Components
             return button;
         }
 
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
         private void BeginShortcutCapture(ConfigEntry<KeyboardShortcut> entry, Button button, TextMeshProUGUI label)
         {
             CancelShortcutCapture(false);

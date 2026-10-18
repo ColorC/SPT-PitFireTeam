@@ -1,0 +1,30 @@
+{
+    "schema":  "pitfireteam.interop-contracts-wrapper-fixtures.v1",
+    "cases":  [
+                  {
+                      "id":  "canonical-path-with-spaces",
+                      "runtimeBatchRoot":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline",
+                      "expectedToolSuffix":  "contract-tool-bin\\Release\\net10.0\\Spt5InteropContracts.dll"
+                  },
+                  {
+                      "id":  "tool-argument-array",
+                      "expected":  [
+                                       "inspect-types",
+                                       "--assembly-root",
+                                       "D:\\game\\tarkov workshop\\isolated-client-reference\\BepInEx\\interop",
+                                       "--query",
+                                       "EFT.UI.Matchmaker"
+                                   ]
+                  },
+                  {
+                      "id":  "legacy-bin-must-not-fallback",
+                      "legacyPath":  "tests\\Spt5InteropContracts\\bin\\Release\\net10.0\\Spt5InteropContracts.dll",
+                      "expectedBehavior":  "missing canonical tool fails with exact path and -Build usage"
+                  },
+                  {
+                      "id":  "native-cli-nonzero-preserves-streams",
+                      "exitCode":  7,
+                      "expectedBehavior":  "stdout-and-stderr-remain-native-streams; wrapper returns exact native CLI exit code; ErrorActionPreference restored in finally"
+                  }
+              ]
+}

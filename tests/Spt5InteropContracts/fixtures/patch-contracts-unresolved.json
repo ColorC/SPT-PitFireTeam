@@ -1,0 +1,9 @@
+{
+  "patches": [
+    {
+      "patchClassFullName": "Fixture.DynamicPatch",
+      "targetType": "Fixture.Target",
+      "targetMethod": "GetTargetMethod"
+    }
+  ]
+}

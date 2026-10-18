@@ -170,8 +170,7 @@ namespace pitTeam.BigBrain
                 return true;
             }
 
-            if (!BotOwner.BotFollower.HaveBoss) return false;
-            if (BotOwner.BotFollower.BossToFollow is not pitAIBossPlayer) return false;
+            if (BossPlayers.GetResolvedBossForFollower(BotOwner) == null) return false;
 
             // Combat already ignores dead goals. Use the same liveness check here so a stale
             // EFT HaveEnemy flag cannot leave every follower layer inactive after the kill.
@@ -1143,7 +1142,7 @@ namespace pitTeam.BigBrain
                 return false;
             }
 
-            foreach (LightComponent light in weapon.Mods.GetComponents<LightComponent>())
+            foreach (LightComponent light in Il2CppBoundary.GetComponentsFromMods<LightComponent>(weapon.Mods))
             {
                 if (light?.Item == null || !light.IsActive)
                 {
@@ -2157,15 +2156,15 @@ namespace pitTeam.BigBrain
             }
 
             List<EFT.InventoryLogic.Ammo> ammos = new List<EFT.InventoryLogic.Ammo>();
-            botOwner.GetPlayer.InventoryController.GetAcceptableItemsNonAlloc<EFT.InventoryLogic.Ammo>(
+            Il2CppBoundary.GetAcceptableItemsNonAllocManaged<EFT.InventoryLogic.Ammo>(botOwner.GetPlayer.InventoryController,
                 BotReload._availableEquipmentSlots,
                 ammos,
-                ammo =>
+                (System.Func<EFT.InventoryLogic.Ammo, bool>)(ammo =>
                     ammo != null &&
                     ammo.StackObjectsCount > 0 &&
                     ((chamber != null && chamber.CanAccept(ammo)) ||
                      currentMagazine?.Cartridges?.Filters?.CheckItemFilter(ammo) == true) &&
-                    ammo.CheckAction(null).Succeeded,
+                    ammo.CheckAction(null).Succeeded),
                 null);
 
             return ammos.Count > 0;
@@ -2188,14 +2187,14 @@ namespace pitTeam.BigBrain
             List<EFT.InventoryLogic.Magazine> magazines = new List<EFT.InventoryLogic.Magazine>();
             botOwner.GetPlayer.InventoryController.GetReachableItemsOfTypeNonAlloc<EFT.InventoryLogic.Magazine>(
                 magazines,
-                magazine =>
+                (System.Func<EFT.InventoryLogic.Magazine, bool>)(magazine =>
                     magazine != null &&
                     !IsInstalledInWeaponTree(magazine) &&
                     magazine.Count < magazine.MaxCount &&
                     EFT.InventoryLogic.ItemManipulator.CheckMoveIgnoringTargetItem(
                         magazine,
                         magazineSlot,
-                        botOwner.GetPlayer.InventoryController).Succeeded);
+                        botOwner.GetPlayer.InventoryController).Succeeded));
 
             foreach (EFT.InventoryLogic.Magazine magazine in magazines)
             {
@@ -2217,14 +2216,14 @@ namespace pitTeam.BigBrain
             }
 
             List<EFT.InventoryLogic.Ammo> ammos = new List<EFT.InventoryLogic.Ammo>();
-            botOwner.GetPlayer.InventoryController.GetAcceptableItemsNonAlloc<EFT.InventoryLogic.Ammo>(
+            Il2CppBoundary.GetAcceptableItemsNonAllocManaged<EFT.InventoryLogic.Ammo>(botOwner.GetPlayer.InventoryController,
                 BotReload._availableEquipmentSlots,
                 ammos,
-                ammo =>
+                (System.Func<EFT.InventoryLogic.Ammo, bool>)(ammo =>
                     ammo != null &&
                     ammo.StackObjectsCount > 0 &&
                     magazine.Cartridges.Filters.CheckItemFilter(ammo) &&
-                    ammo.CheckAction(null).Succeeded,
+                    ammo.CheckAction(null).Succeeded),
                 null);
 
             EFT.InventoryLogic.Ammo? bestAmmo = null;

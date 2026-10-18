@@ -2,13 +2,15 @@ using EFT;
 using pitTeam.Components;
 using pitTeam.Modules;
 using HarmonyLib;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Comfort.Common;
+using Il2CppInterop.Runtime.InteropTypes.Arrays;
+using pitTeam.Compat;
 
 
 namespace pitTeam.Patches
@@ -112,7 +114,7 @@ namespace pitTeam.Patches
                 if (_bearVoiceFallbackCache == null || _bearVoiceFallbackCache.Count == 0)
                 {
                     _bearVoiceFallbackCache = solver
-                        .GetAvailableVoices(EPlayerSide.Bear)
+                        .GetAvailableVoices(EPlayerSide.Bear).AsManaged()
                         .Where(v => v != null && !string.IsNullOrEmpty(v.Name))
                         .OrderBy(v => v.Name)
                         .Select(v => (v.Id, v.Name, v.Prefab))
@@ -122,7 +124,7 @@ namespace pitTeam.Patches
                 if (_bearEnglishVoiceCache == null)
                 {
                     _bearEnglishVoiceCache = solver
-                        .GetAvailableVoices(EPlayerSide.Bear)
+                        .GetAvailableVoices(EPlayerSide.Bear).AsManaged()
                         .Where(v => v != null && !string.IsNullOrEmpty(v.Name) && IsEnglishBearVoice(v))
                         .OrderBy(v => v.Name)
                         .Select(v => (v.Id, v.Name, v.Prefab))
@@ -263,7 +265,7 @@ namespace pitTeam.Patches
         };
         protected override MethodBase GetTargetMethod()
         {
-            return AccessTools.Method(typeof(BotOwner), "method_10");
+            return AccessTools.Method(typeof(BotOwner), "Activate");
 
         }
 
@@ -300,13 +302,13 @@ namespace pitTeam.Patches
         }
 
         [PatchPostfix]
-        private static void PatchPostfix(ref Task<Profile[]> __result)
+        private static void PatchPostfix(ref Il2CppSystem.Threading.Tasks.Task<Il2CppReferenceArray<Profile>> __result)
         {
             if (pitFireTeam.englishBear?.Value != true || __result == null) return;
-            __result = ApplyEnglishVoiceAsync(__result);
+            __result = Il2CppTaskBridge.ToNative(ApplyEnglishVoiceAsync(Il2CppTaskBridge.FromNative(__result)));
         }
 
-        private static async Task<Profile[]> ApplyEnglishVoiceAsync(Task<Profile[]> originalTask)
+        private static async Task<Il2CppReferenceArray<Profile>> ApplyEnglishVoiceAsync(Task<Il2CppReferenceArray<Profile>> originalTask)
         {
             Profile[] profiles = await originalTask;
             if (profiles == null || profiles.Length == 0) return profiles;

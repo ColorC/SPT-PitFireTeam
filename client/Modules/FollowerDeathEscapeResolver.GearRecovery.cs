@@ -343,11 +343,11 @@ namespace pitTeam.Modules
 
             List<Item> itemsToRemove = new List<Item>();
             HashSet<string> removeIds = new HashSet<string>(StringComparer.Ordinal);
-            foreach (Item root in equipment.GetAllItems()
+            foreach (Item root in equipment.GetAllItems().AsManaged()
                          .Where(item => item != null && itemIds.Contains(item.Id))
                          .ToList())
             {
-                foreach (Item child in root.GetAllItems().Reverse())
+                foreach (Item child in root.GetAllItems().AsManaged().Reverse())
                 {
                     if (child != null && removeIds.Add(child.Id))
                     {
@@ -498,7 +498,7 @@ namespace pitTeam.Modules
 
                 // If a recovered backpack/container was packed into another container, use
                 // its grids too. This is how fallen teammates' backpacks expand survivor space.
-                foreach (EFT.InventoryLogic.SearchableItem nested in rootContainer.GetAllItems().OfType<EFT.InventoryLogic.SearchableItem>())
+                foreach (EFT.InventoryLogic.SearchableItem nested in rootContainer.GetAllItems().AsManaged().OfType<EFT.InventoryLogic.SearchableItem>())
                 {
                     if (nested != null && yielded.Add(nested.Id))
                     {
@@ -594,7 +594,7 @@ namespace pitTeam.Modules
             }
 
             HashSet<string> coveredIds = new HashSet<string>(
-                item.GetAllItems()
+                item.GetAllItems().AsManaged()
                     .Where(child => child != null && !string.Equals(child.Id, item.Id, StringComparison.Ordinal))
                     .Select(child => child.Id),
                 StringComparer.Ordinal);
@@ -622,8 +622,8 @@ namespace pitTeam.Modules
             }
 
             return item.TryGetItemComponent<ArmorHolderComponent>(out _)
-                   || item.GetItemComponentsInChildren<ArmorComponent>(true).Any()
-                   || item.GetItemComponentsInChildren<CompositeArmorComponent>(true).Any();
+                   || item.GetItemComponentsInChildren<ArmorComponent>(true).AsManaged().Any()
+                   || item.GetItemComponentsInChildren<CompositeArmorComponent>(true).AsManaged().Any();
         }
 
         private static float GetItemWeight(Item item)

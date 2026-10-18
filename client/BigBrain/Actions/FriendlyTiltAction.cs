@@ -18,7 +18,7 @@ namespace pitTeam.BigBrain.Actions
 
         public override void Update(CustomLayer.ActionData data)
         {
-            baseLogic.UpdateNodeByBrain(data);
+            baseLogic.UpdateNodeByBrain(data?.NativeData);
         }
     }
 }

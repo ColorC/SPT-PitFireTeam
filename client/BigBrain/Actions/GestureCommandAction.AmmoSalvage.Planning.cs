@@ -45,7 +45,7 @@ namespace pitTeam.BigBrain.Actions
 
             // StackSlot can only remove its last item. Plan in vanilla unload order and consolidate
             // separated runs of the same ammo type into the output stack already moved earlier.
-            List<EFT.InventoryLogic.Ammo> ammoStacks = magazine.Cartridges.Items
+            List<EFT.InventoryLogic.Ammo> ammoStacks = magazine.Cartridges.Items.AsManaged()
                 .OfType<EFT.InventoryLogic.Ammo>()
                 .Where(ammo => ammo != null && ammo.StackObjectsCount > 0)
                 .Reverse()

@@ -28,7 +28,7 @@ namespace pitTeam.BigBrain
         }
 
         public abstract void DecisionChanged(
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? prevDecision,
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> prevDecision,
             AICoreActionResult<BotLogicDecision, CoreActionResultParams> nextDecision);
 
         public abstract void StartDecision();

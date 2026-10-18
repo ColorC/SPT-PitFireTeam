@@ -1,0 +1,170 @@
+{
+    "fixture":  "follower-health-controller-contract",
+    "provenance":  {
+                       "source":  "BM read-only wire profile/options ids and AID; native descriptor ProfileId unavailable",
+                       "nativeRuntimeVerified":  false,
+                       "evidencePath":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\private-follower-profile-identity-bm-r180.json",
+                       "healthValueSourcePath":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\shadow-server\\private-runtime\\user\\mods\\pitFireTeam-ServerMod\\Resources\\teammates\\6ace6340c399ad84d0a90502\\1419139.json",
+                       "healthValueObservation":  "Observed follower Health body-part values and Energy/Hydration include Current and Maximum; Minimum is omitted."
+                   },
+    "constructor":  {
+                        "type":  "EFT.HealthSystem.OfflineHealthController",
+                        "parameters":  [
+                                           "EFT.Profile/HealthInfo",
+                                           "EFT.InventoryLogic.InventoryController",
+                                           "EFT.SkillManager",
+                                           "System.Boolean"
+                                       ],
+                        "regeneration":  false
+                    },
+    "identityCases":  [
+                          {
+                              "id":  "native-match",
+                              "nativeProfileId":  "6ace65cbc399ad84d0a97b54",
+                              "inventoryProfileId":  "6ace6340c399ad84d0a90502",
+                              "snapshotProfileId":  "6ace65cbc399ad84d0a97b54",
+                              "followerAid":  "1419139",
+                              "snapshotAid":  1419139,
+                              "expected":  "accept",
+                              "resolution":  "native-profile-id",
+                              "inventoryAid":  "1260000"
+                          },
+                          {
+                              "id":  "bn-empty-native",
+                              "nativeProfileId":  null,
+                              "inventoryProfileId":  "6ace6340c399ad84d0a90502",
+                              "snapshotProfileId":  "6ace65cbc399ad84d0a97b54",
+                              "followerAid":  "1419139",
+                              "snapshotAid":  1419139,
+                              "expected":  "accept",
+                              "resolution":  "snapshot-aid-fallback",
+                              "inventoryAid":  "1260000"
+                          },
+                          {
+                              "id":  "explicit-mismatch",
+                              "nativeProfileId":  "6ace64ccc399ad84d0a97b54",
+                              "inventoryProfileId":  "6ace6340c399ad84d0a90502",
+                              "snapshotProfileId":  "6ace65cbc399ad84d0a97b54",
+                              "followerAid":  "1419139",
+                              "snapshotAid":  1419139,
+                              "expected":  "reject",
+                              "resolution":  null,
+                              "inventoryAid":  "1260000"
+                          },
+                          {
+                              "id":  "wrong-aid",
+                              "nativeProfileId":  null,
+                              "inventoryProfileId":  "6ace6340c399ad84d0a90502",
+                              "snapshotProfileId":  "6ace65cbc399ad84d0a97b54",
+                              "followerAid":  "1419139",
+                              "snapshotAid":  123,
+                              "expected":  "reject",
+                              "resolution":  null,
+                              "inventoryAid":  "1260000"
+                          },
+                          {
+                              "id":  "missing-snapshot",
+                              "nativeProfileId":  null,
+                              "inventoryProfileId":  "6ace6340c399ad84d0a90502",
+                              "snapshotProfileId":  null,
+                              "followerAid":  "1419139",
+                              "snapshotAid":  1419139,
+                              "expected":  "reject",
+                              "resolution":  null,
+                              "inventoryAid":  "1260000"
+                          },
+                          {
+                              "id":  "invalid-id",
+                              "nativeProfileId":  null,
+                              "inventoryProfileId":  "6ace6340c399ad84d0a90502",
+                              "snapshotProfileId":  "profile-short",
+                              "followerAid":  "1419139",
+                              "snapshotAid":  1419139,
+                              "expected":  "reject",
+                              "resolution":  null,
+                              "inventoryAid":  "1260000"
+                          },
+                          {
+                              "id":  "main-as-follower",
+                              "nativeProfileId":  null,
+                              "inventoryProfileId":  "6ace6340c399ad84d0a90502",
+                              "snapshotProfileId":  "6ace6340c399ad84d0a90502",
+                              "followerAid":  "1419139",
+                              "snapshotAid":  1419139,
+                              "expected":  "reject",
+                              "resolution":  null,
+                              "inventoryAid":  "1260000"
+                          },
+                          {
+                              "id":  "missing-inventory",
+                              "nativeProfileId":  null,
+                              "inventoryProfileId":  null,
+                              "snapshotProfileId":  "6ace65cbc399ad84d0a97b54",
+                              "followerAid":  "1419139",
+                              "snapshotAid":  1419139,
+                              "expected":  "reject",
+                              "resolution":  null,
+                              "inventoryAid":  "1260000"
+                          },
+                          {
+                              "id":  "follower-owned-context-matched-aid",
+                              "nativeProfileId":  "6ace65cbc399ad84d0a97b54",
+                              "inventoryProfileId":  "6ace65cbc399ad84d0a97b54",
+                              "inventoryAid":  "1419139",
+                              "snapshotProfileId":  "6ace65cbc399ad84d0a97b54",
+                              "followerAid":  "1419139",
+                              "snapshotAid":  1419139,
+                              "expected":  "accept",
+                              "resolution":  "native-profile-id"
+                          },
+                          {
+                              "id":  "explicit-main-snapshot-wrong-inventory-aid",
+                              "nativeProfileId":  "6ace6340c399ad84d0a90502",
+                              "inventoryProfileId":  "6ace6340c399ad84d0a90502",
+                              "inventoryAid":  "1260000",
+                              "snapshotProfileId":  "6ace6340c399ad84d0a90502",
+                              "followerAid":  "1419139",
+                              "snapshotAid":  1419139,
+                              "expected":  "reject",
+                              "resolution":  null
+                          }
+                      ],
+    "valueCases":  [
+                       {
+                           "id":  "actual-health-no-minimum",
+                           "current":  100,
+                           "minimum":  null,
+                           "maximum":  100,
+                           "expected":  "accept",
+                           "minimumProvided":  false,
+                           "missingFields":  ""
+                       },
+                       {
+                           "id":  "missing-current",
+                           "current":  null,
+                           "minimum":  null,
+                           "maximum":  100,
+                           "expected":  "reject",
+                           "minimumProvided":  false,
+                           "missingFields":  "Current"
+                       },
+                       {
+                           "id":  "missing-maximum",
+                           "current":  100,
+                           "minimum":  null,
+                           "maximum":  null,
+                           "expected":  "reject",
+                           "minimumProvided":  false,
+                           "missingFields":  "Maximum"
+                       },
+                       {
+                           "id":  "explicit-minimum",
+                           "current":  12.5,
+                           "minimum":  0,
+                           "maximum":  100,
+                           "expected":  "accept",
+                           "minimumProvided":  true,
+                           "missingFields":  ""
+                       }
+                   ]
+}

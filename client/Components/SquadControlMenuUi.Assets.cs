@@ -14,7 +14,7 @@ using HarmonyLib;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using PlayerIcons;
-using SPT.Common.Http;
+using SPTushonka.Common.Http;
 using TMPro;
 using System;
 using System.Collections;
@@ -64,7 +64,7 @@ namespace pitTeam.Components
                 ?? playerButton;
             DefaultUIButton button = Instantiate(buttonTemplate, parent, false);
             button.name = "pitFireTeam_OverlayActionButton";
-            RectTransform rect = button.transform as RectTransform;
+            RectTransform rect = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(button.transform);
             if (rect != null)
             {
                 rect.anchorMin = new Vector2(0.5f, 0f);
@@ -83,7 +83,7 @@ namespace pitTeam.Components
 
         private Button CreateWindowCloseButton(Transform parent, string name)
         {
-            GameObject buttonObject = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
+            GameObject buttonObject = new GameObject(name, Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>(), Il2CppInterop.Runtime.Il2CppType.Of<Button>());
             buttonObject.transform.SetParent(parent, false);
 
             RectTransform rect = buttonObject.GetComponent<RectTransform>();
@@ -94,7 +94,7 @@ namespace pitTeam.Components
             background.color = new Color(0.43f, 0.12f, 0.12f, 1f);
             background.raycastTarget = true;
 
-            GameObject labelObject = new GameObject($"{name}_Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+            GameObject labelObject = new GameObject($"{name}_Label", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<TextMeshProUGUI>());
             labelObject.transform.SetParent(buttonObject.transform, false);
             RectTransform labelRect = labelObject.GetComponent<RectTransform>();
             Stretch(labelRect);
@@ -167,7 +167,7 @@ namespace pitTeam.Components
             }
 
             SettingsScreen settingsScreen = ResolveSettingsScreenTemplate();
-            cachedGameSettingsTabTemplate = SettingsScreenGameTabField?.GetValue(settingsScreen) as GameSettingsTab;
+            cachedGameSettingsTabTemplate = settingsScreen == null ? null : SettingsScreenGameTabField.GetValue(settingsScreen) as GameSettingsTab;
             return cachedGameSettingsTabTemplate;
         }
 
@@ -179,7 +179,9 @@ namespace pitTeam.Components
             }
 
             GameSettingsTab gameSettingsTab = ResolveGameSettingsTabTemplate();
-            cachedSettingsToggleTemplate = GameSettingsToggleTemplateField?.GetValue(gameSettingsTab) as UpdatableToggle;
+            if (gameSettingsTab == null) return null;
+            SettingToggle template = GameSettingsToggleTemplateAccessor.GetValue(gameSettingsTab) as SettingToggle;
+            cachedSettingsToggleTemplate = template?.Toggle;
             return cachedSettingsToggleTemplate;
         }
 
@@ -197,14 +199,14 @@ namespace pitTeam.Components
             }
 
             Transform sliderRoot = gameSettingsTab.transform.Find("Image/Scroll View/Viewport/Other Settings/Scrolls/FOV");
-            if (sliderRoot is RectTransform sliderRect)
+            if (pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(sliderRoot) is RectTransform sliderRect)
             {
                 cachedSettingsSliderContainerTemplate = sliderRect;
                 return cachedSettingsSliderContainerTemplate;
             }
 
             NumberSlider fallbackSlider = ResolveSettingsSliderTemplate();
-            cachedSettingsSliderContainerTemplate = fallbackSlider?.transform as RectTransform;
+            cachedSettingsSliderContainerTemplate = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(fallbackSlider?.transform);
             return cachedSettingsSliderContainerTemplate;
         }
 
@@ -216,7 +218,9 @@ namespace pitTeam.Components
             }
 
             GameSettingsTab gameSettingsTab = ResolveGameSettingsTabTemplate();
-            cachedSettingsSliderTemplate = GameSettingsSliderTemplateField?.GetValue(gameSettingsTab) as NumberSlider;
+            if (gameSettingsTab == null) return null;
+            SettingFloatSlider template = GameSettingsSliderTemplateAccessor.GetValue(gameSettingsTab) as SettingFloatSlider;
+            cachedSettingsSliderTemplate = template?.Slider;
             return cachedSettingsSliderTemplate;
         }
 
@@ -234,7 +238,7 @@ namespace pitTeam.Components
         {
             Scrollbar template = Resources.FindObjectsOfTypeAll<ScrollRectNoDrag>()
                 .Select(scrollRect => scrollRect?.verticalScrollbar)
-                .FirstOrDefault(scrollbar => scrollbar != null && scrollbar.transform is RectTransform);
+                .FirstOrDefault(scrollbar => scrollbar != null && pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(scrollbar.transform) is RectTransform);
 
             if (template != null)
             {
@@ -247,7 +251,7 @@ namespace pitTeam.Components
 
         private static Scrollbar CreateFallbackScrollbar(RectTransform parent)
         {
-            GameObject root = new GameObject("pitFireTeam_SquadControlScrollbar", typeof(RectTransform), typeof(Image), typeof(Scrollbar));
+            GameObject root = new GameObject("pitFireTeam_SquadControlScrollbar", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>(), Il2CppInterop.Runtime.Il2CppType.Of<Scrollbar>());
             root.transform.SetParent(parent, false);
 
             RectTransform rootRect = root.GetComponent<RectTransform>();
@@ -260,14 +264,14 @@ namespace pitTeam.Components
             Image background = root.GetComponent<Image>();
             background.color = new Color(1f, 1f, 1f, 0.12f);
 
-            GameObject slidingArea = new GameObject("Sliding Area", typeof(RectTransform));
+            GameObject slidingArea = new GameObject("Sliding Area", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>());
             slidingArea.transform.SetParent(root.transform, false);
             RectTransform slidingRect = slidingArea.GetComponent<RectTransform>();
             Stretch(slidingRect);
             slidingRect.offsetMin = new Vector2(0f, 4f);
             slidingRect.offsetMax = new Vector2(0f, -4f);
 
-            GameObject handle = new GameObject("Handle", typeof(RectTransform), typeof(Image));
+            GameObject handle = new GameObject("Handle", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             handle.transform.SetParent(slidingArea.transform, false);
             RectTransform handleRect = handle.GetComponent<RectTransform>();
             handleRect.anchorMin = Vector2.zero;
@@ -305,8 +309,13 @@ namespace pitTeam.Components
 
         private void ShiftButtonsBelowPlayer(RectTransform playerRect, float verticalStep)
         {
-            foreach (RectTransform sibling in playerButton.transform.parent.Cast<Transform>().Select(t => t as RectTransform).Where(t => t != null))
+            foreach (Transform siblingTransform in pitTeam.Compat.Il2CppBoundary.EnumerateNativeChildren(playerButton.transform.parent))
             {
+                RectTransform sibling = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(siblingTransform);
+                if (sibling == null)
+                {
+                    continue;
+                }
                 if (sibling == playerRect || sibling == squadButton.transform)
                 {
                     continue;
@@ -333,38 +342,33 @@ namespace pitTeam.Components
 
         private void CaptureOriginalButtonPositions(RectTransform playerRect)
         {
-            foreach (RectTransform sibling in playerButton.transform.parent.Cast<Transform>().Select(t => t as RectTransform).Where(t => t != null))
+            Transform parent = playerButton == null ? null : playerButton.transform.parent;
+            IntPtr parentPointer;
+            try { parentPointer = parent == null ? IntPtr.Zero : parent.Pointer; } catch { parentPointer = IntPtr.Zero; }
+            if (parentPointer == IntPtr.Zero || originalButtonPositionParentPointer != parentPointer)
+            { originalButtonPositions.Clear(); originalButtonPositionParentPointer = parentPointer; if (parentPointer == IntPtr.Zero) return; }
+            foreach (Transform child in pitTeam.Compat.Il2CppBoundary.EnumerateNativeChildren(parent))
             {
-                if (sibling == null || sibling == squadButton.transform)
-                {
-                    continue;
-                }
-
-                if (Mathf.Abs(sibling.anchoredPosition.x - playerRect.anchoredPosition.x) > 8f)
-                {
-                    continue;
-                }
-
-                if (sibling.name.StartsWith("pitFireTeam_", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                if (!originalButtonPositions.ContainsKey(sibling))
-                {
-                    originalButtonPositions[sibling] = sibling.anchoredPosition;
-                }
+                RectTransform rect = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<RectTransform>(child);
+                if (rect == null || rect == squadButton.transform || Mathf.Abs(rect.anchoredPosition.x - playerRect.anchoredPosition.x) > 8f || rect.name.StartsWith("pitFireTeam_", StringComparison.Ordinal)) continue;
+                long pointer; try { pointer = rect.Pointer.ToInt64(); } catch { continue; }
+                if (pointer == 0) continue;
+                if (!originalButtonPositions.TryGetValue(pointer, out OriginalButtonPosition original) || original.Transform == null)
+                    originalButtonPositions[pointer] = new OriginalButtonPosition(rect, rect.anchoredPosition);
             }
         }
 
         private void RestoreOriginalButtonPositions()
         {
-            foreach (KeyValuePair<RectTransform, Vector2> pair in originalButtonPositions)
+            Transform parent = playerButton == null ? null : playerButton.transform.parent;
+            IntPtr parentPointer;
+            try { parentPointer = parent == null ? IntPtr.Zero : parent.Pointer; } catch { parentPointer = IntPtr.Zero; }
+            if (parentPointer == IntPtr.Zero || parentPointer != originalButtonPositionParentPointer) { originalButtonPositions.Clear(); originalButtonPositionParentPointer = IntPtr.Zero; return; }
+            foreach (KeyValuePair<long, OriginalButtonPosition> pair in originalButtonPositions)
             {
-                if (pair.Key != null)
-                {
-                    pair.Key.anchoredPosition = pair.Value;
-                }
+                RectTransform rect = pair.Value.Transform;
+                if (rect == null) continue;
+                try { if (rect.Pointer.ToInt64() == pair.Key) rect.anchoredPosition = pair.Value.Position; } catch { }
             }
         }
 

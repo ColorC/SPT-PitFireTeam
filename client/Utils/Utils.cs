@@ -104,18 +104,34 @@ namespace pitTeam.Utils
         /** Shortcut to check if bot has boss **/
         public static bool HasBoss(BotOwner botOwner)
         {
-            return botOwner.BotFollower.HaveBoss && botOwner.BotFollower.BossToFollow is pitAIBossPlayer;
+            return botOwner.BotFollower.HaveBoss && pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(botOwner) is pitAIBossPlayer;
         }
         /** Shortcut to get the boss the follower has **/
         public static pitAIBossPlayer GetBoss(BotOwner botOwner)
         {
             return (pitAIBossPlayer)botOwner.BotFollower.BossToFollow;
         }
+        private static TimerManager.Timer CreateNativeTimer(Il2CppSystem.TimeSpan duration, bool isLopped, string caller)
+        {
+            var staticManager = StaticManager.Instance;
+            if (staticManager == null)
+                throw new InvalidOperationException(caller + ": StaticManager.Instance is null; cannot call TimerManager.MakeTimer.");
+            var manager = staticManager.TimerManager;
+            if (manager == null)
+                throw new InvalidOperationException(caller + ": StaticManager.TimerManager receiver is null.");
+            var timerContract = manager.MakeTimer(duration, isLopped);
+            if (timerContract == null)
+                throw new InvalidOperationException(caller + ": TimerManager.MakeTimer returned null ITimer.");
+            var timer = timerContract.TryCast<TimerManager.Timer>();
+            if (timer == null)
+                throw new InvalidCastException(caller + ": MakeTimer returned native ITimer subtype '" + timerContract.GetType().FullName + "', which cannot cast to TimerManager.Timer.");
+            return timer;
+        }
         /** Recreation of javascript SetTimeout **/
         public static TimerManager.ITimer SetTimeout(Action func, int timer, bool isLopped = false)
         {
-            var timeout = StaticManager.Instance.TimerManager.MakeTimer(TimeSpan.FromMilliseconds(timer), isLopped);
-            timeout.OnTimer += () =>
+            var timeout = CreateNativeTimer(Il2CppSystem.TimeSpan.FromMilliseconds(timer), isLopped, nameof(SetTimeout));
+            timeout.OnTimer += (System.Action)(() =>
             {
                 try
                 {
@@ -126,7 +142,7 @@ namespace pitTeam.Utils
                     Modules.Logger.LogError("Exception in SetTimeout");
                     Modules.Logger.LogError(ex);
                 }
-            };
+            });
 
 
             return timeout;
@@ -134,9 +150,9 @@ namespace pitTeam.Utils
         /** Shortcut to EFT method of doign MakeTimer in relation to bot activity **/
         public static TimerManager.ITimer SetBotTimer(Action func, float seconds)
         {
-            var Timer = StaticManager.Instance.TimerManager.MakeTimer(TimeSpan.FromSeconds(seconds), false);
+            var Timer = CreateNativeTimer(Il2CppSystem.TimeSpan.FromSeconds(seconds), false, nameof(SetBotTimer));
 
-            Timer.OnTimer += () =>
+            Timer.OnTimer += (System.Action)(() =>
             {
                 try
                 {
@@ -147,7 +163,7 @@ namespace pitTeam.Utils
                     Modules.Logger.LogError("Exception in SetBotTimer");
                     Modules.Logger.LogError(ex);
                 }
-            };
+            });
 
             return Timer;
         }
@@ -326,7 +342,7 @@ namespace pitTeam.Utils
 
         public static bool CanHide(Vector3 posToHide, Vector3 wallVector, IEnumerable<Vector3> positionsIMustCare, float minSDistToEnemy, bool useRaycast, bool useAng = true)
         {
-            return PointsSearchHelper.CanIHide(posToHide, wallVector, positionsIMustCare, minSDistToEnemy, useRaycast, useAng);
+            return PointsSearchHelper.CanIHide(posToHide, wallVector, positionsIMustCare.ToNativeList(), minSDistToEnemy, useRaycast, useAng);
         }
 
         public static float Random(float a, float b)

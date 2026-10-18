@@ -1,7 +1,7 @@
 using EFT;
 using pitTeam.Modules;
 using HarmonyLib;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System.Reflection;
 using UnityEngine;
 

@@ -826,7 +826,7 @@ namespace pitTeam.Utils
 
                 BotFirstAid firstAid = bot.Medecine.FirstAid;
                 firstAid.CurUsingMeds = med;
-                firstAid._bodyPartToHeal = bodyPart;
+                firstAid._bodyPartToHeal = ((EBodyPart?)bodyPart).ToNativeNullable();
                 firstAid._isBleedingLight = false;
                 firstAid._isBleedingHeavy = false;
                 firstAid.Damaged = true;

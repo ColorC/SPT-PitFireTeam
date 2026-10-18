@@ -29,7 +29,7 @@ namespace pitTeam.BigBrain
         public bool TryGetBossPosition(out Vector3 position)
         {
             position = default;
-            if (botOwner.BotFollower?.BossToFollow is not pitAIBossPlayer boss || boss.realPlayer == null)
+            if (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(botOwner) is not pitAIBossPlayer boss || boss.realPlayer == null)
             {
                 return false;
             }

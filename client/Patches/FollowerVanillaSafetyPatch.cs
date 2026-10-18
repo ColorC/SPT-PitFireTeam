@@ -2,7 +2,7 @@ using EFT;
 using pitTeam.Components;
 using pitTeam.Modules;
 using HarmonyLib;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System;
 using System.Reflection;
 
@@ -165,7 +165,7 @@ namespace pitTeam.Patches
             return true;
         }
 
-        [PatchFinalizer]
+        [HarmonyFinalizer]
         private static Exception PatchFinalizer(AvoidDangerLayer __instance, Exception __exception, ref bool __result)
         {
             if (__exception == null)

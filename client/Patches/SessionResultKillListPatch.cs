@@ -1,9 +1,13 @@
+using Comfort.Common;
 using Diz.Binding;
 using EFT;
 using EFT.InventoryLogic;
 using EFT.UI.SessionEnd;
+using HarmonyLib;
+using Il2CppInterop.Runtime.Attributes;
+using Il2CppInterop.Runtime.Injection;
 using pitTeam.Modules;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -15,8 +19,21 @@ namespace pitTeam.Patches
 {
     internal sealed class SessionResultKillListInjectedContent : MonoBehaviour
     {
-        private readonly List<GameObject> _objects = new List<GameObject>();
+        private static bool _registered;
 
+        public SessionResultKillListInjectedContent(IntPtr pointer) : base(pointer) { }
+
+        [HideFromIl2Cpp]
+        internal static void RegisterIfNeeded()
+        {
+            if (_registered) return;
+            Il2CppBoundary.EnsureInjectedComponentRegistered<SessionResultKillListInjectedContent>();
+            _registered = true;
+        }
+
+                private readonly List<GameObject> _objects = new List<GameObject>();
+
+        [HideFromIl2Cpp]
         internal void Track(IEnumerable<GameObject> objects)
         {
             Clear();
@@ -33,6 +50,7 @@ namespace pitTeam.Patches
             Clear();
         }
 
+        [HideFromIl2Cpp]
         private void Clear()
         {
             foreach (GameObject gameObject in _objects)
@@ -54,13 +72,11 @@ namespace pitTeam.Patches
     {
         protected override MethodBase GetTargetMethod()
         {
-            return typeof(SessionResultKillList).GetMethod(
-                nameof(SessionResultKillList.Show),
-                new[] { typeof(UpdatableBindableList<VictimStats>), typeof(DogtagComponent[]) });
+            return AccessTools.Method(typeof(SessionResultKillList), nameof(SessionResultKillList.Show), new[] { typeof(UpdatableBindableList<VictimStats>), typeof(Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<DogtagComponent>), typeof(EFT.IEftSession) });
         }
 
         [PatchPostfix]
-        private static void PatchPostfix(SessionResultKillList __instance, DogtagComponent[] tags)
+        private static void PatchPostfix(SessionResultKillList __instance, Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<DogtagComponent> tags, EFT.IEftSession session)
         {
             List<GameObject> injectedObjects = new List<GameObject>();
 
@@ -98,14 +114,15 @@ namespace pitTeam.Patches
                             __instance._victimTemplate,
                             __instance._container);
                         injectedObjects.Add(row.gameObject);
-                        row.Show(victim, knownVictimProfileIds.Contains(victim.ProfileId), killNumber++);
+                        row.Show(victim, knownVictimProfileIds.Contains(victim.ProfileId), killNumber++, session);
                     }
                 }
 
                 __instance._noKillsObject?.SetActive(false);
+                SessionResultKillListInjectedContent.RegisterIfNeeded();
                 SessionResultKillListInjectedContent cleanup =
-                    __instance.GetComponent<SessionResultKillListInjectedContent>() ??
-                    __instance.gameObject.AddComponent<SessionResultKillListInjectedContent>();
+                    __instance.GetComponentViaIl2CppType<SessionResultKillListInjectedContent>() ??
+                    __instance.gameObject.AddComponentViaIl2CppType<SessionResultKillListInjectedContent>();
                 cleanup.Track(injectedObjects);
             }
             catch (Exception ex)
@@ -116,7 +133,7 @@ namespace pitTeam.Patches
             }
         }
 
-        private static HashSet<string> BuildKnownVictimProfileIds(DogtagComponent[] tags)
+        private static HashSet<string> BuildKnownVictimProfileIds(Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<DogtagComponent> tags)
         {
             HashSet<string> result = new HashSet<string>(StringComparer.Ordinal);
             if (tags == null)
@@ -142,15 +159,15 @@ namespace pitTeam.Patches
         {
             GameObject headerObject = new GameObject(
                 "pitFireTeam_RaidKillListHeader",
-                typeof(RectTransform),
-                typeof(LayoutElement));
+                Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(),
+                Il2CppInterop.Runtime.Il2CppType.Of<LayoutElement>());
             headerObject.transform.SetParent(parent, false);
 
             LayoutElement layout = headerObject.GetComponent<LayoutElement>();
             layout.preferredHeight = 46f;
             layout.flexibleWidth = 1f;
 
-            GameObject labelObject = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+            GameObject labelObject = new GameObject("Label", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<TextMeshProUGUI>());
             labelObject.transform.SetParent(headerObject.transform, false);
             RectTransform labelRect = labelObject.GetComponent<RectTransform>();
             labelRect.anchorMin = Vector2.zero;
@@ -174,7 +191,7 @@ namespace pitTeam.Patches
                 label.fontSharedMaterial = styleSource.fontSharedMaterial;
             }
 
-            GameObject dividerObject = new GameObject("Divider", typeof(RectTransform), typeof(Image));
+            GameObject dividerObject = new GameObject("Divider", Il2CppInterop.Runtime.Il2CppType.Of<RectTransform>(), Il2CppInterop.Runtime.Il2CppType.Of<Image>());
             dividerObject.transform.SetParent(headerObject.transform, false);
             RectTransform dividerRect = dividerObject.GetComponent<RectTransform>();
             dividerRect.anchorMin = new Vector2(0f, 0f);

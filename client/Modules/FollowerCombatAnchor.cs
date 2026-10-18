@@ -26,7 +26,7 @@ namespace pitTeam.Modules
 
         public static Vector3 GetRealBossPosition(BotOwner botOwner)
         {
-            if (botOwner?.BotFollower?.BossToFollow is pitAIBossPlayer boss &&
+            if (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(botOwner) is pitAIBossPlayer boss &&
                 boss.realPlayer != null &&
                 IsFinite(boss.realPlayer.Transform.position))
             {
@@ -58,7 +58,7 @@ namespace pitTeam.Modules
         private static bool TryGetClosestFollowerAnchor(BotOwner botOwner, out Vector3 position)
         {
             position = default;
-            if (botOwner?.BotFollower?.BossToFollow is not pitAIBossPlayer boss ||
+            if (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(botOwner) is not pitAIBossPlayer boss ||
                 boss.Followers == null ||
                 boss.Followers.Count == 0)
             {

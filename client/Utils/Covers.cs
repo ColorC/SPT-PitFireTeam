@@ -38,7 +38,7 @@ namespace pitTeam.Utils
          */
         public static CustomNavigationPoint GetClosestCoverPoint(BotOwner botOwner, Vector3 centerPosition, float searchRadius, Func<CustomNavigationPoint, bool>? extraChecks = null, CoverSearchType? searchTypeOverride = null)
         {
-            pitAIBossPlayer boss = botOwner.BotFollower.HaveBoss ? botOwner.BotFollower.BossToFollow as pitAIBossPlayer : null;
+            pitAIBossPlayer boss = botOwner.BotFollower.HaveBoss ? pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(botOwner) as pitAIBossPlayer : null;
 
             searchRadius = Math.Min(searchRadius, STATIC_DISTANCE);
             List<CustomNavigationPoint> areaCovers = GetVanillaBackedCandidates(botOwner, centerPosition, searchRadius, null, centerPosition, "ClosestCoverPoint", null, searchTypeOverride);
@@ -61,7 +61,7 @@ namespace pitTeam.Utils
          */
         public static CustomNavigationPoint GetClosestCoverPointBetween(BotOwner botOwner, Vector3 pointA, Vector3 pointB, float safeDistance = 5f, Func<GroupPoint, bool>? eligibilityCheck = null, CoverSearchType? searchTypeOverride = null)
         {
-            pitAIBossPlayer boss = botOwner.BotFollower.HaveBoss ? botOwner.BotFollower.BossToFollow as pitAIBossPlayer : null;
+            pitAIBossPlayer boss = botOwner.BotFollower.HaveBoss ? pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(botOwner) as pitAIBossPlayer : null;
 
 
             Vector3 centerPosition = (pointA + pointB) / 2f;
@@ -102,7 +102,7 @@ namespace pitTeam.Utils
             float minForwardDot = 0.1f,
             CoverSearchType? searchTypeOverride = null)
         {
-            pitAIBossPlayer? boss = botOwner.BotFollower.HaveBoss ? botOwner.BotFollower.BossToFollow as pitAIBossPlayer : null;
+            pitAIBossPlayer? boss = botOwner.BotFollower.HaveBoss ? pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(botOwner) as pitAIBossPlayer : null;
 
             searchRadius = Math.Min(searchRadius, STATIC_DISTANCE);
 
@@ -188,7 +188,7 @@ namespace pitTeam.Utils
 
             if (points.Count > 0)
             {
-                point = points.PickRandom();
+                point = points[System.Random.Shared.Next(points.Count)];
 
             }
 
@@ -233,7 +233,7 @@ namespace pitTeam.Utils
 
             if (!botOwner.Memory.HaveEnemy) return null;
 
-            pitAIBossPlayer boss = botOwner.BotFollower.HaveBoss ? botOwner.BotFollower.BossToFollow as pitAIBossPlayer : null;
+            pitAIBossPlayer boss = botOwner.BotFollower.HaveBoss ? pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(botOwner) as pitAIBossPlayer : null;
 
             List<Vector3> friendsPositions = new List<Vector3>((boss?.Followers?.Count ?? 0) + 1);
             if (boss != null)
@@ -250,12 +250,12 @@ namespace pitTeam.Utils
             }
             ;
 
-            botOwner.Covers.GetClosestPoint(desiredPostion, point =>
+            botOwner.Covers.GetClosestPoint(desiredPostion, (System.Func<GroupPoint, bool>)(point =>
             {
                 if (boss != null && !Utils.IsDangerPositionFarEnough(point.Position, friendsPositions, 1.5f * 1.5f)) return false;
                 if (!eligibiityCheck(point)) return false;
                 return true;
-            });
+            }));
 
             return null;
         }
@@ -422,14 +422,14 @@ namespace pitTeam.Utils
                 0f,
                 searchType,
                 shootPoint,
-                botOwner.Covers.ClosestFriendCoverPoint(),
-                pointToBeClose,
+                NativeNullableReturn.InvokeNoArgumentNullable<Vector3>(botOwner.Covers, typeof(BotCoversData), nameof(BotCoversData.ClosestFriendCoverPoint), "NativeMethodInfoPtr_ClosestFriendCoverPoint_Public_Nullable_1_Vector3_0").ToNativeNullable(),
+                pointToBeClose.ToNativeNullable(),
                 ECheckSHootHide.shootAndHide,
                 new CoverSearchDefenceData(botOwner.Settings.FileSettings.Cover.MIN_DEFENCE_LEVEL),
                 PointsArrayType.byShootType,
                 false,
-                null,
-                maxIterations,
+                ((int?)null).ToNativeNullable(),
+                ((int?)maxIterations).ToNativeNullable(),
                 label);
             searchData.UseLineCastToCover = true;
             return searchData;
@@ -747,7 +747,7 @@ namespace pitTeam.Utils
             PointsArrayType pointsArrayType = PointsArrayType.both;
             float num = 1600f;
             int num2 = 20;
-            CoverSearchData coverSearchData = new CoverSearchData((botOwner.Position + botOwner.Memory.GoalEnemy.CurrPosition) * 0.5f, botOwner.CoverSearchInfo, coverShootType, num, 0f, CoverSearchType.distToToCenter, shootPointClass, null, new Vector3?(botOwner.Position), ECheckSHootHide.shootAndHide, new CoverSearchDefenceData(0f), PointsArrayType.covers, false, null, new int?(num2), "Default");
+            CoverSearchData coverSearchData = new CoverSearchData((botOwner.Position + botOwner.Memory.GoalEnemy.CurrPosition) * 0.5f, botOwner.CoverSearchInfo, coverShootType, num, 0f, CoverSearchType.distToToCenter, shootPointClass, ((Vector3?)null).ToNativeNullable(), ((Vector3?)botOwner.Position).ToNativeNullable(), ECheckSHootHide.shootAndHide, new CoverSearchDefenceData(0f), PointsArrayType.covers, false, ((int?)null).ToNativeNullable(), ((int?)num2).ToNativeNullable(), "Default");
             coverSearchData.UseSelfFindPoint = false;
             coverSearchData.ArrayType = pointsArrayType;
             coverSearchData.UseLineCastToCover = true;

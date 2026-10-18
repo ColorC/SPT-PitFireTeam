@@ -295,7 +295,7 @@ namespace pitTeam.BigBrain.Actions
         {
             inventory = BotOwner?.GetPlayer?.InventoryController;
             followerEquipment = inventory?.Inventory?.Equipment;
-            corpseEquipment = activeBodyLootCorpse?.ItemOwner?.RootItem as InventoryEquipment;
+            corpseEquipment = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<InventoryEquipment>(activeBodyLootCorpse?.ItemOwner?.RootItem);
 
             if (!CanContinueBodyLootCommand(out string? guardFailureReason))
             {
@@ -897,7 +897,7 @@ namespace pitTeam.BigBrain.Actions
             RunBodyGearMoveTransaction(
                 inventory,
                 move,
-                new Callback(result => CompleteBodyGearMove(result, move, moveGeneration)));
+                (Callback)(System.Action<IResult>)(result => CompleteBodyGearMove(result, move, moveGeneration)));
         }
 
         private void EnqueueBodyGearSwapFollowUps(BodyGearMove move)

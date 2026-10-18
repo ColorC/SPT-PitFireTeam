@@ -1200,7 +1200,7 @@ namespace pitTeam.BigBrain
 
         private void TryEmitPushEvent(AICoreActionResult<BotLogicDecision, CoreActionResultParams> decision)
         {
-            if (botOwner.BotFollower?.BossToFollow is not pitAIBossPlayer boss)
+            if (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(botOwner) is not pitAIBossPlayer boss)
             {
                 return;
             }
@@ -1249,7 +1249,7 @@ namespace pitTeam.BigBrain
 
         private void ReleasePushEvent(string reason)
         {
-            if (botOwner.BotFollower?.BossToFollow is pitAIBossPlayer boss)
+            if (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(botOwner) is pitAIBossPlayer boss)
             {
                 boss.CombatEvents.TryReleasePush(botOwner, reason);
             }

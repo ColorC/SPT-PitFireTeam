@@ -1,6 +1,6 @@
 using EFT;
 using HarmonyLib;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -134,7 +134,7 @@ namespace pitTeam.Patches
             return AccessTools.Method(
                 typeof(EFT.BaseSpeaker),
                 nameof(EFT.BaseSpeaker.Play),
-                new[] { typeof(EPhraseTrigger), typeof(ETagStatus), typeof(bool), typeof(int?) });
+                new[] { typeof(EPhraseTrigger), typeof(ETagStatus), typeof(bool), typeof(Il2CppSystem.Nullable<int>), typeof(ETagFilter) });
         }
 
         [PatchPrefix]
@@ -142,7 +142,7 @@ namespace pitTeam.Patches
             EFT.BaseSpeaker __instance,
             EPhraseTrigger trigger,
             ETagStatus tags,
-            int? importance,
+            Il2CppSystem.Nullable<int> importance,
             ref TagBank __result)
         {
             if (trigger != EPhraseTrigger.OnRepeatedContact)

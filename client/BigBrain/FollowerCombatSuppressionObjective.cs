@@ -61,7 +61,7 @@ namespace pitTeam.BigBrain
         }
 
         public override void DecisionChanged(
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? prevDecision,
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> prevDecision,
             AICoreActionResult<BotLogicDecision, CoreActionResultParams> nextDecision)
         {
             CombatCommon.HandleSharedDecisionChanged(nextDecision);
@@ -80,16 +80,16 @@ namespace pitTeam.BigBrain
                 return Hold("noEnemy");
             }
 
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? dogFight = CombatCommon.TryGetDogFightDecision();
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> dogFight = CombatCommon.TryGetDogFightDecision();
             if (dogFight != null)
             {
-                return dogFight.Value;
+                return dogFight;
             }
 
-            AICoreActionResult<BotLogicDecision, CoreActionResultParams>? healDecision = CombatCommon.TryGetNeedHealDecision();
+            AICoreActionResult<BotLogicDecision, CoreActionResultParams> healDecision = CombatCommon.TryGetNeedHealDecision();
             if (healDecision != null)
             {
-                return healDecision.Value;
+                return healDecision;
             }
 
             if (useAutomaticSecondarySuppress)
@@ -185,7 +185,7 @@ namespace pitTeam.BigBrain
                     }
 
                     CombatCommon.HoldFor(Mathf.Max(0.05f, automaticSecondarySwitchUntil - Time.time));
-                    return default;
+                    return FollowerCombatCommon.Continue();
                 }
 
                 if (string.Equals(currentDecision.Reason, AutomaticSecondarySettleReason, StringComparison.Ordinal))
@@ -206,7 +206,7 @@ namespace pitTeam.BigBrain
                     }
 
                     CombatCommon.HoldFor(Mathf.Max(0.05f, automaticSecondarySettleUntil - Time.time));
-                    return default;
+                    return FollowerCombatCommon.Continue();
                 }
 
                 if (string.Equals(currentDecision.Reason, WeaponSwitchToPrimaryReason, StringComparison.Ordinal))
@@ -217,7 +217,7 @@ namespace pitTeam.BigBrain
                     }
 
                     CombatCommon.HoldFor(Mathf.Max(0.05f, weaponSwitchRetryUntil - Time.time));
-                    return default;
+                    return FollowerCombatCommon.Continue();
                 }
 
                 complete = true;

@@ -6,8 +6,8 @@ using EFT;
 using EFT.InventoryLogic;
 using EFT.UI;
 using HarmonyLib;
-using SPT.Common.Http;
-using SPT.Common.Utils;
+using SPTushonka.Common.Http;
+using SPTushonka.Common.Utils;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -25,6 +25,7 @@ using pitTeam.Components;
 using pitTeam.Localization;
 using pitTeam.Utils;
 using pitTeam.Patches;
+using pitTeam.Compat;
 
 namespace pitTeam
 {
@@ -124,8 +125,8 @@ namespace pitTeam
         public Dictionary<string, string> loadoutManagementExtreme { get; set; }
         public Dictionary<string, string> npcSendMessage { get; set; }
 
-        [JsonProperty("friendlyPMC")]
-        public Dictionary<string, string> pitFireTeam { get; set; }
+        public Dictionary<string, string> friendlyPMC { get; set; }
+        public Dictionary<string, string> pitFireTeam { get => friendlyPMC; set => friendlyPMC = value; }
         public Dictionary<string, string> badGuy { get; set; }
         public Dictionary<string, string> factionHostilities { get; set; }
         public Dictionary<string, string> pmcArmbands { get; set; }
@@ -231,6 +232,7 @@ namespace pitTeam
 
         public static ConfigEntry<int> statusSound;
         public static ConfigEntry<bool> enemyMarker;
+        public static ConfigEntry<bool> il2cppAutomaticGC;
         public static ConfigEntry<bool> autoDisplayCombatStatus;
         public static ConfigEntry<bool> autoDisplayKillMarker;
         public static ConfigEntry<int> enemyKilledDisplayTime;
@@ -317,6 +319,9 @@ namespace pitTeam
         private string currentLanguageCode = "en";
         private float nextLanguageCheckTime;
         private bool startupRecoveryNoticeRequested;
+        private bool _observeCoreBusinessMode;
+        private bool _observeCtorBusinessMode;
+        private string _pitBusinessMode = "normal";
 
         public static ManualLogSource Log => Instance.Logger;
 
@@ -330,16 +335,44 @@ namespace pitTeam
 
         private void Awake()
         {
+            _pitBusinessMode = Environment.GetEnvironmentVariable("PIT_SPT5_PIT_BUSINESS_MODE") ?? "normal";
+            _observeCoreBusinessMode = string.Equals(_pitBusinessMode, "observe-core", StringComparison.OrdinalIgnoreCase);
+            _observeCtorBusinessMode = string.Equals(_pitBusinessMode, "observe-ctor", StringComparison.OrdinalIgnoreCase);
 
             if (!awaken)
             {
                 awaken = true;
                 Instance = this;
                 new Modules.Logger();
+                Environment.SetEnvironmentVariable("PIT_SPT5_PIT_BUSINESS_STATE", "initializing");
+                if (_observeCtorBusinessMode)
+                {
+                    pitTeam.Compat.NativeConstructorPatchTargets.EnsureInstalled();
+                    new Harmony("xyz.pit.fireteam").CreateClassProcessor(typeof(LocalGameCtorPatch)).Patch();
+                    Environment.SetEnvironmentVariable("PIT_SPT5_PIT_BUSINESS_STATE", "skipped-observe-ctor");
+                    return;
+                }
+                if (_observeCoreBusinessMode)
+                {
+                    Environment.SetEnvironmentVariable("PIT_SPT5_PIT_BUSINESS_STATE", "skipped-observe-core");
+                    return;
+                }
 #if DEBUG
                 FollowerWeaponPrimaryReadiness.RunDeterministicSelfTests();
 #endif
                 RefreshPluginFlags();
+            }
+
+            Environment.SetEnvironmentVariable("PIT_SPT5_PIT_BUSINESS_STATE", "initializing");
+            if (_observeCtorBusinessMode)
+            {
+                Environment.SetEnvironmentVariable("PIT_SPT5_PIT_BUSINESS_STATE", "skipped-observe-ctor");
+                return;
+            }
+            if (_observeCoreBusinessMode)
+            {
+                Environment.SetEnvironmentVariable("PIT_SPT5_PIT_BUSINESS_STATE", "skipped-observe-core");
+                return;
             }
 
             // initialize follower brain layers
@@ -367,12 +400,20 @@ namespace pitTeam
             new BotOwnerActivatePatch().Enable();
             new SessionLoadBotsEnglishVoicePatch().Enable();
             new LootPatrolActiveLayerListPatch().Enable();
-            new LootPatrolDecisionBypassPatch().Enable();
+            var lootPatrolDecisionPatch = new LootPatrolDecisionBypassPatch();
+            lootPatrolDecisionPatch.Enable();
+            ModulePatchFinalizerRegistration.Register(lootPatrolDecisionPatch);
             if (IsSAINInstalled)
-                new HostileNonCombatActiveLayerFilterPatch().Enable();
+            {
+                var hostileLayerPatch = new HostileNonCombatActiveLayerFilterPatch();
+                hostileLayerPatch.Enable();
+                ModulePatchFinalizerRegistration.Register(hostileLayerPatch);
+            }
             new AdvAssaultTargetFollowerGuardPatch().Enable();
             new PatrolDataFollowerUpdateGuardPatch().Enable();
-            new AvoidDangerFollowerGuardPatch().Enable();
+            var avoidDangerFollowerGuardPatch = new AvoidDangerFollowerGuardPatch();
+            avoidDangerFollowerGuardPatch.Enable();
+            ModulePatchFinalizerRegistration.Register(avoidDangerFollowerGuardPatch);
             new FollowerNightVisionActivatePatch().Enable();
             new FollowerNightVisionOnPatch().Enable();
             new FollowerNightVisionOffPatch().Enable();
@@ -387,7 +428,9 @@ namespace pitTeam
             new FollowerSprintStateDirectionPatch().Enable();
 
 #if DEBUG
-            new AICoreAgentUpdatePatch().Enable();
+            var aiCoreAgentUpdatePatch = new AICoreAgentUpdatePatch();
+            aiCoreAgentUpdatePatch.Enable();
+            ModulePatchFinalizerRegistration.Register(aiCoreAgentUpdatePatch);
 #endif
 
             // recruit/request patches
@@ -407,7 +450,10 @@ namespace pitTeam
             new TeammateBackpackSimpleStashLabelPatch().Enable();
             new TeammateCorpseContainersPanelSearchPatch().Enable();
             new TeammateCorpseEquipmentTabSearchPatch().Enable();
-            new TeammateCorpseDogtagMovePatch().Enable();
+            TeammateCorpseDogtagProbe.AuditNativeTarget();
+            TeammateCorpseDogtagMovePatch dogtagMovePatch = new TeammateCorpseDogtagMovePatch();
+            dogtagMovePatch.Enable();
+            pitTeam.Patches.ModulePatchFinalizerRegistration.Register(dogtagMovePatch);
             new TeammateCorpseDogtagRemovePatch().Enable();
             new FollowerBotReceiverHardAimIgnorePatch().Enable();
             new FollowerBotReceiverTiltIgnorePatch().Enable();
@@ -418,11 +464,11 @@ namespace pitTeam
 
             // spawn patches
             new BotsControllerPatch().Enable();
+            new LocalGameBotsControllerInitializationPatch().Enable();
+            new GameWorldStartedNormalBossRegistrationPatch().Enable();
             new BotsControllerStopPatch().Enable();
             new LocalGameCleanupPatch().Enable();
 
-            // Only patch LocalGame ctor here; avoid broad PatchAll side effects at menu/hideout time.
-            harmony.CreateClassProcessor(typeof(LocalGameCtorPatch)).Patch();
             new BotsEventsControllerSpawnPatch().Enable();
             new BossSpawnWaveManagerClassPatch().Enable();
 
@@ -435,7 +481,9 @@ namespace pitTeam
             new BotTalkTrySayPatch().Enable();
             new BotTalkSayPatch().Enable();
             new PlayerSayFollowerTalkPatch().Enable();
-            new FollowerWeaponTakenAfterDeathPatch().Enable();
+            var followerWeaponTakenAfterDeathPatch = new FollowerWeaponTakenAfterDeathPatch();
+            followerWeaponTakenAfterDeathPatch.Enable();
+            ModulePatchFinalizerRegistration.Register(followerWeaponTakenAfterDeathPatch);
             new FollowerWeaponSelectorManualUpdatePatch().Enable();
             new FollowerSupportNoAmmoMainSwitchPolicyPatch().Enable();
             new FollowerHoldLingerReloadSuppressPatch().Enable();
@@ -449,7 +497,9 @@ namespace pitTeam
             new FollowerGrenadeCooldownPatch().Enable();
             new FollowerGrenadeThrowFinishPatch().Enable();
             new FollowerGrenadeReleasePatch().Enable();
-            new FollowerEnemyInfoCorrectionPatch().Enable();
+            var followerEnemyInfoCorrectionPatch = new FollowerEnemyInfoCorrectionPatch();
+            followerEnemyInfoCorrectionPatch.Enable();
+            ModulePatchFinalizerRegistration.Register(followerEnemyInfoCorrectionPatch);
             new FollowerEnemyInfoSetVisibleCorrectionPatch().Enable();
             new BulletImpactPatch().Enable();
             new HearingSensorPatch().Enable();
@@ -465,6 +515,8 @@ namespace pitTeam
             new PlayerShotPatch().Enable();
             new AddTeammateBackButtonPatch().Enable();
             new AddTeammateSideSelectionStateClosePatch().Enable();
+            new AddTeammateSideSelectionStateShowPatch().Enable();
+            new AddTeammateSideSelectionStatePreparePatch().Enable();
             new AddTeammateNicknameFieldEndEditPatch().Enable();
             new AddTeammateNicknameFieldInitPatch().Enable();
             new AddTeammateNicknameFieldStatusPatch().Enable();
@@ -472,14 +524,14 @@ namespace pitTeam
             new AddTeammateHeadSelectionOptionsPatch().Enable();
             new AddTeammateFinishPatch().Enable();
 
-            // AIBossPlayer class patch
-            new AIDataContructPatch().Enable();
+            // Boss AIData association is performed after construction by the mapped BossPlayers binder.
 
             // command/request patches
             new QuickPanelPatch().Enable();
             new QuickPanelHurtPhrasePatch().Enable();
             new QuickPanelUpdateBackpackInteractionPatch().Enable();
             new GestureMenuPatch().Enable();
+            new CustomGestureCaptionPatch().Enable();
             new CreatePhraseGroupPatch().Enable();
             new CreateGesturesPatch().Enable();
             new CustomPlayerGestureIntPatch().Enable();
@@ -499,7 +551,9 @@ namespace pitTeam
             // Compatibility guard: hideout/trader-scene cleanup can null-ref while
             // the teammate flow forces the raid into local mode. Keep this narrow
             // so only that synthetic raid-start unload window is affected.
-            new HideoutGameDisposeSyntheticRaidGuardPatch().Enable();
+            var hideoutGameDisposeSyntheticRaidGuardPatch = new HideoutGameDisposeSyntheticRaidGuardPatch();
+            hideoutGameDisposeSyntheticRaidGuardPatch.Enable();
+            ModulePatchFinalizerRegistration.Register(hideoutGameDisposeSyntheticRaidGuardPatch);
             new MatchmakerPlayerControllerClassAddMemberPatch().Enable();
             new MatchmakerPlayerControllerClassDisbandGroupPatch().Enable();
             new MatchmakerPlayerControllerClassAbortPatch().Enable();
@@ -522,6 +576,18 @@ namespace pitTeam
             new MainMenuControllerOpenSideSelectionGuardPatch().Enable();
             new CurrentScreenTryReturnToRootScreenPatch().Enable();
             new PlayerModelViewShowProfilePatch().Enable();
+            var lifetimeContextPatch = new TeammateOverallLifetimeContextPatch();
+            lifetimeContextPatch.Enable();
+            ModulePatchFinalizerRegistration.Register(lifetimeContextPatch);
+            if (TeammateLifetimeFormatting.VerifyScope()) new TeammateLifetimeClearFormatPatch().Enable();
+            else Log.LogError("[UI] Lifetime clear compatibility disabled: native scope/finalizer registration was not verified.");
+            var uiWeaponPreviewContextPatch = new UiWeaponPreviewContextPatch();
+            uiWeaponPreviewContextPatch.Enable();
+            ModulePatchFinalizerRegistration.Register(uiWeaponPreviewContextPatch);
+            if (UiWeaponPreviewCache.VerifyScopeRegistration())
+                new UiWeaponPreviewParameterCachePatch().Enable();
+            else
+                Log.LogError("[UI] Weapon preview cache repair disabled: native scope/finalizer registration was not verified.");
             new MatchMakerGroupPreviewClosePlayerPatch().Enable();
             new PlayerModelViewShowLastStatePatch().Enable();
 
@@ -569,16 +635,30 @@ namespace pitTeam
             new TeammateEquipmentBuildsSearchContextPatch().Enable();
             new TeammateEquipmentBuildsInspectButtonsPatch().Enable();
             new TeammateEquipmentBuildsListViewPatch().Enable();
+            new TeammateEquipmentBuildsRowCreatedPatch().Enable();
 
             // SAIN/Donuts patches
             if (IsSAINInstalled)
             {
                 SAINPatch.PatchSAINIfInstalled(harmony);
             }
+            Environment.SetEnvironmentVariable("PIT_SPT5_PIT_BUSINESS_STATE", "awake-completed");
         }
 
         private void Start()
         {
+            if (_observeCtorBusinessMode)
+            {
+                Environment.SetEnvironmentVariable("PIT_SPT5_PIT_BUSINESS_STATE", "skipped-observe-ctor");
+                return;
+            }
+            if (_observeCoreBusinessMode)
+            {
+                Environment.SetEnvironmentVariable("PIT_SPT5_PIT_BUSINESS_STATE", "skipped-observe-core");
+                return;
+            }
+            Environment.SetEnvironmentVariable("PIT_SPT5_PIT_BUSINESS_STATE", "start-in-progress");
+            ScenarioStaminaSupport.Initialize(warning: message => Log.LogWarning(message));
             RefreshPluginFlags();
             if (IsSeparateHostilityInstalled && factionHostilities?.Value == true)
             {
@@ -587,10 +667,21 @@ namespace pitTeam
                     "SeparateHostility keeps its broader PMC free-for-all behavior.");
             }
             StartCoroutine(ShowStartupRecoveryNoticeCoroutine());
+            Environment.SetEnvironmentVariable("PIT_SPT5_PIT_BUSINESS_STATE", "initialized");
         }
 
         private void OnDestroy()
         {
+            if (_observeCtorBusinessMode)
+            {
+                Environment.SetEnvironmentVariable("PIT_SPT5_PIT_BUSINESS_STATE", "skipped-observe-ctor");
+                return;
+            }
+            if (_observeCoreBusinessMode)
+            {
+                Environment.SetEnvironmentVariable("PIT_SPT5_PIT_BUSINESS_STATE", "destroyed-after-observe-core");
+                return;
+            }
             if (hideUnsupportedCommands != null)
             {
                 hideUnsupportedCommands.SettingChanged -= OnHideUnsupportedCommandsChanged;
@@ -885,7 +976,7 @@ namespace pitTeam
             try
             {
                 string embeddedEnglishJson = JsonConvert.SerializeObject(fallback);
-                string requestBody = JsonConvert.SerializeObject(new { locale = languageCode, englishJson = embeddedEnglishJson });
+                string requestBody = System.Text.Json.JsonSerializer.Serialize(new { locale = languageCode, englishJson = embeddedEnglishJson });
                 string responseJson = RequestHandler.PostJson("/singleplayer/pitfireteam/lang", requestBody);
                 LanguageOptions loaded = JsonConvert.DeserializeObject<LanguageOptions>(responseJson);
                 return ApplyLanguageFallback(loaded, fallback);
@@ -1012,10 +1103,10 @@ namespace pitTeam
             savedConfigValues = new Dictionary<ConfigDefinition, string>();
 
             var orphanedEntries = AccessTools.Property(typeof(ConfigFile), "OrphanedEntries").GetValue(Config) as Dictionary<ConfigDefinition, string>;
-            orphanedEntries.ExecuteForEach(it =>
+            foreach (KeyValuePair<ConfigDefinition, string> it in orphanedEntries)
             {
                 savedConfigValues.Add(it.Key, it.Value);
-            });
+            }
 
             scanDistance = Config.Bind("", "01 ScanDistance", 140, new ConfigDescription(optionsLang.scanDistance["Description"], new AcceptableValueRange<int>(50, 300), CreateConfigAttributes(-100, false, optionsLang.scanDistance)));
 
@@ -1030,6 +1121,7 @@ namespace pitTeam
             statusSound = Config.Bind("", "05 StatusSound", 100, new ConfigDescription(optionsLang.statusSound["Description"], new AcceptableValueRange<int>(0, 100), CreateConfigAttributes(-500, false, optionsLang.statusSound)));
 
             enemyMarker = Config.Bind("", "06 EnemyMarker", true, new ConfigDescription(optionsLang.enemyMarker["Description"], null, CreateConfigAttributes(-600, false, optionsLang.enemyMarker)));
+            il2cppAutomaticGC = Config.Bind("Compatibility", "Il2CppAutomaticGC", true, "Keep Unity automatic GC enabled during active raids.");
 
             autoDisplayCombatStatus = Config.Bind(
                 "",
@@ -1154,7 +1246,7 @@ namespace pitTeam
 
             npcSendMessage = Config.Bind("", "11 NpcSendMessage", true, new ConfigDescription(optionsLang.npcSendMessage["Description"], null, CreateConfigAttributes(-1003, false, optionsLang.npcSendMessage)));
 
-            pitFireTeamFLAG = Config.Bind("", "12 PitFireTeam", true, new ConfigDescription(optionsLang.pitFireTeam["Description"], null, CreateConfigAttributes(-1004, false, optionsLang.pitFireTeam)));
+            pitFireTeamFLAG = Config.Bind("", "12 PitFireTeam", true, new ConfigDescription(optionsLang.friendlyPMC["Description"], null, CreateConfigAttributes(-1004, false, optionsLang.friendlyPMC)));
 
             badGuy = Config.Bind("", "13 BadGuy", false, new ConfigDescription(optionsLang.badGuy["Description"], null, CreateConfigAttributes(-1005, false, optionsLang.badGuy)));
 
@@ -1174,7 +1266,7 @@ namespace pitTeam
 
             regroupRadius = Config.Bind("", "15 RegroupRadius", 18, new ConfigDescription(optionsLang.regroupRadius["Description"], new AcceptableValueRange<int>(10, 38), CreateConfigAttributes(-1005, false, optionsLang.regroupRadius)));
 
-            pingKey = Config.Bind("", "16 PingSquad", new KeyboardShortcut(KeyCode.None), new ConfigDescription(optionsLang.pingSquad["Description"], null, CreateConfigAttributes(-1006, false, optionsLang.pingSquad)));
+            pingKey = Config.Bind("", "16 PingSquad", new KeyboardShortcut(KeyCode.F2), new ConfigDescription(optionsLang.pingSquad["Description"], null, CreateConfigAttributes(-1006, false, optionsLang.pingSquad)));
 
             pingRadioVolume = Config.Bind("", "17 PingRadioVolume", 50, new ConfigDescription(optionsLang.pingRadioVolume["Description"], new AcceptableValueRange<int>(0, 100), CreateConfigAttributes(-1007, false, optionsLang.pingRadioVolume)));
 
@@ -1198,7 +1290,7 @@ namespace pitTeam
 
             statusReportShowDistance = Config.Bind("", "18 StatusReportShowDistance", true, new ConfigDescription(optionsLang.statusReportShowDistance["Description"], null, CreateConfigAttributes(-1008, false, optionsLang.statusReportShowDistance)));
 
-            statusReportShowHealth = Config.Bind("", "18 StatusReportShowHealth", false, new ConfigDescription(optionsLang.statusReportShowHealth["Description"], null, CreateConfigAttributes(-1008, false, optionsLang.statusReportShowHealth)));
+            statusReportShowHealth = Config.Bind("", "18 StatusReportShowHealth", true, new ConfigDescription(optionsLang.statusReportShowHealth["Description"], null, CreateConfigAttributes(-1008, false, optionsLang.statusReportShowHealth)));
 
             statusReportShowTactic = Config.Bind("", "18 StatusReportShowTactic", false, new ConfigDescription(optionsLang.statusReportShowTactic["Description"], null, CreateConfigAttributes(-1008, false, optionsLang.statusReportShowTactic)));
 
@@ -1286,8 +1378,7 @@ namespace pitTeam
         {
             try
             {
-                string requestBody = JsonConvert.SerializeObject(new
-                {
+                string requestBody = System.Text.Json.JsonSerializer.Serialize(new {
                     pmcArmbands = pmcArmbands?.Value ?? true,
                     loadoutManagementMode = (loadoutManagementMode?.Value ?? DefaultLoadoutManagementMode).ToString(),
                     restrictedGearMaintenance = restrictedGearMaintenance?.Value ?? false
@@ -1447,92 +1538,16 @@ namespace pitTeam
         {
             try
             {
-                Type consoleType = AccessTools.TypeByName("EFT.UI.ConsoleScreen")
-                    ?? AccessTools.TypeByName("ConsoleScreen");
-                if (consoleType == null)
-                {
-                    Modules.Logger.LogError("ConsoleScreen type not found; debug spawn commands not registered.");
-                    return;
-                }
-
-                FieldInfo processorField = AccessTools.Field(consoleType, "Processor");
-                object processor = processorField?.GetValue(null);
+                var processor = EFT.UI.ConsoleScreen.Processor;
                 if (processor == null)
-                {
-                    PropertyInfo processorProperty = AccessTools.Property(consoleType, "Processor");
-                    processor = processorProperty?.GetValue(null);
-                }
-                if (processor == null)
-                {
-                    Modules.Logger.LogError("ConsoleScreen.Processor not found; debug spawn commands not registered.");
-                    return;
-                }
-
-                MethodInfo registerWithDescription = null;
-                MethodInfo registerSimple = null;
-                MethodInfo[] registerCandidates = processor.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                foreach (MethodInfo method in registerCandidates)
-                {
-                    if (!string.Equals(method.Name, "RegisterCommand", StringComparison.Ordinal))
-                    {
-                        continue;
-                    }
-
-                    ParameterInfo[] parameters = method.GetParameters();
-                    if (parameters.Length == 3
-                        && parameters[0].ParameterType == typeof(string)
-                        && parameters[1].ParameterType == typeof(Action)
-                        && parameters[2].ParameterType == typeof(string))
-                    {
-                        registerWithDescription = method;
-                    }
-                    else if (parameters.Length == 2
-                        && parameters[0].ParameterType == typeof(string)
-                        && parameters[1].ParameterType == typeof(Action))
-                    {
-                        registerSimple = method;
-                    }
-                }
-
-                if (registerWithDescription != null)
-                {
-                    RegisterDebugConsoleCommand(
-                        processor,
-                        registerWithDescription,
-                        "fs_spawnfollower",
-                        SpawnFollowerConsoleCommand,
-                        "Spawn a follower bot near the player");
-                    RegisterDebugConsoleCommand(
-                        processor,
-                        registerWithDescription,
-                        "fs_spawnscav",
-                        SpawnScavConsoleCommand,
-                        "Spawn a scav enemy at the point you are looking at");
-                    Modules.Logger.LogInfo("Registered console command: fs_spawnfollower");
-                    Modules.Logger.LogInfo("Registered console command: fs_spawnscav");
-                    return;
-                }
-
-                if (registerSimple != null)
-                {
-                    RegisterDebugConsoleCommand(
-                        processor,
-                        registerSimple,
-                        "fs_spawnfollower",
-                        SpawnFollowerConsoleCommand,
-                        null);
-                    RegisterDebugConsoleCommand(
-                        processor,
-                        registerSimple,
-                        "fs_spawnscav",
-                        SpawnScavConsoleCommand,
-                        null);
-                    Modules.Logger.LogInfo("Registered console command: fs_spawnfollower");
-                    Modules.Logger.LogInfo("Registered console command: fs_spawnscav");
-                    return;
-                }
-
-                Modules.Logger.LogError("RegisterCommand overload not found; debug spawn commands not registered.");
+                    throw new InvalidOperationException("ConsoleScreen.Processor is not initialized.");
+                processor.RegisterCommand("fs_spawnfollower",
+                    (Il2CppSystem.Action)(Action)SpawnFollowerConsoleCommand,
+                    "Spawn a follower bot near the player");
+                processor.RegisterCommand("fs_spawnscav",
+                    (Il2CppSystem.Action)(Action)SpawnScavConsoleCommand,
+                    "Spawn a scav enemy at the point you are looking at");
+                Modules.Logger.LogInfo("Registered console commands: fs_spawnfollower, fs_spawnscav");
             }
             catch (Exception ex)
             {
@@ -1540,24 +1555,6 @@ namespace pitTeam
                 Modules.Logger.LogError(ex);
             }
         }
-
-        private static void RegisterDebugConsoleCommand(
-            object processor,
-            MethodInfo registerMethod,
-            string command,
-            Action action,
-            string description)
-        {
-            ParameterInfo[] parameters = registerMethod.GetParameters();
-            if (parameters.Length == 3)
-            {
-                registerMethod.Invoke(processor, new object[] { command, action, description ?? string.Empty });
-                return;
-            }
-
-            registerMethod.Invoke(processor, new object[] { command, action });
-        }
-
         private static void SpawnFollowerConsoleCommand()
         {
             _ = SpawnFollowerConsoleCommandAsync();
@@ -1756,9 +1753,13 @@ namespace pitTeam
 
         void Update()
         {
+            if (_observeCoreBusinessMode || _observeCtorBusinessMode) return;
+            Spt5NativeGcCompatibility.Tick(il2cppAutomaticGC == null || il2cppAutomaticGC.Value);
+
             CheckLanguageSettingChanged();
 
             GameWorld gameWorld = Singleton<GameWorld>.Instance;
+            ScenarioStaminaSupport.Tick(gameWorld);
             if (gameWorld == null)
             {
                 return;

@@ -1,7 +1,7 @@
 using EFT.InventoryLogic;
 using HarmonyLib;
 using pitTeam.Modules;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System;
 using System.Linq;
 using System.Reflection;
@@ -32,7 +32,7 @@ namespace pitTeam.Patches
                     return false;
                 }
 
-                NightVisionComponent nightVision = headwear.GetItemComponentsInChildren<NightVisionComponent>(true).FirstOrDefault();
+                NightVisionComponent nightVision = headwear.GetItemComponentsInChildren<NightVisionComponent>(true).AsManaged().FirstOrDefault();
                 if (nightVision == null)
                 {
                     return false;

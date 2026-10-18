@@ -123,7 +123,7 @@ namespace pitTeam.Utils
         public static bool IsFriendlyNearImpact(BotOwner shooter, Vector3 impactPosition, float unsafeRadius)
         {
             if (unsafeRadius <= 0f ||
-                shooter?.BotFollower?.BossToFollow is not pitAIBossPlayer boss ||
+                pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(shooter) is not pitAIBossPlayer boss ||
                 boss.realPlayer == null)
             {
                 return false;
@@ -170,7 +170,7 @@ namespace pitTeam.Utils
         {
             reason = string.Empty;
             if (unsafeRadius <= 0f ||
-                shooter?.BotFollower?.BossToFollow is not pitAIBossPlayer boss ||
+                pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(shooter) is not pitAIBossPlayer boss ||
                 boss.realPlayer == null ||
                 !IsFinite(impactPosition))
             {
@@ -505,7 +505,7 @@ namespace pitTeam.Utils
             float closeFrontDot,
             float distancePadding)
         {
-            if (shooter?.BotFollower?.BossToFollow is not pitAIBossPlayer boss || boss.realPlayer == null)
+            if (pitTeam.Modules.BossPlayers.GetResolvedBossForFollower(shooter) is not pitAIBossPlayer boss || boss.realPlayer == null)
             {
                 return false;
             }

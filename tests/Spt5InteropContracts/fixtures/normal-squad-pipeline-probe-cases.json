@@ -1,0 +1,418 @@
+{
+    "coverSearchNullableArgument":  {
+                                        "name":  "ap-cover-search-data-nullable-byvalue-arguments",
+                                        "assemblyPath":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\isolated-client-reference\\BepInEx\\interop\\Assembly-CSharp.dll",
+                                        "oldShadowAssemblyPath":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\isolated-client-reference\\BepInEx\\plugins\\pitFireTeam\\pitFireTeam.dll",
+                                        "legacyCastObservation":  {
+                                                                      "observed":  true,
+                                                                      "typeFullName":  "pitTeam.BigBrain.Actions.GestureCommandAction",
+                                                                      "methodName":  "TryGetBodyLootExecutionContext",
+                                                                      "opcode":  "isinst",
+                                                                      "operand":  "EFT.InventoryLogic.InventoryEquipment"
+                                                                  },
+                                        "nullableAssemblyPath":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\isolated-client-reference\\BepInEx\\interop\\Il2Cppmscorlib.dll",
+                                        "nativeEvidencePath":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\isolated-client-reference\\BepInEx\\LogOutput.log",
+                                        "nativeErrorShape":  "CoverSearchData ctor generated IL calls Il2CppObjectBaseToPtrNotNull then il2cpp_object_unbox for nullable by-value parameters; actual AP stack reached Covers.BuildCoverSearchData.",
+                                        "ctorParameterCount":  16,
+                                        "nullableVectorParameterIndex":  7,
+                                        "nullableIntParameterIndex":  13,
+                                        "nullableParameterIndexes":  [
+                                                                         7,
+                                                                         8,
+                                                                         13,
+                                                                         14
+                                                                     ],
+                                        "emptyNullableCtorAllocatesNativeObject":  true,
+                                        "rawNullFailsMarshalling":  true
+                                    },
+    "evidencePath":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261014ae-probe\\probe-ae-protected-normal-world01.json",
+    "baseline":  {
+                     "normalBossLifecycleRegistrationSuccesses":  1,
+                     "spawnMemberIdCount":  1,
+                     "spawnActionCallbackCount":  null,
+                     "backendRequestStartedCount":  null,
+                     "meaning":  "AE lacked these probe fields, so absence cannot distinguish callback-not-observed from request-pending."
+                 },
+    "cases":  [
+                  {
+                      "name":  "callback-not-observed",
+                      "callbacks":  0,
+                      "spawnFollowersCalls":  0,
+                      "skippedControllerNull":  0,
+                      "backendRequestsStarted":  0,
+                      "backendResponses":  0,
+                      "backendRequestsPending":  0,
+                      "currentStage":  "not-observed",
+                      "currentStatus":  "not-observed"
+                  },
+                  {
+                      "name":  "spawn-followers-early-controller-null",
+                      "callbacks":  1,
+                      "spawnFollowersCalls":  1,
+                      "skippedControllerNull":  1,
+                      "backendRequestsStarted":  0,
+                      "backendResponses":  0,
+                      "backendRequestsPending":  0,
+                      "currentStage":  "spawn-followers-skipped-controller-null",
+                      "currentStatus":  "not-observed"
+                  },
+                  {
+                      "name":  "native-backend-await-pending",
+                      "callbacks":  1,
+                      "spawnFollowersCalls":  1,
+                      "backendRequestsStarted":  1,
+                      "backendResponses":  0,
+                      "backendRequestsPending":  1,
+                      "currentStage":  "backend-request-await",
+                      "currentStatus":  "pending"
+                  },
+                  {
+                      "name":  "response-arrived-decoding",
+                      "callbacks":  1,
+                      "spawnFollowersCalls":  1,
+                      "backendRequestsStarted":  1,
+                      "backendResponses":  1,
+                      "backendRequestsPending":  0,
+                      "profilesDecoded":  0,
+                      "currentStage":  "decode-profile-response",
+                      "currentStatus":  "decoding"
+                  }
+              ],
+    "afEvidencePath":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261014af-probe\\probe-af-normal-squad-monitor01-sample-027-world.json",
+    "afBaseline":  {
+                       "gameWorldStartedCallbacks":  1,
+                       "registrationSuccesses":  1,
+                       "pairCount":  1,
+                       "spawnActionCallbacks":  0,
+                       "spawnFollowersCalls":  0,
+                       "profilesDecoded":  1,
+                       "backendResponses":  1,
+                       "followers":  0
+                   },
+    "lifecycleCases":  [
+                           {
+                               "name":  "gameworld-starts-normal-spawn-after-pair-complete",
+                               "origin":  "GameWorld.OnGameStarted",
+                               "gameWorldStartedSpawnCalls":  1,
+                               "legacyCallbacks":  0,
+                               "spawnFollowersCalls":  1,
+                               "started":  1,
+                               "squadSpawned":  true,
+                               "startedOrigin":  "GameWorld.OnGameStarted"
+                           },
+                           {
+                               "name":  "late-legacy-action-is-idempotent",
+                               "origin":  "GameWorld.OnGameStarted",
+                               "gameWorldStartedSpawnCalls":  1,
+                               "legacyCallbacks":  1,
+                               "spawnFollowersCalls":  2,
+                               "started":  1,
+                               "skippedAlreadySpawned":  1,
+                               "squadSpawned":  true,
+                               "startedOrigin":  "GameWorld.OnGameStarted"
+                           },
+                           {
+                               "name":  "gameworld-first-local-task-completes-existing-pair",
+                               "origin":  "GameWorld.OnGameStarted",
+                               "gameWorldStartedCallbacks":  1,
+                               "pairInitiallyCompletedBy":  "AddActivePLayer",
+                               "duplicateSource":  "LocalGame.LocalBotsControllerInitialization",
+                               "duplicateAlreadyCompleted":  true,
+                               "gameWorldStartedSpawnCalls":  1,
+                               "legacyCallbacks":  0,
+                               "spawnFollowersCalls":  1,
+                               "started":  1,
+                               "squadSpawned":  true,
+                               "startedOrigin":  "GameWorld.OnGameStarted"
+                           }
+                       ],
+    "enemyTargetCases":  [
+                             {
+                                 "name":  "goal-enemy-is-main-player",
+                                 "synthesized":  true,
+                                 "nativeShape":  "EFT.BotOwner.Memory:EFT.BotMemory; EFT.BotMemory.GoalEnemy:EnemyInfo; EnemyInfo.Person:EFT.IPlayer; EFT.IPlayer.ProfileId:System.String",
+                                 "botOwnerPresent":  true,
+                                 "memoryPresent":  true,
+                                 "haveEnemy":  true,
+                                 "goalEnemyPresent":  true,
+                                 "personPresent":  true,
+                                 "enemyPlayerProfileId":  "qa-profile-fixture",
+                                 "expectedStatus":  "current-goal-enemy",
+                                 "expectedTargetsMainPlayer":  true
+                             },
+                             {
+                                 "name":  "no-goal-enemy",
+                                 "synthesized":  true,
+                                 "nativeShape":  "EFT.BotMemory.HaveEnemy:System.Boolean; EFT.BotMemory.GoalEnemy:EnemyInfo",
+                                 "botOwnerPresent":  true,
+                                 "memoryPresent":  true,
+                                 "haveEnemy":  false,
+                                 "goalEnemyPresent":  false,
+                                 "personPresent":  false,
+                                 "enemyPlayerProfileId":  null,
+                                 "expectedStatus":  "no-goal-enemy",
+                                 "expectedTargetsMainPlayer":  false
+                             },
+                             {
+                                 "name":  "unsupported-enemy-person",
+                                 "synthesized":  true,
+                                 "nativeShape":  "EnemyInfo.Person:EFT.IPlayer required; fixture omits readable Person getter",
+                                 "botOwnerPresent":  true,
+                                 "memoryPresent":  true,
+                                 "haveEnemy":  true,
+                                 "goalEnemyPresent":  true,
+                                 "personPresent":  false,
+                                 "enemyPlayerProfileId":  null,
+                                 "expectedStatus":  "unsupported-enemy-person-member",
+                                 "expectedTargetsMainPlayer":  null
+                             },
+                             {
+                                 "name":  "have-enemy-true-goal-null",
+                                 "synthesized":  true,
+                                 "nativeShape":  "EFT.BotMemory.HaveEnemy:System.Boolean=true; EFT.BotMemory.GoalEnemy:EnemyInfo=null",
+                                 "botOwnerPresent":  true,
+                                 "memoryPresent":  true,
+                                 "haveEnemy":  true,
+                                 "goalEnemyPresent":  false,
+                                 "personPresent":  false,
+                                 "expectedStatus":  "goal-enemy-null-have-enemy-true",
+                                 "expectedAvailable":  false,
+                                 "expectedUnresolved":  true
+                             },
+                             {
+                                 "name":  "actor-read-error-counted-unresolved",
+                                 "synthesized":  true,
+                                 "nativeShape":  "AllAlivePlayersList actor getter throws while reading IsAI or AIData.BotOwner",
+                                 "actorReadThrows":  true,
+                                 "expectedSummaryStatus":  "partial",
+                                 "expectedUnresolved":  true
+                             }
+                         ],
+    "timerNativeCastCases":  [
+                                 {
+                                     "name":  "ag-null-from-clr-as",
+                                     "observedFailureShape":  "AG log secondary NullReferenceException at Utils.SetTimeout OnTimer registration after CLR as-cast of native ITimer returned null",
+                                     "expectedSource":  "shared native TryCast helper with explicit null/subtype failures"
+                                 },
+                                 {
+                                     "name":  "native-subtype-rejected-explicitly",
+                                     "observedFailureShape":  "MakeTimer returns interface contract; a non-Timer native subtype must report InvalidCastException with native wrapper type",
+                                     "expectedSource":  "TryCast\u003cTimerManager.Timer\u003e and explicit InvalidCastException"
+                                 }
+                             ],
+    "followerInitializationCases":  [
+                                        {
+                                            "name":  "ag-settings-init-nre-faults-normal-task",
+                                            "sourceEvidence":  "AG normal OnBotState -\u003e BossPlayers.AddFollower -\u003e BotFollowerPlayer.Init -\u003e SetFollowerSettings NullReferenceException",
+                                            "expectedFirstFailureStage":  "SetFollowerSettings",
+                                            "expectedNormalTaskStatus":  "Faulted",
+                                            "expectedFollowerRegistered":  false,
+                                            "expectedReadyNotificationAttempted":  false,
+                                            "expectedOriginalExceptionPropagated":  true
+                                        },
+                                        {
+                                            "name":  "initialized-follower-ready-notification-fails",
+                                            "sourceEvidence":  "AG secondary Utils.SetTimeout failure occurred after AddBotFollower returned null on prior init failure",
+                                            "expectedNormalTaskStatus":  "RanToCompletion",
+                                            "expectedFollowerRegistered":  true,
+                                            "expectedReadyNotificationErrorIsSeparate":  true
+                                        },
+                                        {
+                                            "name":  "callback-missing-or-raid-cleanup",
+                                            "sourceEvidence":  "normal OnBotState callback may not arrive or raid StopGettingInfo may clear its watcher",
+                                            "expectedNormalTaskStatus":  "CanceledOrTimedOut",
+                                            "expectedWatcherCleaned":  true
+                                        }
+                                    ],
+    "bodyLootRootCasting":  {
+                                "evidencePath":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\native-game-input\\after-world-at-corpse-ray-correction-r36-20.json",
+                                "profileId":  "6ace65cbc399ad84d0a97b54",
+                                "corpsePointer":  "2C5228358C0",
+                                "rootWrapperType":  "EFT.InventoryLogic.Item",
+                                "nativeEquipmentPointer":  "2BFEBADF410",
+                                "dogtagItemId":  "6ace65cbc399ad84d0a97b9f",
+                                "assemblyPath":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\isolated-client-reference\\BepInEx\\interop\\Assembly-CSharp.dll",
+                                "oldShadowAssemblyPath":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\isolated-client-reference\\BepInEx\\plugins\\pitFireTeam\\pitFireTeam.dll",
+                                "legacyCastObservation":  {
+                                                              "observed":  true,
+                                                              "typeFullName":  "pitTeam.BigBrain.Actions.GestureCommandAction",
+                                                              "methodName":  "TryGetBodyLootExecutionContext",
+                                                              "opcode":  "isinst",
+                                                              "operand":  "EFT.InventoryLogic.InventoryEquipment"
+                                                          },
+                                "syntheticCases":  [
+                                                       {
+                                                           "name":  "null-item-owner-or-root",
+                                                           "rootItemPointer":  null,
+                                                           "expectedEquipment":  null,
+                                                           "expectedStatus":  "noCorpseEquipment"
+                                                       },
+                                                       {
+                                                           "name":  "base-item-wrapper-native-inventory-equipment",
+                                                           "rootWrapperType":  "EFT.InventoryLogic.Item",
+                                                           "nativeClass":  "EFT.InventoryLogic.InventoryEquipment",
+                                                           "expectedResolve":  true,
+                                                           "legacyClrCastWouldResolve":  false
+                                                       }
+                                                   ]
+                            },
+    "followerMovementPropertyCases":  [
+                                          {
+                                              "name":  "ah-movementcontext-generated-property",
+                                              "observedFailureShape":  "AH live native log: Harmony AccessTools.Field could not find EFT.MovementContext._player; the follower sprint-direction patch therefore reads no player and returns.",
+                                              "actualType":  "EFT.MovementContext",
+                                              "propertyName":  "_player",
+                                              "propertyType":  "EFT.Player",
+                                              "hasGetter":  true,
+                                              "hasSetter":  true,
+                                              "metadataSourcePath":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\isolated-client-reference\\BepInEx\\interop\\Assembly-CSharp.dll",
+                                              "expectedAccess":  "AccessTools.Property"
+                                          }
+                                      ],
+    "followerActionResultResetCases":  [
+                                           {
+                                               "name":  "ah-last-result-native-valuetype-reset",
+                                               "sourceEvidence":  "AH actual failure: TargetInvocationException inner NullReferenceException at generated AICoreAgent\u003cT\u003e.set__lastResult during BotFollowerPlayer.ClearActiveLayerPointers; setter IL calls il2cpp_object_unbox then cpblk.",
+                                               "typeFullName":  "AICoreActionResult`2",
+                                               "expectedBaseType":  "Il2CppSystem.ValueType",
+                                               "agentTypeFullName":  "AICoreAgent`1",
+                                               "propertyName":  "_lastResult",
+                                               "expectedCtorAllocation":  "il2cpp_object_new",
+                                               "expectedSetterUnbox":  true,
+                                               "expectedSetterCpblk":  true,
+                                               "metadataSourcePath":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\isolated-client-reference\\BepInEx\\interop\\Assembly-CSharp.dll",
+                                               "expectedSourceShape":  "new AICoreActionResult\u003cBotLogicDecision, CoreActionResultParams\u003e()",
+                                               "negativeSourceShape":  "default(AICoreActionResult\u003cBotLogicDecision, CoreActionResultParams\u003e)",
+                                               "expectedOldDefaultRejected":  true
+                                           }
+                                       ],
+    "nativeNullableReturnCases":  [
+                                      {
+                                          "actualClassPointer":  0,
+                                          "exceptionPointer":  0,
+                                          "resultPointer":  0,
+                                          "expectedClassPointer":  0,
+                                          "kind":  "reconstructed",
+                                          "name":  "al-null-return-reconstructed",
+                                          "evidencePath":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261015al-BepInEx-final.log",
+                                          "rawPointerCaptured":  false,
+                                          "expected":  "None"
+                                      },
+                                      {
+                                          "name":  "boxed-T-value",
+                                          "actualClassPointer":  25,
+                                          "kind":  "synthetic",
+                                          "expectedClassPointer":  25,
+                                          "resultPointer":  100,
+                                          "expected":  "BoxedValue",
+                                          "exceptionPointer":  0
+                                      },
+                                      {
+                                          "name":  "native-exception-before-none",
+                                          "actualClassPointer":  0,
+                                          "kind":  "synthetic",
+                                          "expectedClassPointer":  0,
+                                          "resultPointer":  0,
+                                          "expected":  "NativeException",
+                                          "exceptionPointer":  100
+                                      },
+                                      {
+                                          "name":  "native-exception-before-value",
+                                          "actualClassPointer":  25,
+                                          "kind":  "synthetic",
+                                          "expectedClassPointer":  25,
+                                          "resultPointer":  100,
+                                          "expected":  "NativeException",
+                                          "exceptionPointer":  101
+                                      },
+                                      {
+                                          "name":  "wrong-boxed-class",
+                                          "actualClassPointer":  24,
+                                          "kind":  "synthetic",
+                                          "expectedClassPointer":  25,
+                                          "resultPointer":  100,
+                                          "expected":  "UnsupportedClass",
+                                          "exceptionPointer":  0
+                                      },
+                                      {
+                                          "name":  "unknown-expected-class",
+                                          "actualClassPointer":  25,
+                                          "kind":  "synthetic",
+                                          "expectedClassPointer":  0,
+                                          "resultPointer":  100,
+                                          "expected":  "UnsupportedClass",
+                                          "exceptionPointer":  0
+                                      }
+                                  ],
+    "bossToFollowResolutionCases":  [
+                                        {
+                                            "name":  "an-native-il2cpp-proxy-resolves-registered-managed-boss",
+                                            "evidencePath":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261015an-probe\\probe-an-ordinary-after-start-r28-03.json",
+                                            "profileId":  "6ace65cbc399ad84d0a97b54",
+                                            "expectedBotState":  "Active",
+                                            "expectedHaveBoss":  true,
+                                            "expectedBossToFollowType":  "IBossToFollow+Il2CppProxy",
+                                            "expectedRegistryResolvedType":  "pitTeam.Components.pitAIBossPlayer",
+                                            "nativeEvidence":  true
+                                        },
+                                        {
+                                            "name":  "legacy-managed-is-on-native-proxy-is-rejected",
+                                            "sourceShape":  "if (botOwner.BotFollower?.BossToFollow is not pitAIBossPlayer boss) return false;",
+                                            "expectedDirectProxyCastRejected":  true,
+                                            "nativeEvidence":  false
+                                        }
+                                    ],
+    "actionEndProducerCases":  [
+                                   {
+                                       "name":  "aq-crash-empty-action-end",
+                                       "nativeEvidence":  true,
+                                       "errorShape":  "Runtime 1026 retained event: System.NullReferenceException in (il2cpp -\u003e managed) ShallEndCurrentDecision.",
+                                       "nativeClass":  "AICoreActionEnd",
+                                       "nativeMetadataPath":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\isolated-client-reference\\BepInEx\\interop\\Assembly-CSharp.dll",
+                                       "nativeEvidenceEvents":  [
+                                                                    {
+                                                                        "utc":  "2026-10-14T21:41:46.7637081Z",
+                                                                        "Id":  1026,
+                                                                        "Message":  "Application: EscapeFromTarkov.exe\nCoreCLR Version: 6.0.722.32202\n.NET Version: 6.0.7\nDescription: The process was terminated due to an unhandled exception.\nException Info: System.NullReferenceException: Object reference not set to an instance of an object.\r\n   at (il2cpp -\u003e managed) ShallEndCurrentDecision(IntPtr , IntPtr , IntPtr , Il2CppMethodInfo* )\n"
+                                                                    }
+                                                                ],
+                                       "nativeEvidenceSourcePath":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261015aq-postraid-crash-events.json"
+                                   },
+                                   {
+                                       "name":  "legacy-default-producer-replay",
+                                       "nativeEvidence":  false,
+                                       "sourceShape":  "public static AICoreActionEnd Continue() =\u003e default;",
+                                       "expectedRejected":  true
+                                   }
+                               ],
+    "profileReturn":  {
+                          "actualBackClickPath":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261016bl-probe\\probe-bl-profile-back-r158-01.json",
+                          "actualBackClickControlPath":  "Menu UI/UI/InventoryOtherPlayerProfile/RightSide/pitFireTeam_ProfileActions/pitFireTeam_TeammateProfileBackButton",
+                          "actualSideSelectionPath":  "D:\\game\\tarkov workshop\\.omni\\tmp\\pitfireteam-runtime\\interactive-baseline\\funchook-shadow-20261016bl-probe\\probe-bl-back-final-state-r159-01.json",
+                          "actualSideBackControlPath":  "Menu UI/UI/MatchMaker Side Selection Screen/ScreenDefaultButtons/BackButton",
+                          "actualSideNextControlPath":  "Menu UI/UI/MatchMaker Side Selection Screen/ScreenDefaultButtons/NextButton",
+                          "cases":  [
+                                        {
+                                            "name":  "no-active-stock-side-screen",
+                                            "activeCount":  0,
+                                            "expected":  "MainMenuFallback"
+                                        },
+                                        {
+                                            "name":  "one-active-stock-side-screen",
+                                            "activeCount":  1,
+                                            "expected":  "ExistingSideSelectionScreen"
+                                        },
+                                        {
+                                            "name":  "ambiguous-two-stock-screens",
+                                            "activeCount":  2,
+                                            "expected":  "RejectAmbiguous"
+                                        },
+                                        {
+                                            "name":  "invalid-negative-observation",
+                                            "activeCount":  -1,
+                                            "expected":  "RejectAmbiguous"
+                                        }
+                                    ],
+                          "legacyAlwaysOpenShapeExpectedRejected":  true
+                      }
+}

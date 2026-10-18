@@ -232,7 +232,7 @@ namespace pitTeam.BigBrain.Actions
         {
             inventory = BotOwner?.GetPlayer?.InventoryController;
             followerEquipment = inventory?.Inventory?.Equipment;
-            containerRoot = activeLootContainer?.ItemOwner?.Items?.FirstOrDefault() as EFT.InventoryLogic.SearchableItem;
+            containerRoot = activeLootContainer?.ItemOwner?.Items?.AsManaged().FirstOrDefault() as EFT.InventoryLogic.SearchableItem;
 
             if (!CanContinueContainerLootCommand(out string? guardFailureReason))
             {
@@ -519,7 +519,7 @@ namespace pitTeam.BigBrain.Actions
             RunBodyGearMoveTransaction(
                 inventory,
                 move,
-                new Callback(result => CompleteContainerLootMove(result, move, moveGeneration)));
+                (Callback)(System.Action<IResult>)(result => CompleteContainerLootMove(result, move, moveGeneration)));
         }
 
         private void EnqueueContainerGearSwapFollowUps(BodyGearMove move)

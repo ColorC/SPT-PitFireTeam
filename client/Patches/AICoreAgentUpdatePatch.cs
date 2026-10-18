@@ -1,6 +1,6 @@
 using EFT;
 using HarmonyLib;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System;
 using System.Reflection;
 
@@ -13,7 +13,7 @@ namespace pitTeam.Patches
             return AccessTools.Method(typeof(AICoreAgent<BotLogicDecision>), "Update");
         }
 
-        [PatchFinalizer]
+        [HarmonyFinalizer]
         private static Exception PatchFinalizer(Exception __exception, AICoreAgent<BotLogicDecision> __instance)
         {
             if (__exception != null)

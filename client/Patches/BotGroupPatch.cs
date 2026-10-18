@@ -4,7 +4,7 @@ using pitTeam.Components;
 using pitTeam.Modules;
 using pitTeam.Utils;
 using HarmonyLib;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -481,7 +481,7 @@ namespace pitTeam.Patches
         private pitAIBossPlayer boss;
         public pitAIBossPlayer Boss => boss;
 
-        public BotsGroupPlayer(BotZone zone, IBotGame botGame, BotOwner initialBot, List<BotOwner> enemies, DeadBodiesController deadBodiesController, List<Player> allPlayers, pitAIBossPlayer player) : base(zone, botGame, initialBot, enemies, deadBodiesController, allPlayers, false)
+        public BotsGroupPlayer(BotZone zone, IBotGame botGame, BotOwner initialBot, List<BotOwner> enemies, DeadBodiesController deadBodiesController, List<Player> allPlayers, pitAIBossPlayer player) : base(zone, botGame, initialBot, enemies.ToNativeList(), deadBodiesController, allPlayers.ToNativeList(), false)
         {
             RemoveEnemy(player.Player());
             AddAlly(player.realPlayer);
@@ -489,7 +489,7 @@ namespace pitTeam.Patches
 
             boss = player;
 
-            var inheritedEnemies = new List<IPlayer>(Enemies.Keys);
+            var inheritedEnemies = new List<IPlayer>(Enemies.Keys.AsManaged());
             for (int i = 0; i < inheritedEnemies.Count; i++)
             {
                 IPlayer inheritedEnemy = inheritedEnemies[i];
@@ -507,9 +507,12 @@ namespace pitTeam.Patches
                 }
             }
 
-            initialBot.Settings.GetFriendlyBotTypes().AddRange(Utils.Props.friendlyBotTypes);
+            initialBot.Settings.GetFriendlyBotTypes().AddRange(Utils.Props.friendlyBotTypes.ToNativeList());
 
-            initialBot.Settings.GetEnemyBotTypes().RemoveAll(x => Utils.Props.friendlyBotTypes.Contains(x));
+            foreach (WildSpawnType friendlyType in Utils.Props.friendlyBotTypes)
+            {
+                initialBot.Settings.GetEnemyBotTypes().Remove(friendlyType);
+            }
 
             if (Utils.Utils.FlagGet("isBadGuy"))
             {

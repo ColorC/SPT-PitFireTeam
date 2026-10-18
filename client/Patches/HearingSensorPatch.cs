@@ -2,7 +2,7 @@ using Comfort.Common;
 using EFT;
 
 using HarmonyLib;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -212,10 +212,10 @@ namespace pitTeam.Patches
         }
 
         [PatchPostfix]
-        public static void PatchPostfix(Player __instance, BetterSource ___NestedStepSoundSource)
+        public static void PatchPostfix(Player __instance)
         {
             float volume = __instance.MovementContext.CovertMovementVolumeBySpeed * __instance.CalculateStepSoundVolumeSpeedFactor();
-            float range = ___NestedStepSoundSource.MaxDistance * 0.85f;
+            float range = __instance.NestedStepSoundSource.MaxDistance * 0.85f;
 
             if (BossPlayers.IsPlayerBoss(__instance.ProfileId)) return;
 

@@ -35,7 +35,7 @@ namespace pitTeam.BigBrain.Actions
                 FollowerMedical.RefreshMedicalWork(BotOwner);
             }
 
-            baseLogic.UpdateNodeByBrain(data);
+            baseLogic.UpdateNodeByBrain(data?.NativeData);
             FollowerRecovery.StopShooting(BotOwner);
 
             if (BotOwner?.Medecine?.Using != true)

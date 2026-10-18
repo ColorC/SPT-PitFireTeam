@@ -247,7 +247,7 @@ namespace pitTeam.Modules
                 List<Item> snapshot;
                 try
                 {
-                    snapshot = root.GetAllItems().Where(item => item != null).ToList();
+                    snapshot = root.GetAllItems().AsManaged().Where(item => item != null).ToList();
                 }
                 catch (InvalidOperationException)
                 {

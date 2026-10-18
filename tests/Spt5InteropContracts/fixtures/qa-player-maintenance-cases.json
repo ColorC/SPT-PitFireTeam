@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "sourceShape": "two enabled QA protection slots each call RestoreFullHealth once per successful frame",
+  "scenarios": [
+    {"name":"default-on-first-frame","protectionGuardSatisfied":true,"maintenanceRequestedSequence":[true],"expectedCalls":1},
+    {"name":"opt-out-skips-only-full-health","protectionGuardSatisfied":true,"maintenanceRequestedSequence":[false],"expectedCalls":0,"expectedFinalSkipReason":"full-health-maintenance-disabled-by-probe"},
+    {"name":"reenable-runs-on-next-eligible-frame","protectionGuardSatisfied":true,"maintenanceRequestedSequence":[false,true],"expectedCalls":1},
+    {"name":"protection-guard-still-controls-maintenance","protectionGuardSatisfied":false,"maintenanceRequestedSequence":[true,false,true],"expectedCalls":0}
+  ]
+}

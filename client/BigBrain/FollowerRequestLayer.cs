@@ -69,8 +69,7 @@ namespace pitTeam.BigBrain
                 return false;
             }
 
-            if (!BotOwner.BotFollower.HaveBoss) return false;
-            if (BotOwner.BotFollower.BossToFollow is not pitAIBossPlayer) return false;
+            if (BossPlayers.GetResolvedBossForFollower(BotOwner) == null) return false;
 
             if (followerData == null) followerData ??= BossPlayers.Instance?.GetFollower(BotOwner);
 

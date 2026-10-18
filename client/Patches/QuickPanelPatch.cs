@@ -4,7 +4,7 @@ using EFT.InventoryLogic;
 using EFT.UI.Gestures;
 using pitTeam.Modules;
 using HarmonyLib;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -45,8 +45,8 @@ namespace pitTeam.Patches
     internal class QuickPanelPatch : ModulePatch
     {
         private static readonly EPhraseTrigger ViewBackpackPhrase = (EPhraseTrigger)CustomPhrases.ViewBackpack;
-        private static readonly FieldInfo QuickPanelAvailablePhrasesField = AccessTools.Field(typeof(GesturesQuickPanel), "_availablePhrases");
-        private static readonly FieldInfo QuickPanelPlayerField = AccessTools.Field(typeof(GesturesQuickPanel), "_player");
+        private static readonly pitTeam.Compat.NativeUiMemberAccessor QuickPanelAvailablePhrasesAccessor = pitTeam.Compat.NativeUiMemberAccessor.ForProperty(typeof(GesturesQuickPanel), "_availablePhrases", typeof(Il2CppSystem.Collections.Generic.HashSet<EPhraseTrigger>), false, false);
+        private static readonly pitTeam.Compat.NativeUiMemberAccessor QuickPanelPlayerAccessor = pitTeam.Compat.NativeUiMemberAccessor.ForProperty(typeof(GesturesQuickPanel), "_player", typeof(Player), false, false);
 
         protected override MethodBase GetTargetMethod()
         {
@@ -56,7 +56,8 @@ namespace pitTeam.Patches
         [PatchPrefix]
         private static bool PatchPrefix(GesturesQuickPanel __instance)
         {
-            Player player = QuickPanelPlayerField.GetValue(__instance) as Player;
+            if (__instance == null) throw new ArgumentNullException(nameof(__instance));
+            Player player = QuickPanelPlayerAccessor.GetValue(__instance) as Player;
             if (player != null)
             {
                 QuickPanelHurtPhraseFilter.RemoveBlockedCommands(__instance);
@@ -65,12 +66,12 @@ namespace pitTeam.Patches
                 try
                 {
                     // original
-                    LootItem? lootItem = player.InteractableObject as LootItem;
+                    LootItem? lootItem = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<LootItem>(player.InteractableObject);
                     bool flag = lootItem != null && lootItem.ItemOwner.RootItem.GetItemComponent<KeyComponent>() != null;
                     bool flag2 = lootItem != null && lootItem.ItemOwner.RootItem is EFT.InventoryLogic.Money;
                     bool flag3 = lootItem != null && (lootItem.ItemOwner.RootItem is Weapon || lootItem.ItemOwner.RootItem.GetItemComponent<KnifeComponent>() != null);
-                    Corpse? corpse = player.InteractableObject as Corpse;
-                    LootableContainer? lootContainer = player.InteractableObject as LootableContainer;
+                    Corpse? corpse = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<Corpse>(player.InteractableObject);
+                    LootableContainer? lootContainer = pitTeam.Compat.Il2CppBoundary.CastNativeOrNull<LootableContainer>(player.InteractableObject);
                     bool canLootContainer = lootContainer != null &&
                                             lootContainer.isActiveAndEnabled &&
                                             lootContainer.DoorState != EDoorState.Locked;
@@ -167,8 +168,10 @@ namespace pitTeam.Patches
                 GesturesQuickPanel.PhrasePriorities.Add(ViewBackpackPhrase, 84);
             }
 
-            HashSet<EPhraseTrigger> availablePhrases = QuickPanelAvailablePhrasesField.GetValue(panel) as HashSet<EPhraseTrigger>;
-            availablePhrases?.Add(ViewBackpackPhrase);
+            if (panel == null) throw new ArgumentNullException(nameof(panel));
+            var availablePhrases = QuickPanelAvailablePhrasesAccessor.GetValue(panel) as Il2CppSystem.Collections.Generic.HashSet<EPhraseTrigger>;
+            if (availablePhrases == null) throw new InvalidOperationException("GesturesQuickPanel._availablePhrases property returned null.");
+            availablePhrases.Add(ViewBackpackPhrase);
         }
 
         private static void RefreshViewBackpackQuickCommand(GesturesQuickPanel panel, Player player)
@@ -201,7 +204,8 @@ namespace pitTeam.Patches
 
     internal class QuickPanelUpdateBackpackInteractionPatch : ModulePatch
     {
-        private static readonly FieldInfo QuickPanelPlayerField = AccessTools.Field(typeof(GesturesQuickPanel), "_player");
+        private static readonly pitTeam.Compat.NativeUiMemberAccessor QuickPanelPlayerAccessor = pitTeam.Compat.NativeUiMemberAccessor.ForProperty(typeof(GesturesQuickPanel), "_player", typeof(Player), false, false);
+        private static readonly pitTeam.Compat.NativeUiMemberAccessor QuickPanelAvailablePhrasesAccessor = pitTeam.Compat.NativeUiMemberAccessor.ForProperty(typeof(GesturesQuickPanel), "_availablePhrases", typeof(Il2CppSystem.Collections.Generic.HashSet<EPhraseTrigger>), false, false);
 
         protected override MethodBase GetTargetMethod()
         {
@@ -211,10 +215,15 @@ namespace pitTeam.Patches
         [PatchPostfix]
         private static void PatchPostfix(GesturesQuickPanel __instance)
         {
+            if (__instance == null)
+            {
+                return;
+            }
+
             // The stock quick panel refreshes situational phrases mostly from interaction-change events. Our
             // "looked at follower" condition can change every frame without a stock event, so refresh it here
             // to avoid stale VIEW BACKPACK prompts.
-            Player player = QuickPanelPlayerField.GetValue(__instance) as Player;
+            Player player = QuickPanelPlayerAccessor.GetValue(__instance) as Player;
             if (player == null)
             {
                 return;
@@ -223,12 +232,18 @@ namespace pitTeam.Patches
             QuickPanelHurtPhraseFilter.RemoveBlockedCommands(__instance);
 
             EPhraseTrigger viewBackpackPhrase = (EPhraseTrigger)CustomPhrases.ViewBackpack;
-            HashSet<EPhraseTrigger> availablePhrases = AccessTools.Field(typeof(GesturesQuickPanel), "_availablePhrases").GetValue(__instance) as HashSet<EPhraseTrigger>;
-            availablePhrases?.Add(viewBackpackPhrase);
-
-            if (!GesturesQuickPanel.PhrasePriorities.ContainsKey(viewBackpackPhrase))
+            var availablePhrases = QuickPanelAvailablePhrasesAccessor.GetValue(__instance) as Il2CppSystem.Collections.Generic.HashSet<EPhraseTrigger>;
+            var phrasePriorities = GesturesQuickPanel.PhrasePriorities;
+            if (availablePhrases == null || phrasePriorities == null)
             {
-                GesturesQuickPanel.PhrasePriorities.Add(viewBackpackPhrase, 84);
+                return;
+            }
+
+            availablePhrases.Add(viewBackpackPhrase);
+
+            if (!phrasePriorities.ContainsKey(viewBackpackPhrase))
+            {
+                phrasePriorities.Add(viewBackpackPhrase, 84);
             }
 
             __instance.SetPhraseActive(viewBackpackPhrase, TeammateBackpackInspection.CanShowQuickInteraction(player));
