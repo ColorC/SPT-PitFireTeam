@@ -550,12 +550,12 @@ namespace pitTeam.BigBrain.Actions
         private bool TryGetMoveTargetDirection(out Vector3 direction)
         {
             direction = Vector3.zero;
-            if (!BotOwner.Mover.TargetPoint.HasValue)
+            if (global::pitTeam.Compat.NativeAiGeometry.GetMoverTarget(BotOwner.Mover) is not Vector3 moveTarget)
             {
                 return false;
             }
 
-            direction = Flatten(BotOwner.Mover.TargetPoint.Value - BotOwner.Position);
+            direction = Flatten(moveTarget - BotOwner.Position);
             if (direction.sqrMagnitude <= 0.01f)
             {
                 return false;
@@ -605,10 +605,10 @@ namespace pitTeam.BigBrain.Actions
             }
 
             if (BotOwner.GoToPoint(targetPoint, true, -1f, false, false) == NavMeshPathStatus.PathComplete &&
-                BotOwner.Mover.TargetPoint.HasValue &&
-                (targetPoint - BotOwner.Mover.TargetPoint.Value).magnitude < 2f)
+                global::pitTeam.Compat.NativeAiGeometry.GetMoverTarget(BotOwner.Mover) is Vector3 moveTarget &&
+                (targetPoint - moveTarget).magnitude < 2f)
             {
-                CommitRunPoint(BotOwner.Mover.TargetPoint.Value);
+                CommitRunPoint(moveTarget);
                 return true;
             }
 
@@ -704,13 +704,11 @@ namespace pitTeam.BigBrain.Actions
                 return false;
             }
 
-            if (!BotOwner.Mover.TargetPoint.HasValue)
+            if (global::pitTeam.Compat.NativeAiGeometry.GetMoverTarget(BotOwner.Mover) is not Vector3 targetPoint)
             {
                 hasCommittedRunPoint = false;
                 return false;
             }
-
-            Vector3 targetPoint = BotOwner.Mover.TargetPoint.Value;
             if ((targetPoint - committedRunPoint).sqrMagnitude > 1f)
             {
                 hasCommittedRunPoint = false;
@@ -847,7 +845,7 @@ namespace pitTeam.BigBrain.Actions
                 GetReason(data),
                 mode,
                 gate,
-                BotOwner.Mover != null && BotOwner.Mover.TargetPoint.HasValue ? (Vector3?)BotOwner.Mover.TargetPoint.Value : null);
+                global::pitTeam.Compat.NativeAiGeometry.GetMoverTarget(BotOwner.Mover));
         }
 
         private static Vector3 Flatten(Vector3 value)

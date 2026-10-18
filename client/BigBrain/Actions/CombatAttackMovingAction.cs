@@ -354,8 +354,8 @@ namespace pitTeam.BigBrain.Actions
                 _owner.SetPose(1f);
                 _owner.Memory.SetCoverPoints(cover, string.Empty);
                 if (!_owner.HasPathAndNotComplete ||
-                    !_owner.Mover.TargetPoint.HasValue ||
-                    (_owner.Mover.TargetPoint.Value - cover.Position).sqrMagnitude > 1f)
+                    global::pitTeam.Compat.NativeAiGeometry.GetMoverTarget(_owner.Mover) is not Vector3 moveTarget ||
+                    (moveTarget - cover.Position).sqrMagnitude > 1f)
                 {
                     _owner.GoToPoint(cover);
                 }
@@ -395,8 +395,8 @@ namespace pitTeam.BigBrain.Actions
 
                 Vector3 target = _owner.GoToSomePointData.Point;
                 if (_owner.HasPathAndNotComplete &&
-                    _owner.Mover.TargetPoint.HasValue &&
-                    (_owner.Mover.TargetPoint.Value - target).sqrMagnitude <= 1f)
+                    global::pitTeam.Compat.NativeAiGeometry.GetMoverTarget(_owner.Mover) is Vector3 moveTarget &&
+                    (moveTarget - target).sqrMagnitude <= 1f)
                 {
                     return true;
                 }

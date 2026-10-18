@@ -28,3 +28,7 @@ The mod-only ZIP does not contain those runtime binaries. `compat/README.md` pro
 Pass `-GameRoot`, optional `-ServerRoot` (default `GameRoot/SPT_Runtime`), `-BigBrainAssemblyPath` and `-DotnetPath` to `Build-Spt5.ps1`. Required references come from your legally installed game, generated BepInEx interop and compatible SPT dependencies. Game assemblies are neither fetched nor shipped by this repository.
 
 The release binaries are the exact locally played builds, not an automatic rebuild of documentation-only packaging changes. `RELEASE-MANIFEST.json` records their SHA256. Source C# was copied unchanged from the working tree used for those builds; project defaults were made portable. Different compiler versions and source paths can change binary hashes.
+
+## preview.2 update boundary
+
+The maintenance client adds nullable mover-target fixes, a core readiness optimization and opt-in private diagnostics. The server/resources are unchanged. See [release notes](RELEASE-NOTES-preview.2.md). The experimental strong-pointer runtime patch is source-only and excluded from this package; the ordinary compatibility requirements above remain in force. Normal automatic GC is unchanged.

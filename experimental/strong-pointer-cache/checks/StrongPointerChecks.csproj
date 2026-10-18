@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net6.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Il2CppInterop.Runtime"><HintPath>../fixture/Il2CppInterop.Runtime.dll</HintPath></Reference>
+    <Reference Include="Il2CppInterop.Common"><HintPath>$(ClientRuntimeRoot)/BepInEx/core/Il2CppInterop.Common.dll</HintPath></Reference>
+    <ProjectReference Include="../bridge/NativeFixtureBridge.csproj" />
+  </ItemGroup>
+</Project>

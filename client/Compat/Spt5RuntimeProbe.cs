@@ -33,6 +33,8 @@ namespace pitTeam.Compat
         private static float _nextMemorySample;
         private static bool _memorySampleFailureLogged;
         private static readonly bool RuntimeMemorySamplingEnabled = IsRuntimeMemorySamplingEnabled();
+        private static readonly bool LegacyPeriodicMemorySampling = string.Equals(
+            Environment.GetEnvironmentVariable("PIT_SPT5_CAPTURE_LEGACY_MEMORY"), "true", StringComparison.OrdinalIgnoreCase);
         private static Task<bool>? _bridgeCheck;
         private static string? _bridgeId;
         private static string? _shotId;
@@ -148,7 +150,11 @@ public static void Tick(bool initialized)
                 catch (IOException) { return; }
             }
             if (_lease == null) return;
-            if (RuntimeMemorySamplingEnabled && Time.realtimeSinceStartup >= _nextMemorySample)
+            if (RuntimeMemorySamplingEnabled && initialized) Spt5FrameTimingProbe.Tick();
+            // Keep the startup schema witness. During frame-pacing experiments, the
+            // per-frame buffered sampler replaces periodic main-thread JSON/disk I/O.
+            if (RuntimeMemorySamplingEnabled && (LegacyPeriodicMemorySampling || _nextMemorySample == 0f)
+                && Time.realtimeSinceStartup >= _nextMemorySample)
             {
                 _nextMemorySample = Time.realtimeSinceStartup + 10f;
                 WriteRuntimeMemorySample();

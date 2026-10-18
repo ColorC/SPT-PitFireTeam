@@ -48,3 +48,7 @@ dotnet ./tests/Spt5InteropContracts/bin/Release/net10.0/Spt5InteropContracts.dll
 ```
 
 Back up before replacing runtime files. A different input/runtime build needs separate review, not an assumed match. Runtime rebuilds can differ by compiler metadata; the SHA list identifies the binaries actually played, not a promise of bit-for-bit reproduction across toolchains.
+
+## Separate experiment, not a compatibility requirement
+
+The [owned strong-pointer cache source](../experimental/strong-pointer-cache/README.md) is an optional investigation with incomplete native lifecycle acceptance. It is not included in the normal mod ZIP or TESTED-RUNTIME compatibility baseline.

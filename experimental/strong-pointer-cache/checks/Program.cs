@@ -1,0 +1,49 @@
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Text.Json;
+using Il2CppInterop.Runtime;
+using Il2CppInterop.Runtime.InteropTypes;
+using Il2CppInterop.Runtime.Runtime;
+using StrongPointerFixture;
+
+var type=typeof(Il2CppObjectBase);var cache=type.GetField("_spt5QaOwnedStrongPointer",BindingFlags.Instance|BindingFlags.NonPublic)!;var handle=type.GetField("myGcHandle",BindingFlags.Instance|BindingFlags.NonPublic)!;var pooled=type.GetField("pooledPtr",BindingFlags.Instance|BindingFlags.NonPublic)!;var wrapped=type.GetField("isWrapped",BindingFlags.Instance|BindingFlags.NonPublic)!;var create=type.GetMethod("CreateGCHandle",BindingFlags.Instance|BindingFlags.NonPublic)!;var finalize=type.GetMethod("Finalize",BindingFlags.Instance|BindingFlags.NonPublic)!;
+var results=new List<object>();long nextPointer=10000;
+void Need(bool value,string why){if(!value)throw new Exception(why);}
+nint Pointer(bool injected=false,nint? nativeClass=null){nint p=(nint)Interlocked.Increment(ref nextPointer);nint cls=nativeClass??(p+100000);NativeApi.Class(p,cls);if(cls!=0)RuntimeSpecificsStore.SetClassInfo(cls,injected);return p;}
+nint Cached(Il2CppObjectBase obj)=>(nint)cache.GetValue(obj)!;
+nint Handle(Il2CppObjectBase obj)=>(nint)handle.GetValue(obj)!;
+void FinalizeNow(Il2CppObjectBase obj){try{finalize.Invoke(obj,null);}finally{GC.SuppressFinalize(obj);}}
+void Collected(System.Action action){try{action();throw new Exception("expected ObjectCollectedException");}catch(ObjectCollectedException){}}
+void Test(string name,System.Action action){NativeApi.ResetCounters();try{action();Console.WriteLine("PASS "+name);results.Add(new{name,passed=true});}catch(Exception e){Console.WriteLine("FAIL "+name+" "+e);results.Add(new{name,passed=false,error=e.ToString()});}}
+
+Test("net6-loads-real-patched-methods",()=>{Need(Environment.Version.Major==6,"Wrong runtime");Need(type.Assembly.GetName().Version!.Major==1,"Wrong assembly");Need(cache.IsPrivate&&create.IsAssembly&&!create.IsVirtual,"ABI ownership");});
+Test("owned-strong-cache-avoids-repeated-native-query",()=>{nint p=Pointer();var o=new WrapperA(p);Need(Cached(o)==p&&NativeApi.News==1,"no strong cache");long before=NativeApi.Gets;for(int i=0;i<1000;i++)Need(o.Pointer==p,"wrong pointer");Need(NativeApi.Gets==before,"native target queried");GC.KeepAlive(o);});
+Test("WasCollected-still-queries-native-on-strong",()=>{var o=new WrapperA(Pointer());long b=NativeApi.Gets;Need(!o.WasCollected&&!o.WasCollected,"collected strong");Need(NativeApi.Gets-b==2,"WasCollected optimized illegally");GC.KeepAlive(o);});
+Test("injected-class-never-caches",()=>{nint p=Pointer(true);var o=new WrapperA(p);Need(Cached(o)==0,"injected cache");long b=NativeApi.Gets;Need(o.Pointer==p&&o.Pointer==p&&NativeApi.Gets-b==2,"injected fallback lost");GC.KeepAlive(o);});
+Test("unknown-zero-native-class-falls-back",()=>{nint p=Pointer(nativeClass:0);var o=new WrapperA(p);Need(Cached(o)==0,"unknown class cached");long b=NativeApi.Gets;Need(o.Pointer==p&&NativeApi.Gets-b==1,"fallback missing");GC.KeepAlive(o);});
+Test("classification-error-keeps-valid-handle-and-fallback",()=>{nint p=Pointer();NativeApi.ThrowClass=true;WrapperA o;try{o=new WrapperA(p);}finally{NativeApi.ThrowClass=false;}Need(Cached(o)==0&&Handle(o)!=0,"classification exception escaped");Need(o.Pointer==p,"lost handle");GC.KeepAlive(o);});
+Test("classification-lock-recursion-is-caught",()=>{nint p=Pointer();var rw=(ReaderWriterLockSlim)typeof(RuntimeSpecificsStore).GetField("Lock",BindingFlags.Static|BindingFlags.NonPublic)!.GetValue(null)!;rw.EnterWriteLock();WrapperA o;try{o=new WrapperA(p);}finally{rw.ExitWriteLock();}Need(Cached(o)==0&&o.Pointer==p,"recursive classifier broke constructor");GC.KeepAlive(o);});
+Test("zero-input-original-null-reference",()=>{try{_ = new WrapperA(0);throw new Exception("expected NRE");}catch(NullReferenceException){}Need(NativeApi.News==0,"created zero input handle");});
+Test("zero-returned-handle-not-cached",()=>{nint p=Pointer();NativeApi.ZeroHandle=true;WrapperA o;try{o=new WrapperA(p);}finally{NativeApi.ZeroHandle=false;}Need(Handle(o)==0&&Cached(o)==0,"cached invalid handle");Collected(()=>_ = o.Pointer);Need(o.WasCollected,"zero WasCollected");GC.KeepAlive(o);});
+Test("native-create-failure-does-not-run-cache-classification",()=>{nint p=Pointer();NativeApi.ThrowNew=true;try{try{_ = new WrapperA(p);throw new Exception("expected failure");}catch(InvalidOperationException){}}finally{NativeApi.ThrowNew=false;}Need(NativeApi.ClassGets==0,"classified failed ownership");});
+Test("wrapped-constructor-reentry-preserves-original-handle-pointer",()=>{nint p=Pointer(),q=Pointer();var o=new WrapperA(p);nint h=Handle(o);wrapped.SetValue(o,true);long news=NativeApi.News,classes=NativeApi.ClassGets;create.Invoke(o,new object[]{q});Need(Handle(o)==h&&Cached(o)==p&&o.Pointer==p,"reentry replaced original");Need(NativeApi.News==news&&NativeApi.ClassGets==classes,"reentry did extra work");GC.KeepAlive(o);});
+Test("wrapped-null-reentry-preserves-original-null-check",()=>{var o=new WrapperA(Pointer());wrapped.SetValue(o,true);try{create.Invoke(o,new object[]{(nint)0});throw new Exception("expected NRE");}catch(TargetInvocationException e)when(e.InnerException is NullReferenceException){}Need(Cached(o)!=0,"null reentry clobbered prior cache");GC.KeepAlive(o);});
+Test("synthetic-uncached-weak-handle-preserves-collection-exception",()=>{nint p=Pointer();var o=(WrapperA)RuntimeHelpers.GetUninitializedObject(typeof(WrapperA));nint weak=IL2CPP.il2cpp_gchandle_new_weakref(p,false);handle.SetValue(o,weak);Need(Cached(o)==0&&o.Pointer==p,"weak fallback wrong");NativeApi.ClearWeak(weak);Collected(()=>_ = o.Pointer);Need(o.WasCollected,"weak not collected");Need(NativeApi.WeakNews==1,"weak API missing");FinalizeNow(o);});
+Test("injected-uncached-after-release-throws-original-exception",()=>{var o=new WrapperA(Pointer(true));FinalizeNow(o);Need(Cached(o)==0,"cache persisted");Collected(()=>_ = o.Pointer);Need(o.WasCollected,"released injected live");});
+Test("finalize-clears-cache-before-native-free",()=>{var o=new WrapperA(Pointer());nint h=Handle(o);bool seen=false;NativeApi.BeforeFree=id=>{if(id==h){seen=true;Need(Cached(o)==0,"free saw nonzero cache");}};try{FinalizeNow(o);}finally{NativeApi.BeforeFree=null;}Need(seen,"did not run actual finalizer");Collected(()=>_ = o.Pointer);Need(o.WasCollected,"free did not clear handle target");});
+Test("pool-same-type-reuses-existing-wrapper",()=>{nint p=Pointer();var a=Il2CppObjectPool.Get<WrapperA>(p);var b=Il2CppObjectPool.Get<WrapperA>(p);Need(ReferenceEquals(a,b)&&a.Pointer==p,"pool cache changed");Need((nint)pooled.GetValue(a)! ==p,"pooledPtr not set");GC.KeepAlive(a);});
+Test("pool-type-upgrade-keeps-old-pointer-and-transfers-removal-key",()=>{nint p=Pointer();var a=Il2CppObjectPool.Get<WrapperA>(p);var b=Il2CppObjectPool.Get<WrapperB>(p);Need((nint)pooled.GetValue(a)! ==0&&(nint)pooled.GetValue(b)! ==p,"upgrade key transfer lost");Need(a.Pointer==p&&b.Pointer==p,"old pointer incorrectly used pooledPtr");FinalizeNow(a);Need(ReferenceEquals(b,Il2CppObjectPool.Get<WrapperB>(p)),"old finalizer removed new entry");GC.KeepAlive(b);});
+Test("pool-interface-proxy-keeps-existing-key-owner",()=>{nint p=Pointer();var a=Il2CppObjectPool.Get<WrapperA>(p);var i=Il2CppObjectPool.Get<ITest>(p);Need(i is ITest.Il2CppProxy&&i.Value==p,"interface initializer changed");Need(ReferenceEquals(a,Il2CppObjectPool.Get<WrapperA>(p)),"interface replaced key owner");GC.KeepAlive(a);GC.KeepAlive(i);});
+Test("pool-zero-pointer-still-returns-default",()=>Need(Il2CppObjectPool.Get<WrapperA>((nint)0)==null,"zero not null"));
+Test("pool-disable-caching-still-returns-distinct-wrappers",()=>{nint p=Pointer();var prop=typeof(Il2CppObjectPool).GetProperty("DisableCaching",BindingFlags.Static|BindingFlags.NonPublic)!;prop.SetValue(null,true);try{var a=Il2CppObjectPool.Get<WrapperA>(p);var b=Il2CppObjectPool.Get<WrapperA>(p);Need(!ReferenceEquals(a,b)&&a.Pointer==p&&b.Pointer==p,"DisableCaching lost");GC.KeepAlive(a);GC.KeepAlive(b);}finally{prop.SetValue(null,false);}});
+Test("live-wrapper-concurrent-readers-and-managed-GC",()=>{nint p=Pointer();var o=new WrapperA(p);long gets=NativeApi.Gets;Parallel.For(0,8,n=>{for(int j=0;j<10000;j++){Need(o.Pointer==p,"concurrent stale/null pointer");if(j%4000==0)GC.Collect(0);}});Need(NativeApi.Gets==gets&&Cached(o)==p,"concurrent path fell back");Need(!o.WasCollected,"live owner freed");GC.KeepAlive(o);});
+Test("manual-finalize-resurrection-boundary-falls-back",()=>{var o=new WrapperA(Pointer());FinalizeNow(o);Need(Cached(o)==0,"resurrection retained cached raw ptr");Collected(()=>_ = o.Pointer);GC.KeepAlive(o);});
+
+bool passed=results.All(r=>JsonSerializer.SerializeToElement(r).GetProperty("passed").GetBoolean());
+File.WriteAllText(Path.Combine(AppContext.BaseDirectory,"fixture-results.json"),JsonSerializer.Serialize(new{passed,cases=results.Count,runtime=RuntimeInformation.FrameworkDescription,runtimeAssemblyPath=type.Assembly.Location,results,scope="Runs actual patched ObjectBase/Create/Pointer/Finalize/WasCollected/Pool methods on .NET6; only native API/cctor replaced in a separate fixture DLL. Weak handle injection synthetic to exercise uncached fallback. No native/performance acceptance; manual concurrent finalization of a live object is outside contract."},new JsonSerializerOptions{WriteIndented=true}));
+Console.WriteLine(JsonSerializer.Serialize(new{passed,cases=results.Count,runtime=RuntimeInformation.FrameworkDescription}));Environment.ExitCode=passed?0:1;
+
+public class WrapperA:Il2CppObjectBase{public WrapperA(nint p):base(p){}}
+public class WrapperB:Il2CppObjectBase{public WrapperB(nint p):base(p){}}
+public interface ITest {nint Value{get;}public class Il2CppProxy:Il2CppObjectBase,ITest{public Il2CppProxy(nint p):base(p){}public nint Value=>Pointer;}}

@@ -1,0 +1,141 @@
+{
+  "status": "source-only experimental opt-in; native lifecycle acceptance incomplete",
+  "inputRuntimeSha256": "082799b08208703637a38bc17b0dd551e5ce3c79e6e9d33e3d9db199402f7462",
+  "candidateSha256": "6694b45f4518de1edf0597ad3bbfe7ff0a9f01cb3903f282ff2517186f7e6bd0",
+  "patchToolSourceSha256": "53b1204a4bee0ec229c9a9b3a709d4d3ed52194c9c0f40b368d4edb4a6bb99fa",
+  "fixtures": {
+    "passed": true,
+    "cases": 22,
+    "runtime": ".NET 6.0.7",
+    "results": [
+      {
+        "name": "net6-loads-real-patched-methods",
+        "passed": true
+      },
+      {
+        "name": "owned-strong-cache-avoids-repeated-native-query",
+        "passed": true
+      },
+      {
+        "name": "WasCollected-still-queries-native-on-strong",
+        "passed": true
+      },
+      {
+        "name": "injected-class-never-caches",
+        "passed": true
+      },
+      {
+        "name": "unknown-zero-native-class-falls-back",
+        "passed": true
+      },
+      {
+        "name": "classification-error-keeps-valid-handle-and-fallback",
+        "passed": true
+      },
+      {
+        "name": "classification-lock-recursion-is-caught",
+        "passed": true
+      },
+      {
+        "name": "zero-input-original-null-reference",
+        "passed": true
+      },
+      {
+        "name": "zero-returned-handle-not-cached",
+        "passed": true
+      },
+      {
+        "name": "native-create-failure-does-not-run-cache-classification",
+        "passed": true
+      },
+      {
+        "name": "wrapped-constructor-reentry-preserves-original-handle-pointer",
+        "passed": true
+      },
+      {
+        "name": "wrapped-null-reentry-preserves-original-null-check",
+        "passed": true
+      },
+      {
+        "name": "synthetic-uncached-weak-handle-preserves-collection-exception",
+        "passed": true
+      },
+      {
+        "name": "injected-uncached-after-release-throws-original-exception",
+        "passed": true
+      },
+      {
+        "name": "finalize-clears-cache-before-native-free",
+        "passed": true
+      },
+      {
+        "name": "pool-same-type-reuses-existing-wrapper",
+        "passed": true
+      },
+      {
+        "name": "pool-type-upgrade-keeps-old-pointer-and-transfers-removal-key",
+        "passed": true
+      },
+      {
+        "name": "pool-interface-proxy-keeps-existing-key-owner",
+        "passed": true
+      },
+      {
+        "name": "pool-zero-pointer-still-returns-default",
+        "passed": true
+      },
+      {
+        "name": "pool-disable-caching-still-returns-distinct-wrappers",
+        "passed": true
+      },
+      {
+        "name": "live-wrapper-concurrent-readers-and-managed-GC",
+        "passed": true
+      },
+      {
+        "name": "manual-finalize-resurrection-boundary-falls-back",
+        "passed": true
+      }
+    ],
+    "scope": "Runs actual patched ObjectBase/Create/Pointer/Finalize/WasCollected/Pool methods on .NET6; only native API/cctor replaced in a separate fixture DLL. Weak handle injection synthetic to exercise uncached fallback. No native/performance acceptance; manual concurrent finalization of a live object is outside contract."
+  },
+  "negativeGates": {
+    "passed": true,
+    "cases": [
+      {
+        "name": "double-patch",
+        "passed": true,
+        "exitCode": 3762504530,
+        "reasonMatched": true,
+        "inputPreserved": true
+      },
+      {
+        "name": "existing-output",
+        "passed": true,
+        "exitCode": 3762504530,
+        "reasonMatched": true,
+        "inputPreserved": true
+      },
+      {
+        "name": "outside-output",
+        "passed": true,
+        "exitCode": 3762504530,
+        "reasonMatched": true,
+        "inputPreserved": true
+      },
+      {
+        "name": "input-as-output",
+        "passed": true,
+        "exitCode": 3762504530,
+        "reasonMatched": true,
+        "inputPreserved": true
+      }
+    ]
+  },
+  "limits": [
+    "Synthetic weak handle injection tests only uncached fallback, not native collector behavior.",
+    "Concurrent test uses live rooted wrapper; concurrent manual finalization of a live wrapper is outside the ownership contract.",
+    "No native GC/performance acceptance; exact Unity2022.3 non-moving collector assumption is constrained to this pinned private input.",
+    "Process later found exited; reason not verified. No completed candidate extraction/UI/stability acceptance."
+  ]
+}

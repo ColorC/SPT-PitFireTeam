@@ -5,9 +5,16 @@
 - Private runtime: squad members joined raids and fought; manual F2 status with health was visually confirmed by the tester.
 - A recorded Wedge/Interchange scenario was playable. The accompanying video is a demonstration, not a complete automated acceptance run.
 - Earlier native UI batch completed 29 operations with no new logged errors; appearance/head-selection and repeated settings flows also received visual checks.
-- Latest client X build passed its required 189/189 contract scope. This is a required-scope result, not complete coverage of every dynamic native target.
+- The preview.1 client and preview.2 maintenance build passed its required 189/189 contract scope. This is a required-scope result, not complete coverage of every dynamic native target.
 - Latest server compiled successfully; independent HTTP checks covered persistence, catalog/profile filtering and rejected invalid equipment policies without profile/item/currency mutations.
 - ESP alignment and performance were visually accepted by the tester and its released DLL is frozen.
+
+## preview.2 maintenance update
+
+- Nullable mover-target and core readiness changes are documented in [release notes](RELEASE-NOTES-preview.2.md). The ordinary-runtime cold raid completed extraction/settlement/main-menu return; independent readiness checks passed 38/38.
+- The publication-time verifier reports `Required scope: PASS (189/189)`. Its broad `Overall` result remains false because three optional SAIN target contracts are unresolved (`FollowerSainProficiency`, `FollowerSainAimTargetPatch`, `SAINPatch`); these are outside the core required scope and are not claimed validated.
+- Opt-in QA observation and bounded GC experiment helpers do not change normal automatic GC policy.
+- The [strong-pointer runtime experiment](../experimental/strong-pointer-cache/README.md) is source-only, excluded from the mod package, and has incomplete native lifecycle/UI acceptance. Its later process exit reason is unknown. Short performance improvements are not a stability acceptance.
 
 ## Still open / do not infer a pass
 

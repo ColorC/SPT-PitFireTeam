@@ -209,8 +209,8 @@ namespace pitTeam.BigBrain.Actions
             }
 
             bool hasCorrectSearchRoute = BotOwner.HasPathAndNotComplete &&
-                                         BotOwner.Mover.TargetPoint.HasValue &&
-                                         (BotOwner.Mover.TargetPoint.Value - searchPoint.Position).sqrMagnitude <= 1f;
+                                         global::pitTeam.Compat.NativeAiGeometry.GetMoverTarget(BotOwner.Mover) is Vector3 moveTarget &&
+                                         (moveTarget - searchPoint.Position).sqrMagnitude <= 1f;
             if (hasCorrectSearchRoute)
             {
                 return;

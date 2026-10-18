@@ -8,6 +8,13 @@ namespace pitTeam.Compat
 {
     internal static class NativeAiGeometry
     {
+        // The native Nullable<Vector3> getter returns either a boxed Vector3 or null.
+        // The generated IL2CPP wrapper constructs Nullable<Vector3>(null) for an empty
+        // target, throwing inside every AI tick. Decode once into a managed nullable.
+        internal static Vector3? GetMoverTarget(BotMover? mover) => mover == null ? null :
+            NativeNullableReturn.InvokeNoArgumentNullable<Vector3>(mover, typeof(BotMover), "get_TargetPoint",
+                "NativeMethodInfoPtr_get_TargetPoint_Public_get_Nullable_1_Vector3_0");
+
         private const string CrossPointField = "NativeMethodInfoPtr_GetCrossPoint_Public_Static_Nullable_1_Vector3_Vector3_Vector3_Vector3_Vector3_0";
         private static readonly Lazy<IntPtr> CrossPointMethod = new(ResolveCrossPoint);
         private static long calls, present, empty, errors;

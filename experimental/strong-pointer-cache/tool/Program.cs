@@ -1,0 +1,71 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using Mono.Cecil;
+using Mono.Cecil.Cil;
+
+const string Expected="082799b08208703637a38bc17b0dd551e5ce3c79e6e9d33e3d9db199402f7462";
+const string CacheName="_spt5QaOwnedStrongPointer";
+const string HelperName="TryCacheOwnedStrongPointerForSpt5Qa";
+string root=Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,"..","..","..",".."));
+void Need(bool condition,string why){if(!condition)throw new InvalidDataException(why);}
+string Hash(string path)=>Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant();
+string Output(string path){string p=Path.GetFullPath(path);Need(p.StartsWith(root+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase),"Output must be under the experiment root");Need(!File.Exists(p),"Refusing to overwrite existing output");Directory.CreateDirectory(Path.GetDirectoryName(p)!);return p;}
+IEnumerable<TypeDefinition> Types(IEnumerable<TypeDefinition> input){foreach(var t in input){yield return t;foreach(var n in Types(t.NestedTypes))yield return n;}}
+string Operand(object? o,MethodDefinition m)=>o switch{MemberReference r=>r.FullName,Instruction i=>"#"+m.Body.Instructions.IndexOf(i),Instruction[] a=>string.Join(",",a.Select(i=>"#"+m.Body.Instructions.IndexOf(i))),ParameterDefinition p=>"arg"+p.Index,VariableDefinition v=>"local"+v.Index,null=>"",_=>o.ToString()??""};
+string Body(MethodDefinition m)=>!m.HasBody?"no-body":string.Join("|",m.Body.Instructions.Select(i=>i.OpCode.Code+":"+Operand(i.Operand,m)))+";EH:"+string.Join("|",m.Body.ExceptionHandlers.Select(e=>$"{e.HandlerType}:{e.CatchType?.FullName}:{m.Body.Instructions.IndexOf(e.TryStart)},{m.Body.Instructions.IndexOf(e.TryEnd)},{m.Body.Instructions.IndexOf(e.HandlerStart)},{m.Body.Instructions.IndexOf(e.HandlerEnd)}"));
+string[] Abi(ModuleDefinition mod)=>Types(mod.Types).SelectMany(t=>t.Methods.Where(m=>m.IsPublic||m.IsFamily||m.IsFamilyOrAssembly).Select(m=>$"{m.Attributes}:{m.FullName}").Concat(t.Fields.Where(f=>f.IsPublic||f.IsFamily||f.IsFamilyOrAssembly).Select(f=>$"{f.Attributes}:{f.FullName}"))).Order().ToArray();
+TypeDefinition Find(ModuleDefinition m,string name)=>m.Types.Single(t=>t.FullName==name);
+void Json(string path,object report)=>File.WriteAllText(path,JsonSerializer.Serialize(report,new JsonSerializerOptions{WriteIndented=true}));
+
+if(args.Length<1)throw new ArgumentException("patch input output report | fixture patched bridge output report");
+if(args[0]=="patch"){
+ Need(args.Length==4,"patch input output report");string input=Path.GetFullPath(args[1]),output=Output(args[2]),report=Output(args[3]);Need(input!=output,"Input/output must differ");Need(Hash(input)==Expected,"Input SHA mismatch");
+ using var mod=ModuleDefinition.ReadModule(input);var before=Types(mod.Types).SelectMany(t=>t.Methods).ToDictionary(m=>m,Body);var abi=Abi(mod);
+ var t=Find(mod,"Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase");var api=Find(mod,"Il2CppInterop.Runtime.IL2CPP");var store=Find(mod,"Il2CppInterop.Runtime.RuntimeSpecificsStore");
+ var create=t.Methods.Single(m=>m.Name=="CreateGCHandle");var getter=t.Methods.Single(m=>m.Name=="get_Pointer");var finalize=t.Methods.Single(m=>m.Name=="Finalize");var handle=t.Fields.Single(f=>f.Name=="myGcHandle");var wrapped=t.Fields.Single(f=>f.Name=="isWrapped");
+ Need(create.IsAssembly&&!create.IsVirtual&&handle.IsPrivate&&!handle.IsStatic,"Ownership/dispatch contract changed");Need(create.Parameters.Count==1&&create.Parameters[0].ParameterType.FullName=="System.IntPtr","Unexpected Create signature");
+ Need(getter.ReturnType.FullName=="System.IntPtr"&&getter.IsPublic&&(!getter.IsVirtual||getter.IsFinal),"Unexpected Pointer ABI");
+ Need(!t.Fields.Any(f=>f.Name==CacheName)&&!t.Methods.Any(m=>m.Name==HelperName),"Already patched/unknown shape");
+ var writes=Types(mod.Types).SelectMany(x=>x.Methods).Where(m=>m.HasBody).SelectMany(m=>m.Body.Instructions.Select(i=>(m,i))).Where(p=>p.i.Operand is FieldReference f&&f.FullName==handle.FullName&&p.i.OpCode.Code is Code.Stfld or Code.Stsfld or Code.Ldflda or Code.Ldsflda).ToArray();
+ Need(writes.Length==1&&writes[0].m==create&&writes[0].i.OpCode.Code==Code.Stfld,"Unknown handle writer/address exposure");
+ var newHandle=api.Methods.Single(m=>m.Name=="il2cpp_gchandle_new");var getTarget=api.Methods.Single(m=>m.Name=="il2cpp_gchandle_get_target");var free=api.Methods.Single(m=>m.Name=="il2cpp_gchandle_free");var getClass=api.Methods.Single(m=>m.Name=="il2cpp_object_get_class");var injected=store.Methods.Single(m=>m.Name=="IsInjected");
+ var handleApiAudit=Types(mod.Types).SelectMany(x=>x.Methods).Where(m=>m.HasBody).SelectMany(m=>m.Body.Instructions.Where(i=>i.Operand is MethodReference r&&r.DeclaringType.FullName==api.FullName&&r.Name.StartsWith("il2cpp_gchandle_")).Select(i=>(caller:m,instruction:i,target:(MethodReference)i.Operand))).ToArray();
+ Need(handleApiAudit.Count(a=>a.target.Name=="il2cpp_gchandle_new")==1&&handleApiAudit.Single(a=>a.target.Name=="il2cpp_gchandle_new").caller==create,"Unknown strong creator");
+ Need(!handleApiAudit.Any(a=>a.target.Name=="il2cpp_gchandle_new_weakref"),"Unknown owned weak path; do not guess eligibility");
+ Need(handleApiAudit.Count(a=>a.target.Name=="il2cpp_gchandle_free")==1&&handleApiAudit.Single(a=>a.target.Name=="il2cpp_gchandle_free").caller==finalize,"Unknown owned release path");
+ var ci=create.Body.Instructions;var write=writes[0].i;int wi=ci.IndexOf(write);
+ Need(wi>=2&&ci[wi-1].OpCode.Code==Code.Call&&ci[wi-1].Operand is MethodReference r&&r.FullName==newHandle.FullName&&ci[wi-2].OpCode.Code==Code.Ldc_I4_0,"Strong non-pinned new ownership pattern changed");
+ Need(ci.Any(i=>i.Operand is FieldReference f&&f.FullName==wrapped.FullName)&&!create.Body.ExceptionHandlers.Any(),"Constructor reentry/exception shape changed");
+ Need(getter.Body.Instructions.Count(i=>i.Operand is MethodReference r&&r.FullName==getTarget.FullName)==1,"Pointer fallback pattern changed");Need(finalize.Body.Instructions.Count(i=>i.Operand is MethodReference r&&r.FullName==free.FullName)==1,"Finalizer pattern changed");
+ var cache=new FieldDefinition(CacheName,FieldAttributes.Private,mod.TypeSystem.IntPtr);t.Fields.Add(cache);
+ var helper=new MethodDefinition(HelperName,MethodAttributes.Private|MethodAttributes.HideBySig,mod.TypeSystem.Void);helper.Parameters.Add(new ParameterDefinition("pointer",ParameterAttributes.None,mod.TypeSystem.IntPtr));t.Methods.Add(helper);helper.Body.InitLocals=true;helper.Body.MaxStackSize=3;var nativeClass=new VariableDefinition(mod.TypeSystem.IntPtr);helper.Body.Variables.Add(nativeClass);
+ var h=helper.Body.GetILProcessor();var done=Instruction.Create(OpCodes.Ret);var leave=Instruction.Create(OpCodes.Leave,done);var catchStart=Instruction.Create(OpCodes.Pop);
+ h.Append(Instruction.Create(OpCodes.Ldarg_0));h.Append(Instruction.Create(OpCodes.Ldc_I4_0));h.Append(Instruction.Create(OpCodes.Conv_I));h.Append(Instruction.Create(OpCodes.Volatile));h.Append(Instruction.Create(OpCodes.Stfld,cache));
+ h.Append(Instruction.Create(OpCodes.Ldarg_0));h.Append(Instruction.Create(OpCodes.Ldfld,handle));h.Append(Instruction.Create(OpCodes.Brfalse,done));
+ var tryStart=Instruction.Create(OpCodes.Ldarg_1);h.Append(tryStart);h.Append(Instruction.Create(OpCodes.Call,getClass));h.Append(Instruction.Create(OpCodes.Stloc,nativeClass));h.Append(Instruction.Create(OpCodes.Ldloc,nativeClass));h.Append(Instruction.Create(OpCodes.Brfalse,leave));h.Append(Instruction.Create(OpCodes.Ldloc,nativeClass));h.Append(Instruction.Create(OpCodes.Call,injected));h.Append(Instruction.Create(OpCodes.Brtrue,leave));h.Append(Instruction.Create(OpCodes.Ldarg_0));h.Append(Instruction.Create(OpCodes.Ldarg_1));h.Append(Instruction.Create(OpCodes.Volatile));h.Append(Instruction.Create(OpCodes.Stfld,cache));h.Append(leave);h.Append(catchStart);h.Append(Instruction.Create(OpCodes.Leave,done));h.Append(done);
+ var exception=mod.GetTypeReferences().First(x=>x.FullName=="System.Exception");helper.Body.ExceptionHandlers.Add(new ExceptionHandler(ExceptionHandlerType.Catch){CatchType=exception,TryStart=tryStart,TryEnd=catchStart,HandlerStart=catchStart,HandlerEnd=done});
+ var c=create.Body.GetILProcessor();var cursor=write;foreach(var i in new[]{Instruction.Create(OpCodes.Ldarg_0),Instruction.Create(OpCodes.Ldarg_1),Instruction.Create(OpCodes.Call,helper)}){c.InsertAfter(cursor,i);cursor=i;}create.Body.MaxStackSize=Math.Max(create.Body.MaxStackSize,2);
+ var gc=mod.GetTypeReferences().FirstOrDefault(x=>x.FullName=="System.GC")??new TypeReference("System","GC",mod,exception.Scope);var keepAlive=new MethodReference("KeepAlive",mod.TypeSystem.Void,gc){HasThis=false};keepAlive.Parameters.Add(new ParameterDefinition(mod.TypeSystem.Object));
+ var originalGetterInstructions=getter.Body.Instructions.ToArray();var originalGetterOperands=originalGetterInstructions.Select(i=>i.Operand).ToArray();var originalGetterOpcodes=originalGetterInstructions.Select(i=>i.OpCode).ToArray();
+ var cached=new VariableDefinition(mod.TypeSystem.IntPtr);getter.Body.Variables.Add(cached);getter.Body.InitLocals=true;getter.Body.MaxStackSize=Math.Max(getter.Body.MaxStackSize,2);var gi=getter.Body.GetILProcessor();var oldFirst=getter.Body.Instructions[0];
+ foreach(var i in new[]{Instruction.Create(OpCodes.Ldarg_0),Instruction.Create(OpCodes.Volatile),Instruction.Create(OpCodes.Ldfld,cache),Instruction.Create(OpCodes.Stloc,cached),Instruction.Create(OpCodes.Ldloc,cached),Instruction.Create(OpCodes.Brfalse,oldFirst),Instruction.Create(OpCodes.Ldarg_0),Instruction.Create(OpCodes.Call,keepAlive),Instruction.Create(OpCodes.Ldloc,cached),Instruction.Create(OpCodes.Ret)})gi.InsertBefore(oldFirst,i);
+ Need(getter.Body.Instructions.Skip(10).SequenceEqual(originalGetterInstructions)&&originalGetterInstructions.Select(i=>i.OpCode).SequenceEqual(originalGetterOpcodes)&&originalGetterInstructions.Select(i=>i.Operand).SequenceEqual(originalGetterOperands),"Original fallback instructions/operands changed");
+ var fi=finalize.Body.GetILProcessor();var oldFinal=finalize.Body.Instructions[0];foreach(var i in new[]{Instruction.Create(OpCodes.Ldarg_0),Instruction.Create(OpCodes.Ldc_I4_0),Instruction.Create(OpCodes.Conv_I),Instruction.Create(OpCodes.Volatile),Instruction.Create(OpCodes.Stfld,cache)})fi.InsertBefore(oldFinal,i);finalize.Body.MaxStackSize=Math.Max(finalize.Body.MaxStackSize,2);
+ var changed=new HashSet<MethodDefinition>{create,getter,finalize};var unexpected=Types(mod.Types).SelectMany(x=>x.Methods).Where(m=>before.TryGetValue(m,out var body)&&body!=Body(m)&&!changed.Contains(m)).Select(m=>m.FullName).ToArray();Need(unexpected.Length==0,"Unexpected method changes");Need(abi.SequenceEqual(Abi(mod)),"Public/protected ABI changed");
+ mod.Mvid=new Guid(SHA256.HashData(Encoding.UTF8.GetBytes(Expected+":spt5-owned-strong-pointer-qa-v1"))[..16]);mod.Write(output);Need(Hash(input)==Expected,"Input changed during patch");
+ Json(report,new{mode="private-qa-only",input,inputSha256=Expected,output,outputSha256=Hash(output),mvid=mod.Mvid,privateField=cache.FullName,privateHelper=helper.FullName,changedMethods=changed.Select(m=>m.FullName),publicProtectedAbiUnchanged=true,unrelatedMethodBodiesUnchanged=true,originalPointerFallbackInstructionsAndOperandsPreserved=true,inputPreserved=true,audit=new{createInternalNonVirtual=true,handlePrivate=true,onlyOwnedStrongWriter=true,constructorReentryPreserved=true,classificationErrorsFallBack=true,handleApiReferences=handleApiAudit.Select(a=>new{caller=a.caller.FullName,target=a.target.FullName,offset=a.instruction.Offset})},limitations="Non-injected owned strong path only; assumes exact Unity2022.3 non-moving IL2CPP collector. Native lifetime/teardown and arbitrary reflection mutation are not solved. Finalizer queue untouched."});Console.WriteLine(File.ReadAllText(report));
+}
+else if(args[0]=="fixture"){
+ Need(args.Length==5,"fixture patched bridge output report");string input=Path.GetFullPath(args[1]),bridge=Path.GetFullPath(args[2]),output=Output(args[3]),report=Output(args[4]);
+ using var mod=ModuleDefinition.ReadModule(input);using var stub=ModuleDefinition.ReadModule(bridge);var api=Find(mod,"Il2CppInterop.Runtime.IL2CPP");Need(Find(mod,"Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase").Fields.Any(f=>f.Name==CacheName),"Not an experimental patched input");
+ var fixtureBefore=Types(mod.Types).SelectMany(t=>t.Methods).ToDictionary(m=>m,Body);
+ var stubType=Find(stub,"StrongPointerFixture.NativeApi");var changed=new List<string>();
+ foreach(string name in new[]{"il2cpp_gchandle_new","il2cpp_gchandle_new_weakref","il2cpp_gchandle_get_target","il2cpp_gchandle_free","il2cpp_object_get_class"}){
+  var m=api.Methods.Single(m=>m.Name==name);var target=stubType.Methods.Single(m=>m.Name==name);Need(m.Parameters.Select(p=>p.ParameterType.FullName).SequenceEqual(target.Parameters.Select(p=>p.ParameterType.FullName))&&m.ReturnType.FullName==target.ReturnType.FullName,"Stub signature mismatch");m.PInvokeInfo=null;m.Attributes&=~MethodAttributes.PInvokeImpl;m.ImplAttributes=MethodImplAttributes.IL|MethodImplAttributes.Managed;m.Body=new MethodBody(m);var il=m.Body.GetILProcessor();foreach(var p in m.Parameters)il.Append(Instruction.Create(OpCodes.Ldarg,p));il.Append(Instruction.Create(OpCodes.Call,mod.ImportReference(target)));il.Append(Instruction.Create(OpCodes.Ret));changed.Add(m.FullName);
+ }
+ var cctor=api.Methods.Single(m=>m.IsConstructor&&m.IsStatic);cctor.Body=new MethodBody(cctor);cctor.Body.GetILProcessor().Append(Instruction.Create(OpCodes.Ret));changed.Add(cctor.FullName);
+ Need(fixtureBefore.All(pair=>pair.Value==Body(pair.Key)||changed.Contains(pair.Key.FullName)),"Fixture changed a non-native-boundary method");
+ Need(api.Methods.Where(m=>changed.Contains(m.FullName)).All(m=>!m.IsPInvokeImpl&&m.HasBody),"Fixture still declares a native PInvoke");mod.Mvid=Guid.NewGuid();mod.Write(output);
+ Json(report,new{mode="fixture-only-do-not-deploy",input,inputSha256=Hash(input),bridge,output,outputSha256=Hash(output),stubbedNativeBoundaries=changed,actualPatchedObjectBaseAndPoolBodiesPreserved=true});Console.WriteLine(File.ReadAllText(report));
+}else throw new ArgumentException("Unknown mode");

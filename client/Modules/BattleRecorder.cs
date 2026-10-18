@@ -2155,7 +2155,7 @@ namespace pitTeam.Modules
         private static bool TryGetMoverTarget(BotOwner bot, out Vector3 target)
         {
             target = Vector3.zero;
-            var nativeTarget = bot?.Mover?.TargetPoint;
+            var nativeTarget = global::pitTeam.Compat.NativeAiGeometry.GetMoverTarget(bot?.Mover);
             if (!nativeTarget.HasValue)
             {
                 return false;

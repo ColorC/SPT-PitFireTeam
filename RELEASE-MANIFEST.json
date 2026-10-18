@@ -1,14 +1,66 @@
 {
+  "tag": "v0.10.3-spt5-preview.2",
   "preview": true,
   "target": {
     "eft": "1.1.5.47242 IL2CPP",
     "spt": "5.0.0 BEM ec15a4"
   },
+  "runtimeExperimentBundled": false,
+  "sourceFilesUpdatedFromTestedWorkingTree": [
+    {
+      "path": "client/BigBrain/FollowerRequestLayer.cs",
+      "sha256": "c6fd117a943e4f32b9ea6a5af64b0c406dbe0a383d82ec2ecfa76ae4e8abfb4b"
+    },
+    {
+      "path": "client/Compat/NativeAiGeometry.cs",
+      "sha256": "1555717ac280711b5f6016b84cb97a5c89adfd6966ee4d6c3e458c1ee6752e9c"
+    },
+    {
+      "path": "client/Compat/Spt5FrameTimingProbe.cs",
+      "sha256": "aeb71043385f34e8b724b5aecc3d37107f0be9ff9d8f9ac8960a70fc550cab5d"
+    },
+    {
+      "path": "client/Compat/Spt5NativeGcCompatibility.cs",
+      "sha256": "d6462f55e78f1f63b2b6e58fa7471bba3ede746aa032b2f8729d86062caeb222"
+    },
+    {
+      "path": "client/Compat/Spt5QaNativeGcControl.cs",
+      "sha256": "b12e6a1425b9c4e13c8e440f06adfcf2dd81b3b936a62d47748ddc13b27fccfe"
+    },
+    {
+      "path": "client/Compat/Spt5RuntimeProbe.cs",
+      "sha256": "d39447dcb858a87caf4c765a65ab7640d04dc63725033861b5c73bcd2f204840"
+    },
+    {
+      "path": "client/Components/BotFollowerPlayer.cs",
+      "sha256": "5313bb9ab32d32e65508e0966ca162815fedf8d668dd68ca432507c4873dcc86"
+    },
+    {
+      "path": "client/Modules/BattleRecorder.cs",
+      "sha256": "d43456e0a9ad963012242f05efb788f22e0bd2d98a241a29b3a27e8cbcbd12a4"
+    },
+    {
+      "path": "client/BigBrain/Actions/CombatAttackMovingAction.cs",
+      "sha256": "586a92e027cca45c437296a93bcfa3e9c0c499bd1fe915a5c28a1c4dcd0eb99f"
+    },
+    {
+      "path": "client/BigBrain/Actions/CombatGoToEnemyAction.cs",
+      "sha256": "c84515456ff9e52a77b294a53d29c5ae2ad2eeb59161402158c0887da6447a99"
+    },
+    {
+      "path": "client/BigBrain/Actions/CombatRunToEnemyAction.cs",
+      "sha256": "932034560e8cf0b769412854bf5952da22d1a6ef57414fe1f93f43036686edfe"
+    },
+    {
+      "path": "client/BigBrain/Actions/CombatSearchAction.cs",
+      "sha256": "122c005a83e49f41791fcd4ab6773cb47a09e2c4e91914cca85225150f65ff4f"
+    }
+  ],
   "files": [
     {
       "path": "BepInEx/plugins/pitFireTeam/pitFireTeam.dll",
-      "bytes": 3251200,
-      "sha256": "910d05526eb76149440060d795bcc8c2c583d94697f20b01c61ea61015415cee"
+      "bytes": 3287040,
+      "sha256": "94d2767c6be982191752283f898812a0d08899b5d367f10464510b441d411fc7"
     },
     {
       "path": "BepInEx/plugins/pitFireTeam/resources/auto-join.png",
@@ -86,14 +138,9 @@
       "sha256": "15f29320345d418858e955e204a406a234585d41c3db90edb20356276d8ca4f3"
     },
     {
-      "path": "SPT_Runtime/user/mods/pitFireTeam-ServerMod/pitFireTeam.Server.dll",
-      "bytes": 357376,
-      "sha256": "14ccc747b332f691b13dc1f440fa4232892238858e2953d6cc9a207e2dfdda37"
-    },
-    {
-      "path": "SPT_Runtime/user/mods/pitFireTeam-ServerMod/pitFireTeam.Server.deps.json",
-      "bytes": 450,
-      "sha256": "074a8e04fd00ae9b39fe93d9561e442ab10ef9df74aaf4f71241c490a2bf0ade"
+      "path": "RELEASE-MANIFEST.json",
+      "bytes": 5145,
+      "sha256": "a1cb273f7aefb7e4075ea5ff808e9795916ce3054dde75ceb45370d8eff02dca"
     },
     {
       "path": "SPT_Runtime/user/mods/pitFireTeam-ServerMod/Resources/avatars/courier.png",
@@ -116,6 +163,16 @@
       "sha256": "73a74e456cb7a1870393a9d44a398bc1cbe2c0609ab907cd27bcde18a2cba118"
     },
     {
+      "path": "SPT_Runtime/user/mods/pitFireTeam-ServerMod/pitFireTeam.Server.deps.json",
+      "bytes": 450,
+      "sha256": "074a8e04fd00ae9b39fe93d9561e442ab10ef9df74aaf4f71241c490a2bf0ade"
+    },
+    {
+      "path": "SPT_Runtime/user/mods/pitFireTeam-ServerMod/pitFireTeam.Server.dll",
+      "bytes": 357376,
+      "sha256": "14ccc747b332f691b13dc1f440fa4232892238858e2953d6cc9a207e2dfdda37"
+    },
+    {
       "path": "pitFireTeam-docs/LICENSE",
       "bytes": 1165,
       "sha256": "71ae46be863a75b838ef756ff0f8239ad745576ada720217e5e0fa58f986b282"
@@ -126,14 +183,25 @@
       "sha256": "910c8b9c6f3cf9b684766c372fd96f1d4b96c359f828b22137d5ed9c72872b36"
     },
     {
+      "path": "pitFireTeam-docs/PERFORMANCE-20261018.md",
+      "bytes": 3811,
+      "sha256": "07f8aae0b3654ab5de3a266678c6dfb31c13ff88c1ded4572e1ef86c2f15a99b"
+    },
+    {
+      "path": "pitFireTeam-docs/RELEASE-NOTES-preview.2.md",
+      "bytes": 2103,
+      "sha256": "6fdb260f0050314504226cf8271a7b2defab05706b1f6dc41fde49d4e021e965"
+    },
+    {
       "path": "pitFireTeam-docs/SPT5-PREVIEW.md",
-      "bytes": 2702,
-      "sha256": "e3ecb4263099f0d33fd7864041fabcb08ef336050e00f3fd6b2cbe4f484a7152"
+      "bytes": 3097,
+      "sha256": "eefc4d6d69b6baed9215bdbcee28f84769385b023b6192b51a982f06cd199db7"
     },
     {
       "path": "pitFireTeam-docs/VALIDATION.md",
-      "bytes": 2232,
-      "sha256": "10a60907f822e3ef8dfd54ea66ebb739b42b227de1ab86b984816eb1360c5b80"
+      "bytes": 3234,
+      "sha256": "341d6a25e6929eae99e7b239641992dff5b55e8bd1789dd781f4a6fae8efa6da"
     }
-  ]
+  ],
+  "sourceHashNote": "Source hashes were captured from the tested working tree before Git text line-ending normalization."
 }

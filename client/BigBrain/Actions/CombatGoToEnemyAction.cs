@@ -461,9 +461,9 @@ namespace pitTeam.BigBrain.Actions
 
         private Vector3? GetAdvanceTargetPoint()
         {
-            if (BotOwner.Mover.TargetPoint.HasValue)
+            if (global::pitTeam.Compat.NativeAiGeometry.GetMoverTarget(BotOwner.Mover) is Vector3 moveTarget)
             {
-                return BotOwner.Mover.TargetPoint.Value;
+                return moveTarget;
             }
 
             if (hasCommittedAdvancePoint)
@@ -500,11 +500,11 @@ namespace pitTeam.BigBrain.Actions
             }
 
             if (BotOwner.GoToPoint(targetPoint, true, -1f, false, false) == NavMeshPathStatus.PathComplete &&
-                BotOwner.Mover.TargetPoint.HasValue &&
-                (targetPoint - BotOwner.Mover.TargetPoint.Value).magnitude < 2f)
+                global::pitTeam.Compat.NativeAiGeometry.GetMoverTarget(BotOwner.Mover) is Vector3 moveTarget &&
+                (targetPoint - moveTarget).magnitude < 2f)
             {
-                CommitAdvancePoint(BotOwner.Mover.TargetPoint.Value);
-                shouldSprint = !Utils.Utils.IsWithinDistance(BotOwner.Mover.TargetPoint.Value, BotOwner.GetPlayer.Transform.position, 20f);
+                CommitAdvancePoint(moveTarget);
+                shouldSprint = !Utils.Utils.IsWithinDistance(moveTarget, BotOwner.GetPlayer.Transform.position, 20f);
                 return true;
             }
 
@@ -673,13 +673,11 @@ namespace pitTeam.BigBrain.Actions
                 return false;
             }
 
-            if (!BotOwner.Mover.TargetPoint.HasValue)
+            if (global::pitTeam.Compat.NativeAiGeometry.GetMoverTarget(BotOwner.Mover) is not Vector3 targetPoint)
             {
                 hasCommittedAdvancePoint = false;
                 return false;
             }
-
-            Vector3 targetPoint = BotOwner.Mover.TargetPoint.Value;
             if ((targetPoint - committedAdvancePoint).sqrMagnitude > 1f)
             {
                 hasCommittedAdvancePoint = false;

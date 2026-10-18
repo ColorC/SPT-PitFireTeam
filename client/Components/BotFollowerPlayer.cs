@@ -227,6 +227,10 @@ namespace pitTeam.Components
             }
         }
 
+        // A request-layer gate must not run cooldown maintenance merely to decide
+        // whether an otherwise absent command needs that maintenance at all.
+        internal bool IsTemporaryCombatAggressionOverrideSet => _temporaryCombatAggressionOverrideActive;
+
         public bool IsTemporaryCombatAggressionOverrideActive
         {
             get
@@ -2635,18 +2639,19 @@ namespace pitTeam.Components
 
         private static bool HasActiveCombatSignal(BotOwner owner)
         {
-            if (owner?.Memory == null)
+            var memory = owner?.Memory;
+            if (memory == null)
             {
                 return false;
             }
 
-            EnemyInfo goalEnemy = owner.Memory.GoalEnemy;
-            if (owner.Memory.HaveEnemy && IsEnemyInfoAlive(goalEnemy))
+            EnemyInfo goalEnemy = memory.GoalEnemy;
+            if (memory.HaveEnemy && IsEnemyInfoAlive(goalEnemy))
             {
                 return true;
             }
 
-            if (owner.Memory.IsUnderFire && Time.time - owner.Memory.LastTimeHit <= 2f)
+            if (memory.IsUnderFire && Time.time - memory.LastTimeHit <= 2f)
             {
                 return true;
             }
@@ -2736,9 +2741,10 @@ namespace pitTeam.Components
                 return false;
             }
 
-            if (!string.IsNullOrEmpty(info.ProfileId))
+            string profileId = info.ProfileId;
+            if (!string.IsNullOrEmpty(profileId))
             {
-                Player alivePlayer = Singleton<GameWorld>.Instance?.GetAlivePlayerByProfileID(info.ProfileId);
+                Player alivePlayer = Singleton<GameWorld>.Instance?.GetAlivePlayerByProfileID(profileId);
                 return alivePlayer?.HealthController?.IsAlive == true;
             }
 

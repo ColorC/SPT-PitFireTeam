@@ -84,6 +84,14 @@ namespace pitTeam.BigBrain
             }
 
             bool hasCommand = followerData.TryGetActiveCommand(out FollowerCommandType command, out _);
+            // Core followers without a request or temporary override cannot use
+            // this layer. Avoid repeatedly scanning the whole squad's enemy
+            // dictionaries just to return false. Keep command expiry processing
+            // above, and preserve cooldown maintenance and the SAIN bridge path.
+            if (!hasCommand && !pitFireTeam.UseSainFollowerCombat && !followerData.IsTemporaryCombatAggressionOverrideSet)
+            {
+                return false;
+            }
             if (hasCommand &&
                 (command == FollowerCommandType.PushEnemy ||
                  command == FollowerCommandType.SuppressEnemy ||
