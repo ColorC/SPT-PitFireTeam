@@ -1,0 +1,30 @@
+{
+  "inputSha256": "7361c23611fd43eca81e12ab5f2f1984de06b6678f1331d2e0d761068d602c6b",
+  "outputSha256": "53e7f1dd7acbd71e11457e8fffbc06485cd39c0c6321cfe06ebcf869a37f69de",
+  "interopSha256": "b2235cd57c91e92cd60e588053b7f38c02e8e893d82a2ef31b10b05e3113e607",
+  "changedExistingMethod": "System.Void LiveMap.EntityService::CollectBtr()",
+  "addedPrivateHelper": "EFT.Vehicle.BTRVehicle[] LiveMap.EntityService::GetRegisteredBtrVehicles()",
+  "lookup": "BtrController.Instance.BtrVehicle with Unity null and activeInHierarchy checks; zero/one registered active native vehicle",
+  "noGlobalSceneSearch": true,
+  "originalInactiveObjectExclusionPreserved": true,
+  "originalEightSecondRetryAndPositionCachePreserved": true,
+  "lateSpawnRechecked": true,
+  "allOtherExistingMethodBodiesUnchanged": true,
+  "publicProtectedAbiUnchanged": true,
+  "status": "Exact-input source tool; local native acceptance is scoped in docs/PERFORMANCE-20261019.md; no third-party DLL redistributed",
+  "helperFixtureChecks": {
+    "passed": 8,
+    "total": 8,
+    "cases": [
+      "no controller",
+      "controller without vehicle",
+      "registered vehicle identity",
+      "Unity destroyed vehicle",
+      "later vehicle discovered",
+      "inactive native object excluded",
+      "later activation discovered",
+      "new controller identity"
+    ],
+    "scope": "Exact extracted candidate helper IL; native controller, active flag and Unity equality boundaries substituted. Not native vehicle lifetime acceptance."
+  }
+}

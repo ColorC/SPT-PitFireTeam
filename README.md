@@ -37,3 +37,7 @@ The script accepts `-ServerRoot` and `-BigBrainAssemblyPath` overrides. It build
 ## License
 
 MIT, preserving upstream attribution. See [NOTICE.md](NOTICE.md) and [LICENSE](LICENSE).
+
+## 2026-10-19 follow-up
+
+[preview.3](docs/RELEASE-NOTES-preview.3.md) restores optional AI Limit compatibility. [Woods performance measurements](docs/PERFORMANCE-20261019.md) document the exact-input runtime/AI Limit/LiveMap source experiments; dependency DLLs are excluded from the normal package. ESP is unchanged.

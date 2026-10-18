@@ -32,3 +32,7 @@ The release binaries are the exact locally played builds, not an automatic rebui
 ## preview.2 update boundary
 
 The maintenance client adds nullable mover-target fixes, a core readiness optimization and opt-in private diagnostics. The server/resources are unchanged. See [release notes](RELEASE-NOTES-preview.2.md). The experimental strong-pointer runtime patch is source-only and excluded from this package; the ordinary compatibility requirements above remain in force. Normal automatic GC is unchanged.
+
+## preview.3 boundary
+
+This package restores AI Limit detection/load order for follower exclusion. Runtime, AI Limit and LiveMap performance/lifecycle tools are separate optional exact-input source experiments; no foreign dependency DLL is bundled. [Results and limits](PERFORMANCE-20261019.md). Keep normal automatic GC enabled.

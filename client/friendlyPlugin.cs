@@ -204,6 +204,7 @@ namespace pitTeam
 
     [BepInPlugin("xyz.pit.fireteam", "PitAlex-PitFireTeam", "0.10.3")]
     [BepInDependency("xyz.drakia.bigbrain")]
+    [BepInDependency("com.dvize.ailimit", BepInDependency.DependencyFlags.SoftDependency)]
     [BepInDependency(pitFireTeam.MenuOverhaulPluginId, BepInDependency.DependencyFlags.SoftDependency)]
     public class pitFireTeam : BaseUnityPlugin
     {

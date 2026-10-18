@@ -1,5 +1,7 @@
 # Owned strong-pointer cache — experimental source only
 
+2026-10-19 follow-up: consecutive Woods raids, extraction/settlement/menu, roster/model/weapon/statistics and full client-stack checks have now been observed locally. [New measurements and limits](../../docs/PERFORMANCE-20261019.md) supersede the earlier short-test acceptance gap below; the earlier unknown exit cause remains unknown. Long-session and universal native lifetime safety are not established. No runtime DLL is redistributed.
+
 This is an opt-in research tool, separate from the normal mod release and compatibility stack. Native lifecycle, teardown and long-session acceptance are incomplete. The later test-process exit is unexplained. See [measured results and limits](../../docs/PERFORMANCE-20261018.md).
 
 The patch accepts only the exact field-boxing-corrected Il2CppInterop.Runtime input SHA256 `082799b08208703637a38bc17b0dd551e5ce3c79e6e9d33e3d9db199402f7462`. Its eligibility depends on the reviewed Unity 2022.3 non-moving IL2CPP collector and owned-handle layout. No other build is supported. It audits handle writers, strong creation, release sites, fallback instructions and public/protected ABI. A failed native-class classification retains the original getter. `WasCollected`, weak APIs and the object pool are unchanged. The finalizer cache clear precedes the original free.

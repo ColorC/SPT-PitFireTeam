@@ -1,4 +1,4 @@
-using BepInEx.Bootstrap;
+using BepInEx.Unity.IL2CPP;
 using EFT;
 using HarmonyLib;
 using System;
@@ -8,7 +8,7 @@ namespace pitTeam.Modules
 {
     internal static class AILimitCompatibility
     {
-        private const string AILimitPluginId = "com.dvize.AILimit";
+        private const string AILimitPluginId = "com.dvize.ailimit";
         private const string AILimitComponentTypeName = "AILimit.AILimitComponent";
         private static bool patchAttempted;
 
@@ -20,7 +20,10 @@ namespace pitTeam.Modules
             }
 
             patchAttempted = true;
-            if (!Chainloader.PluginInfos.ContainsKey(AILimitPluginId))
+            // The legacy Mono compatibility table is intentionally empty in this
+            // IL2CPP port. Consult the actual active loader for this integration.
+            if (IL2CPPChainloader.Instance == null
+                || !IL2CPPChainloader.Instance.Plugins.ContainsKey(AILimitPluginId))
             {
                 return;
             }

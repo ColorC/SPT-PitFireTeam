@@ -1,66 +1,27 @@
 {
-  "tag": "v0.10.3-spt5-preview.2",
+  "tag": "v0.10.3-spt5-preview.3",
   "preview": true,
   "target": {
     "eft": "1.1.5.47242 IL2CPP",
     "spt": "5.0.0 BEM ec15a4"
   },
-  "runtimeExperimentBundled": false,
+  "dependencyExperimentsBundled": false,
   "sourceFilesUpdatedFromTestedWorkingTree": [
     {
-      "path": "client/BigBrain/FollowerRequestLayer.cs",
-      "sha256": "c6fd117a943e4f32b9ea6a5af64b0c406dbe0a383d82ec2ecfa76ae4e8abfb4b"
+      "path": "client/Modules/AILimitCompatibility.cs",
+      "sha256": "04764c1697b353d5975e8f76995358c09fc67901e0851a112e7ddba4b6384388"
     },
     {
-      "path": "client/Compat/NativeAiGeometry.cs",
-      "sha256": "1555717ac280711b5f6016b84cb97a5c89adfd6966ee4d6c3e458c1ee6752e9c"
-    },
-    {
-      "path": "client/Compat/Spt5FrameTimingProbe.cs",
-      "sha256": "aeb71043385f34e8b724b5aecc3d37107f0be9ff9d8f9ac8960a70fc550cab5d"
-    },
-    {
-      "path": "client/Compat/Spt5NativeGcCompatibility.cs",
-      "sha256": "d6462f55e78f1f63b2b6e58fa7471bba3ede746aa032b2f8729d86062caeb222"
-    },
-    {
-      "path": "client/Compat/Spt5QaNativeGcControl.cs",
-      "sha256": "b12e6a1425b9c4e13c8e440f06adfcf2dd81b3b936a62d47748ddc13b27fccfe"
-    },
-    {
-      "path": "client/Compat/Spt5RuntimeProbe.cs",
-      "sha256": "d39447dcb858a87caf4c765a65ab7640d04dc63725033861b5c73bcd2f204840"
-    },
-    {
-      "path": "client/Components/BotFollowerPlayer.cs",
-      "sha256": "5313bb9ab32d32e65508e0966ca162815fedf8d668dd68ca432507c4873dcc86"
-    },
-    {
-      "path": "client/Modules/BattleRecorder.cs",
-      "sha256": "d43456e0a9ad963012242f05efb788f22e0bd2d98a241a29b3a27e8cbcbd12a4"
-    },
-    {
-      "path": "client/BigBrain/Actions/CombatAttackMovingAction.cs",
-      "sha256": "586a92e027cca45c437296a93bcfa3e9c0c499bd1fe915a5c28a1c4dcd0eb99f"
-    },
-    {
-      "path": "client/BigBrain/Actions/CombatGoToEnemyAction.cs",
-      "sha256": "c84515456ff9e52a77b294a53d29c5ae2ad2eeb59161402158c0887da6447a99"
-    },
-    {
-      "path": "client/BigBrain/Actions/CombatRunToEnemyAction.cs",
-      "sha256": "932034560e8cf0b769412854bf5952da22d1a6ef57414fe1f93f43036686edfe"
-    },
-    {
-      "path": "client/BigBrain/Actions/CombatSearchAction.cs",
-      "sha256": "122c005a83e49f41791fcd4ab6773cb47a09e2c4e91914cca85225150f65ff4f"
+      "path": "client/friendlyPlugin.cs",
+      "sha256": "544c86db247c58ce9a773d24ddeca5b51a1d96ca6627651286839aa88716eb1a"
     }
   ],
+  "clientSourceCoverageCompared": 273,
   "files": [
     {
       "path": "BepInEx/plugins/pitFireTeam/pitFireTeam.dll",
       "bytes": 3287040,
-      "sha256": "94d2767c6be982191752283f898812a0d08899b5d367f10464510b441d411fc7"
+      "sha256": "e08390260d7659f8399405bd3f05cdf312fedb4c062746a37c648a3319801e45"
     },
     {
       "path": "BepInEx/plugins/pitFireTeam/resources/auto-join.png",
@@ -188,20 +149,34 @@
       "sha256": "07f8aae0b3654ab5de3a266678c6dfb31c13ff88c1ded4572e1ef86c2f15a99b"
     },
     {
+      "path": "pitFireTeam-docs/PERFORMANCE-20261019.md",
+      "bytes": 9627,
+      "sha256": "3dffca6d629ad41d5a35affa5094f39d38309aacced03005a28b59f88479a79f"
+    },
+    {
       "path": "pitFireTeam-docs/RELEASE-NOTES-preview.2.md",
       "bytes": 2103,
       "sha256": "6fdb260f0050314504226cf8271a7b2defab05706b1f6dc41fde49d4e021e965"
     },
     {
+      "path": "pitFireTeam-docs/RELEASE-NOTES-preview.3.md",
+      "bytes": 1738,
+      "sha256": "85226745703052f1dbdf6ed459a43a19120606142f8f20bd0b953cbe755e0b18"
+    },
+    {
       "path": "pitFireTeam-docs/SPT5-PREVIEW.md",
-      "bytes": 3097,
-      "sha256": "eefc4d6d69b6baed9215bdbcee28f84769385b023b6192b51a982f06cd199db7"
+      "bytes": 3428,
+      "sha256": "c4d8878fd04364f0dd61eb304087d68d3c5c97b1650314aed6fd956213b7f52d"
     },
     {
       "path": "pitFireTeam-docs/VALIDATION.md",
-      "bytes": 3234,
-      "sha256": "341d6a25e6929eae99e7b239641992dff5b55e8bd1789dd781f4a6fae8efa6da"
+      "bytes": 3710,
+      "sha256": "137c7c982839dab0aaf43984631774526b708097673836e5df4d9ba9e4bbde75"
+    },
+    {
+      "path": "pitFireTeam-docs/figures/woods-20261019.png",
+      "bytes": 295003,
+      "sha256": "a6e526782186d53e30040e01c959ef29ed5095fc404863790814941fc33d9a23"
     }
-  ],
-  "sourceHashNote": "Source hashes were captured from the tested working tree before Git text line-ending normalization."
+  ]
 }

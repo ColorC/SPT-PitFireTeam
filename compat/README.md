@@ -52,3 +52,7 @@ Back up before replacing runtime files. A different input/runtime build needs se
 ## Separate experiment, not a compatibility requirement
 
 The [owned strong-pointer cache source](../experimental/strong-pointer-cache/README.md) is an optional investigation with incomplete native lifecycle acceptance. It is not included in the normal mod ZIP or TESTED-RUNTIME compatibility baseline.
+
+## 2026-10-19 local experiments
+
+Updated [Woods evidence](../docs/PERFORMANCE-20261019.md) and source-only AI Limit non-raid / LiveMap BTR lookup tools are under `experimental/`. Local native acceptance is broader than the earlier short trial; this does not redefine the dependency baseline or bundle patched third-party/runtime DLLs.

@@ -26,3 +26,7 @@
 - Optional SAIN addon, Fika, other game builds and arbitrary mod combinations are unvalidated.
 
 Please report the exact EFT/SPT/BepInEx/dependency versions, reproduction steps and a redacted relevant log excerpt. Do not upload whole saves, credentials or session tokens.
+
+## 2026-10-19 scoped follow-up
+
+See [preview.3](RELEASE-NOTES-preview.3.md) and [Woods measurements](PERFORMANCE-20261019.md). Required contracts passed 189/189. Native consecutive raid/menu and preview smoke checks now cover the runtime candidate; full client-stack Woods and hideout checks were added. Earlier UI/inventory matrix gaps and optional SAIN failures are not silently closed. Dependency experiments remain exact-input, source-only and excluded from the mod ZIP.
