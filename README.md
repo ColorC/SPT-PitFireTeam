@@ -5,7 +5,7 @@
 This fork provides a playable **experimental SPT 5.0.0 port** of Pit FireTeam 0.10.3. It is not an official upstream release or a claim of complete feature parity.
 
 - [Download compiled prereleases](https://github.com/ColorC/SPT-PitFireTeam/releases)
-- [Gameplay demo](https://github.com/ColorC/SPT-PitFireTeam/releases/download/v0.10.3-spt5-preview.1/spt5-pitfireteam-wedge-demo-720p30.mp4)
+- [Gameplay demo](https://github.com/ColorC/SPT-PitFireTeam/releases/download/v0.10.3-spt5-preview.1/spt5-pitfireteam-wedge-demo-annotated-720p30.mp4)
 - [Build and install](docs/SPT5-PREVIEW.md)
 - [Validation and known limitations](docs/VALIDATION.md)
 
